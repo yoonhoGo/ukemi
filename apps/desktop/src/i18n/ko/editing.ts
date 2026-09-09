@@ -66,6 +66,15 @@ export const editing: Record<string, string> = {
   "{count} FILES CHANGED": "변경된 파일 {count}개",
   "FILES CHANGED": "변경된 파일",
   "No file changes.": "바뀐 파일이 없습니다.",
+  "Check files to squash or split them whole": "파일을 통째로 스쿼시하거나 분리하려면 체크하세요",
+  "Squash {count} files into the parent": "파일 {count}개를 부모에 스쿼시",
+  "The parent is immutable.": "부모는 바꿀 수 없습니다.",
+  "Move the checked files whole into the parent change (jj squash). One ⌘Z takes it back.":
+    "체크한 파일을 통째로 부모 체인지로 옮깁니다 (jj squash). ⌘Z 한 번이면 되돌아옵니다.",
+  "Split {count} files into a new change": "파일 {count}개를 새 체인지로 분리",
+  "Leave at least one file behind": "파일을 최소 하나는 남겨야 합니다",
+  "Move the checked files whole into a new change below this one (jj split). This change keeps its description.":
+    "체크한 파일을 통째로 이 아래의 새 체인지로 옮깁니다 (jj split). 이 체인지는 자기 설명을 그대로 씁니다.",
   "Loading diff…": "디프 불러오는 중…",
   "click for the diff": "클릭하면 디프",
 

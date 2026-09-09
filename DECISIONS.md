@@ -617,6 +617,29 @@ keeps the colocated `@git` rows out, since those are tracked by construction.
 Untracking is not offered here. The row it would give back is the one you just
 clicked, so nothing is lost by leaving `jj bookmark untrack` at a terminal.
 
+**Whole-file squash and split live beside the inspector's file list.** Both
+verbs were on `JjPort` and non-interactive from the start (see "Non-interactive
+jj covers more than expected") with nothing calling them: every route went
+through the hunk sheet, which is the finer tool and a whole overlay to open for
+the unit most edits are actually in — the file. So each row in FILES CHANGED
+grows a checkbox, and the checked set gets two `.step` rows under the list:
+squash them into the parent, or split them out into a new change below. The
+checkbox is a sibling of the row button rather than inside it, because the row
+is already a button that opens the diff. Split takes no message — jj leaves the
+original description on the change that keeps the rest, and the tooltip says so,
+rather than adding the naming field the hunk sheet needs only because `split -m`
+hands the message to the *other* side.
+
+The target is `parents[0]`, and only when there is exactly one; a merge greys
+the squash row out with the reason the hunk sheet already gives. Whether that
+parent is immutable is read off the graph rows the window already holds, so a
+parent outside the visible revset falls through to jj's own refusal in the error
+line — cheaper than a second `show` for a guard jj enforces anyway. Splitting
+*every* file is refused: it would leave this change empty and the new one
+holding everything, which is a rename, not a split. No target picker — "squash
+into some other revision" would want one, and until something asks for it the
+parent and a new change below are the two targets, with ⌘Z as the confirm.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship

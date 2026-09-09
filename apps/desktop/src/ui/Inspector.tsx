@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FileChange, Revision } from "@ukemi/domain";
-import { useDiffSummary, useJjMutation, useRepo } from "../repo.tsx";
+import { useDiffSummary, useJjMutation, useLog, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
@@ -102,7 +102,8 @@ function Step({
   primary,
 }: {
   label: string;
-  shortcut: string;
+  /** Omitted by the rows the file list grows, which have no chord of their own. */
+  shortcut?: string | undefined;
   onRun(): void;
   disabled?: boolean | undefined;
   title?: string | undefined;
@@ -118,7 +119,7 @@ function Step({
       {...(primary ? { "data-variant": "primary" } : {})}
     >
       <span>{label}</span>
-      <span className="key">{shortcut}</span>
+      {shortcut && <span className="key">{shortcut}</span>}
     </button>
   );
 }
@@ -134,11 +135,25 @@ export function Inspector({
 }) {
   const { isPinned } = useRepo();
   const files = useDiffSummary(revision?.changeId);
+  const log = useLog();
 
   const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
   const abandon = useJjMutation((port, rev: string) => port.abandon([rev]));
   const absorb = useJjMutation((port, rev: string) => port.absorb(rev));
+  const squashFiles = useJjMutation(
+    (port, args: { from: string; into: string; paths: readonly string[] }) =>
+      port.squash(args),
+  );
+  const splitFiles = useJjMutation((port, args: { rev: string; paths: readonly string[] }) =>
+    port.split(args),
+  );
+
+  // Which files the two whole-file verbs below act on. Cleared when the
+  // selection moves, or the last revision's checks would carry over onto the
+  // paths of the next one.
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => setPicked(new Set()), [revision?.changeId]);
 
   if (!revision) {
     return (
@@ -157,6 +172,21 @@ export function Inspector({
     : revision.isImmutable
       ? t("This revision is immutable.")
       : undefined;
+
+  // Read off the file list rather than the checked set itself: another session
+  // can commit under us, and a path that is no longer in the diff is not a path
+  // to hand jj.
+  const picks = files.data?.filter((file) => picked.has(file.path)).map((file) => file.path) ?? [];
+  const parent = revision.parents.length === 1 ? revision.parents[0] : undefined;
+  // The parent's own row came down with the graph, so this guard is free.
+  // ponytail: a parent outside the visible revset is unknown here and falls
+  // through to jj's own refusal, which the error line below shows.
+  const parentImmutable =
+    log.data?.some((row) => row.changeId === parent && row.isImmutable) === true;
+  const canSquash = !readOnly && parent !== undefined && !parentImmutable;
+  // Splitting every file out would leave this change empty and the new one
+  // holding everything — a rename, not a split.
+  const canSplit = !readOnly && picks.length < (files.data?.length ?? 0);
 
   return (
     <aside className="u-scroll" style={panelStyle}>
@@ -368,35 +398,142 @@ export function Inspector({
         )}
         {files.data?.map((file) => {
           const status = STATUS_MARK[file.status];
+          const checked = picked.has(file.path);
           return (
-            <button
-              type="button"
-              className="file"
-              key={file.path}
-              onClick={() => onOpenDiff(file.path)}
-              title={file.path}
-            >
-              <span
-                className="mono"
-                style={{ color: status.color, fontWeight: 700, width: 10 }}
-              >
-                {status.mark}
-              </span>
-              <span
+            /* The row is already a button that opens the diff, so the check
+               box cannot sit inside it — a button within a button is not
+               something the browser honours. It becomes a sibling, and the row
+               keeps its one job. */
+            <div key={file.path} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={checked}
+                disabled={readOnly}
+                title={readOnlyReason ?? t("Check files to squash or split them whole")}
+                onClick={() =>
+                  setPicked((previous) => {
+                    const next = new Set(previous);
+                    if (checked) next.delete(file.path);
+                    else next.add(file.path);
+                    return next;
+                  })
+                }
                 style={{
-                  flexGrow: 1,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  direction: "rtl",
-                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 14,
+                  height: 14,
+                  flexShrink: 0,
+                  marginRight: 2,
+                  borderRadius: 4,
+                  border: `1px solid ${checked ? "var(--u-accent)" : "var(--u-line-strong)"}`,
+                  background: checked ? "var(--u-accent)" : "transparent",
+                  color: "var(--u-accent-ink)",
+                  fontSize: 10,
+                  lineHeight: 1,
                 }}
               >
-                {file.path}
-              </span>
-            </button>
+                {checked ? "✓" : ""}
+              </button>
+              <button
+                type="button"
+                className="file"
+                onClick={() => onOpenDiff(file.path)}
+                title={file.path}
+                style={{ minWidth: 0 }}
+              >
+                <span
+                  className="mono"
+                  style={{ color: status.color, fontWeight: 700, width: 10 }}
+                >
+                  {status.mark}
+                </span>
+                <span
+                  style={{
+                    flexGrow: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    direction: "rtl",
+                    textAlign: "left",
+                  }}
+                >
+                  {file.path}
+                </span>
+              </button>
+            </div>
           );
         })}
+
+        {/* Whole-file squash and split. The hunk sheet is the finer tool; this
+            is the unit most edits are actually in, so it lives beside the list
+            it acts on and appears only once something is checked.
+            ponytail: the parent and a new change below are the only two
+            targets — squashing into an arbitrary revision wants a target
+            picker, which nothing has asked for yet. */}
+        {picks.length > 0 && (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 6 }}
+          >
+            <Step
+              label={t("Squash {count} files into the parent", { count: picks.length })}
+              disabled={!canSquash || squashFiles.isPending}
+              title={
+                readOnlyReason ??
+                (parent === undefined
+                  ? t("A merge has no single parent to squash into")
+                  : parentImmutable
+                    ? t("The parent is immutable.")
+                    : t(
+                        "Move the checked files whole into the parent change (jj squash). One ⌘Z takes it back.",
+                      ))
+              }
+              onRun={() => {
+                // `parent` is what `canSquash` is built on; repeated for the
+                // type checker, which cannot see through the boolean.
+                if (!canSquash || parent === undefined) return;
+                squashFiles.mutate(
+                  { from: revision.changeId, into: parent, paths: picks },
+                  { onSuccess: () => setPicked(new Set()) },
+                );
+              }}
+            />
+            <Step
+              label={t("Split {count} files into a new change", { count: picks.length })}
+              disabled={!canSplit || splitFiles.isPending}
+              title={
+                readOnlyReason ??
+                (!canSplit
+                  ? t("Leave at least one file behind")
+                  : t(
+                      "Move the checked files whole into a new change below this one (jj split). This change keeps its description.",
+                    ))
+              }
+              onRun={() => {
+                if (!canSplit) return;
+                splitFiles.mutate(
+                  { rev: revision.changeId, paths: picks },
+                  { onSuccess: () => setPicked(new Set()) },
+                );
+              }}
+            />
+            {(squashFiles.error ?? splitFiles.error) && (
+              <div
+                role="alert"
+                className="mono selectable"
+                style={{
+                  fontSize: 11,
+                  color: "var(--u-conflict)",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {String(((squashFiles.error ?? splitFiles.error) as Error).message)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </aside>
