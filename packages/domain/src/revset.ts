@@ -36,6 +36,26 @@ export const CONFLICTS_REVSET = "conflicts()";
 /** Your own mutable changes that no remote bookmark contains yet. */
 export const UNPUSHED_REVSET = "mine() & mutable() & ~::remote_bookmarks()";
 
+/** Every revision a bookmark points at, local and remote. */
+export const BOOKMARKS_REVSET = "bookmarks() | remote_bookmarks()";
+
+/** Your own mutable changes with nothing in them — the abandon pile. */
+export const EMPTY_REVSET = "empty() & mutable() & mine()";
+
+/** The whole repository. `withLimit` still caps what the window paints. */
+export const ALL_REVSET = "all()";
+
+/**
+ * One revision, the mutable history under it, and trunk for orientation.
+ *
+ * The board's "show this change" and the working-copy preset ask the same
+ * question, so the formula lives here once. `rev` is a revset expression, not a
+ * name — `@` and a change id both belong, and neither can be quoted.
+ */
+export function stackRevset(rev: string): string {
+  return `${rev} | (::${rev} & mutable()) | present(trunk())`;
+}
+
 /** Cap a revset so a huge repo cannot stall the first paint. */
 export function withLimit(revset: string, limit: number): string {
   return `latest(${revset}, ${limit})`;

@@ -28,7 +28,7 @@ import { Timeline } from "./ui/Timeline.tsx";
 import { Toolbar } from "./ui/Toolbar.tsx";
 import { useDragRebase, type DragState } from "./ui/drag-rebase.tsx";
 import { DragGhost, RebaseHud } from "./ui/RebaseHud.tsx";
-import { DEFAULT_REVSET } from "@ukemi/domain";
+import { DEFAULT_REVSET, stackRevset } from "@ukemi/domain";
 import { t, tParts } from "./i18n/i18n.ts";
 
 /**
@@ -225,7 +225,7 @@ function Window({
       } else if (key === "c" && event.altKey) {
         event.preventDefault();
         copyLastCommand();
-      } else if (key >= "1" && key <= "3") {
+      } else if (key >= "1" && key <= "9") {
         event.preventDefault();
         const saved = SAVED_REVSETS[Number(key) - 1];
         if (saved) setRevset(saved.revset);
@@ -391,7 +391,7 @@ function Window({
             <Board
               onShow={(changeId) => {
                 setSelected(changeId);
-                setRevset(`${changeId} | (::${changeId} & mutable()) | present(trunk())`);
+                setRevset(stackRevset(changeId));
                 setView("graph");
               }}
             />

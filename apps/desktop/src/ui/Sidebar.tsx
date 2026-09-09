@@ -1,5 +1,14 @@
 import type { Bookmark } from "@ukemi/domain";
-import { bookmarkRevset, CONFLICTS_REVSET, DEFAULT_REVSET, UNPUSHED_REVSET } from "@ukemi/domain";
+import {
+  ALL_REVSET,
+  bookmarkRevset,
+  BOOKMARKS_REVSET,
+  CONFLICTS_REVSET,
+  DEFAULT_REVSET,
+  EMPTY_REVSET,
+  stackRevset,
+  UNPUSHED_REVSET,
+} from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import { useBookmarks, useRepo, useWorkspaces } from "../repo.tsx";
 import { TransitionStrip } from "./Coach.tsx";
@@ -7,11 +16,15 @@ import { BookmarkIcon, CurrentWorkspaceIcon, RevsetIcon, WorkspaceIcon } from ".
 import { LanguagePicker } from "./LanguagePicker.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
 
-/** Saved revsets, bound to ⌘1…⌘3. Handled in `App`'s key map too. */
+/** Saved revsets, bound to ⌘1…⌘7 by position. Handled in `App`'s key map too. */
 export const SAVED_REVSETS = [
   { label: "Recent work", revset: DEFAULT_REVSET, key: "⌘1" },
   { label: "Mine, unpushed", revset: UNPUSHED_REVSET, key: "⌘2" },
   { label: "Conflicts", revset: CONFLICTS_REVSET, key: "⌘3" },
+  { label: "Current stack", revset: stackRevset("@"), key: "⌘4" },
+  { label: "All bookmarks", revset: BOOKMARKS_REVSET, key: "⌘5" },
+  { label: "Empty changes", revset: EMPTY_REVSET, key: "⌘6" },
+  { label: "Everything", revset: ALL_REVSET, key: "⌘7" },
 ] as const;
 
 /** Local rows only; remote-tracking rows fold into their local row's counts. */

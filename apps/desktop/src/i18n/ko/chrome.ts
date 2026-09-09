@@ -24,6 +24,10 @@ export const chrome: Record<string, string> = {
   "Recent work": "최근 작업",
   "Mine, unpushed": "내 것, 푸시 안 함",
   Conflicts: "충돌",
+  "Current stack": "지금 쌓는 스택",
+  "All bookmarks": "북마크 전체",
+  "Empty changes": "빈 체인지",
+  Everything: "전부",
 
   // ── Graph rows ─────────────────────────────────────────────────────────
   Revisions: "리비전",
