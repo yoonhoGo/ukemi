@@ -195,6 +195,14 @@ the build rather than appearing in English next to Korean. It also fails on two
 files translating one key differently — which caught twelve, all of them a
 shortcut-table label and a Rosetta step being the same English sentence.
 
+**Two Korean registers, split on who is being addressed.**
+The onboarding copy — the three welcome cards, the coach hints, the progress
+panel — is `-습니다`; everything else in the window is plain `-다`. Onboarding
+speaks *to* someone arriving from Git, and the rest of the window is a tool
+writing down what is true. Noun-phrase labels ("스택 푸시") carry no register at
+all, which is what lets the same catalogue key serve the shortcut sheet and a
+milestone without either one sounding wrong.
+
 **"now" means two things and gets one word.**
 The cost of keying on the source string, found immediately: `t("now")` is a
 commit timestamp under a minute old in one place and the present edge of the
