@@ -45,6 +45,8 @@ export const chrome: Record<string, string> = {
   divergent: "갈라짐",
   "new parent": "새 부모",
   "Drag {name} onto a revision to move it there.": "{name}을(를) 리비전 위로 끌면 그 자리로 옮겨집니다.",
+  "Delete the bookmark {name}": "북마크 {name} 지우기",
+  "Name for a bookmark on the selected change": "선택한 체인지에 붙일 북마크 이름",
   "{name} here": "{name}을(를) 여기로",
 
   // ── Timeline ───────────────────────────────────────────────────────────
@@ -162,6 +164,7 @@ export const chrome: Record<string, string> = {
   "Squash hunks into the parent": "헝크를 부모에 스쿼시",
   "Absorb into the ancestors that last touched each line":
     "각 줄을 마지막으로 건드린 조상에 absorb",
+  "Set a bookmark on the selection": "선택한 것에 북마크 붙이기",
   "Save the description / run the sheet": "설명 저장 / 시트 실행",
   "Move history": "히스토리 옮기기",
   "Rebase a revision onto another": "리비전을 다른 리비전 위로 리베이스",

@@ -28,6 +28,7 @@ const GROUPS = [
       ["⌘⇧S", "Split by hunk"],
       ["⌘⇧K", "Squash hunks into the parent"],
       ["⌘⇧A", "Absorb into the ancestors that last touched each line"],
+      ["⌘B", "Set a bookmark on the selection"],
       ["⌘↩", "Save the description / run the sheet"],
     ],
   },

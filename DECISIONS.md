@@ -534,6 +534,25 @@ type level: `CATALOGS` is a `satisfies` literal so its two keys are known ones
 rather than an open `Record`, and `changeMenu()` spells `items` required
 because `popupRowMenu` reads it back out.
 
+**A bookmark is created from the Change menu and deleted from its pill.** Both
+are one verb each, and ⌘Z is the confirm — the same trade the drag already
+made when it moved a name. Creating it is ⌘B in the Change menu, so it reaches
+the row menu for free (the two are one array) and the name lands on the
+selection every other item there acts on; the field is the strip pattern the
+sidebar's ＋ uses for a revset, in the same slot as the pin and error strips,
+rather than a fifth overlay through `useModal`. A blank name closes the strip
+without sending anything. No `isAliasName`-style narrowing: a bookmark name is
+argv, not a config key that comes back out as a revset symbol, so jj's own
+stderr in the strip above is a better rule than a guess at jj's grammar.
+
+Deleting it is the one menu item in `ui/menu.ts` that carries a handler instead
+of a chord, which is exactly the ceiling the `press` comment named: the
+argument is a bookmark name and a synthesised keystroke has no room for one. It
+stays a single verb so the exception does not spread, and it is on the pill
+rather than a Sidebar row because the pill is already the handle — the sidebar
+lists bookmarks, the graph is where you point at one. No confirmation dialog,
+for the reason nothing else here has one: the pill comes back with ⌘Z.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship

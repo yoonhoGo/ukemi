@@ -61,6 +61,10 @@ function Window({
   // whole of the sheet's state that the window has to hold.
   const [diffPath, setDiffPath] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
+  // The bookmark name being typed, or `undefined` when the strip is closed.
+  // An empty string is the open-but-blank state, which is why this is not a
+  // boolean paired with the draft.
+  const [naming, setNaming] = useState<string | undefined>(undefined);
   // The graph is the window; the board is the same data by workspace (§4.6).
   const [view, setView] = useState<"graph" | "board">("graph");
   const [showCommands, setShowCommands] = useState(false);
@@ -119,6 +123,7 @@ function Window({
       bookmarkSet.mutate({ name, rev: onto });
     },
   );
+  const bookmarkDelete = useJjMutation((port, name: string) => port.bookmarkDelete(name));
 
   const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
@@ -155,6 +160,21 @@ function Window({
     });
   }, [lastCommand]);
 
+  /**
+   * Put the typed name on the selected revision.
+   *
+   * The revision is the selection, so — as with the sidebar's ＋ for a revset
+   * — there is nothing to pick here and nothing to type twice. A blank name
+   * just closes the strip: `jj bookmark set` with no name is not a command
+   * worth sending to find that out.
+   */
+  const commitBookmarkName = () => {
+    const name = (naming ?? "").trim();
+    setNaming(undefined);
+    if (!name || !effectiveSelection) return;
+    bookmarkSet.mutate({ name, rev: effectiveSelection });
+  };
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       // Text fields stop propagation themselves; this is the window's map.
@@ -171,6 +191,10 @@ function Window({
         // closes first — and before the pin, which is the window's state
         // rather than something covering it.
         else if (diffPath) setDiffPath(undefined);
+        // The naming strip is not a sheet and does not cover anything, so it
+        // comes after them — but before the pin, because a half-typed name is
+        // the more recent thing the user wants out of.
+        else if (naming !== undefined) setNaming(undefined);
         else if (isPinned) pin(undefined);
         return;
       }
@@ -266,6 +290,13 @@ function Window({
       } else if (key === "p" && event.shiftKey) {
         event.preventDefault();
         if (!isPinned) push.mutate(undefined);
+      } else if (key === "b") {
+        event.preventDefault();
+        // Opening the field is not the write, but there is no point offering a
+        // name for a revision the window is only reading from the past. Idempotent
+        // rather than a toggle: the menu item's accelerator reaches this branch
+        // while the field has focus, and it must not wipe what is typed there.
+        if (!isPinned && effectiveSelection) setNaming((open) => open ?? "");
       } else if (key === "c" && event.altKey) {
         event.preventDefault();
         copyLastCommand();
@@ -283,6 +314,7 @@ function Window({
     showProgress,
     showSettings,
     diffPath,
+    naming,
     isPinned,
     pin,
     move,
@@ -328,6 +360,7 @@ function Window({
     rebase,
     absorb,
     bookmarkSet,
+    bookmarkDelete,
   ];
   const failure = mutations.find((mutation) => mutation.error)?.error;
   const error = failure ?? query.error ?? undefined;
@@ -438,6 +471,47 @@ function Window({
         </div>
       )}
 
+      {naming !== undefined && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            height: 26,
+            padding: "0 14px",
+            flexShrink: 0,
+            background: "var(--u-bg-raised)",
+            fontSize: "var(--u-font-size-small)",
+            borderBottom: "1px solid var(--u-line-faint)",
+          }}
+        >
+          {t("Name for a bookmark on the selected change")}
+          <input
+            className="mono selectable"
+            autoFocus
+            value={naming}
+            spellCheck={false}
+            aria-label={t("Name for a bookmark on the selected change")}
+            placeholder={t("Name")}
+            onChange={(event) => setNaming(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commitBookmarkName();
+              if (event.key === "Escape") setNaming(undefined);
+              // Text entry owns its keys; the window's map must not see them.
+              event.stopPropagation();
+            }}
+            style={{
+              flexGrow: 1,
+              minWidth: 0,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+            }}
+          />
+          <span className="key">⏎</span>
+        </div>
+      )}
+
       <div style={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
         <Sidebar
           view={view}
@@ -503,6 +577,9 @@ function Window({
               onSelect={setSelected}
               onDragStart={startDrag}
               onBookmarkDragStart={startBookmarkDrag}
+              onBookmarkDelete={(name) => {
+                if (!isPinned) bookmarkDelete.mutate(name);
+              }}
               moving={drag ? moving : undefined}
               target={drag?.onto ?? bookmarkDrag?.onto}
               targetLabel={

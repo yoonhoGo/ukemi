@@ -191,6 +191,12 @@ function changeMenu(): SubmenuOptions & Required<Pick<SubmenuOptions, "items">> 
         shift: true,
         accelerator: "CmdOrCtrl+Shift+A",
       }),
+      SEPARATOR,
+      // Naming a change is not rewriting it, hence the separator — but one
+      // verb does not earn a Bookmarks menu of its own, and the name lands on
+      // the same selection every item above acts on. Moving a name is still
+      // the drag; this is the only way to mint one.
+      item({ label: "Set a bookmark on the selection", key: "b", accelerator: "CmdOrCtrl+B" }),
     ],
   };
 }
@@ -218,6 +224,26 @@ export async function popupRowMenu(): Promise<void> {
   } catch {
     // No Tauri, no native menu — the same quiet degrade as `installAppMenu`,
     // and for the same reason: every item in here is a keystroke as well.
+  }
+}
+
+/**
+ * The bookmark pill's own menu, with one item on it.
+ *
+ * The only menu in this file that carries a handler instead of a chord, and
+ * for exactly the reason `press` names: the command's argument is a bookmark
+ * name, which a synthesised keystroke has no room for. It stays one verb so
+ * the exception does not spread — the pill is still dragged to move a name,
+ * and ⌘B is still what mints one.
+ */
+export async function popupBookmarkMenu(name: string, remove: () => void): Promise<void> {
+  try {
+    const menu = await Menu.new({
+      items: [{ text: t("Delete the bookmark {name}", { name }), action: remove }],
+    });
+    await menu.popup();
+  } catch {
+    // No Tauri, no native menu — the same quiet degrade as `popupRowMenu`.
   }
 }
 

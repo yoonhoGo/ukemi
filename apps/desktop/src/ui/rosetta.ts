@@ -81,7 +81,10 @@ export const ROSETTA: readonly RosettaEntry[] = [
   {
     git: "git checkout -b feat/x",
     also: ["switch -c", "branch", "new branch", "-b"],
-    steps: [{ label: "Start a new change on top", shortcut: "⌘N" }],
+    steps: [
+      { label: "Start a new change on top", shortcut: "⌘N" },
+      { label: "Set a bookmark on the selection", shortcut: "⌘B" },
+    ],
     runs: ["jj new", "jj bookmark set feat/x -r @"],
     why:
       "New work needs no name — nothing is checked out and there is no current branch. Set a bookmark only if you want the name now; pushing a stack mints one for you either way.",

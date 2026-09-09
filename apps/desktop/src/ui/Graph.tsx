@@ -13,7 +13,7 @@ import {
   ROW,
   rowY,
 } from "./graph-geometry.ts";
-import { popupRowMenu } from "./menu.ts";
+import { popupBookmarkMenu, popupRowMenu } from "./menu.ts";
 import { relativeTime } from "./time.ts";
 import { ROW_ATTRIBUTE } from "./drag-rebase.tsx";
 
@@ -148,6 +148,7 @@ function Row({
   onSelect,
   onDragStart,
   onBookmarkDragStart,
+  onBookmarkDelete,
   moving,
   isTarget,
   targetLabel,
@@ -161,6 +162,7 @@ function Row({
   onSelect(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
   onBookmarkDragStart(name: string, from: ChangeId, event: React.PointerEvent): void;
+  onBookmarkDelete(name: string): void;
   /** Ghosted because a pending rebase would move it. */
   moving: boolean;
   isTarget: boolean;
@@ -257,6 +259,16 @@ function Row({
             onPointerDown={(event) => {
               if (event.button === 0) onBookmarkDragStart(name, revision.changeId, event);
             }}
+            // Right-click on the pill deletes the name it shows. No
+            // confirmation: ⌘Z is the way back from this the way it is from
+            // every other write in the window, and the pill reappears where it
+            // was. `stopPropagation` because the row underneath has a menu of
+            // its own and both would otherwise pop.
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void popupBookmarkMenu(name, () => onBookmarkDelete(name));
+            }}
           >
             {name}
           </span>
@@ -292,6 +304,7 @@ export function Graph({
   onSelect,
   onDragStart,
   onBookmarkDragStart,
+  onBookmarkDelete,
   moving,
   target,
   targetLabel,
@@ -305,6 +318,7 @@ export function Graph({
   onSelect(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
   onBookmarkDragStart(name: string, from: ChangeId, event: React.PointerEvent): void;
+  onBookmarkDelete(name: string): void;
   /** Revisions a pending rebase would move; ghosted while dragging. */
   moving?: ReadonlySet<ChangeId> | undefined;
   target?: ChangeId | undefined;
@@ -339,6 +353,7 @@ export function Graph({
             onSelect={onSelect}
             onDragStart={onDragStart}
             onBookmarkDragStart={onBookmarkDragStart}
+            onBookmarkDelete={onBookmarkDelete}
             moving={moving?.has(row.revision.changeId) ?? false}
             isTarget={row.revision.changeId === target}
             targetLabel={targetLabel ?? t("new parent")}
