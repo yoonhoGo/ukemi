@@ -50,6 +50,9 @@ const COPY: Record<
   },
 };
 
+/** Rows carry this so a painting drag can map the pointer back to a group. */
+const HUNK_ATTRIBUTE = "data-hunk-id";
+
 /** A selectable entry: one group, labelled by file and position. */
 interface Entry {
   readonly group: DiffGroup;
@@ -184,6 +187,53 @@ export function HunkSheet({
       else next.add(id);
       return next;
     });
+
+  const setChecked = (id: string, value: boolean) =>
+    setSelected((previous) => {
+      if (previous.has(id) === value) return previous;
+      const next = new Set(previous);
+      if (value) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  // A drag ending after the sheet is gone still has to take its listeners with
+  // it, so the stop function lives where unmount can reach it.
+  const endPaint = useRef(() => {});
+  useEffect(() => () => endPaint.current(), []);
+
+  /**
+   * Paint a run of checkboxes with one drag.
+   *
+   * The row the press lands on decides the value, and every row the pointer
+   * then crosses is *set* to it rather than toggled — sweeping back over a row
+   * you already painted leaves it alone instead of blinking. This is the way to
+   * check many hunks at once that the sheet actually has: ⌘A is spoken for by
+   * the menu's Select All, which claims the accelerator first.
+   */
+  const startPaint = (id: string) => {
+    const value = !selected.has(id);
+    setChecked(id, value);
+    const onMove = (event: PointerEvent) => {
+      // elementFromPoint rather than a pointerenter per row, for the reason
+      // drag-rebase.tsx gives: the drag holds implicit pointer capture on the
+      // row it started from, so the other rows never see an enter event.
+      const row = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest(`[${HUNK_ATTRIBUTE}]`);
+      const over = row?.getAttribute(HUNK_ATTRIBUTE);
+      if (over) setChecked(over, value);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+    endPaint.current = stop;
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+  };
 
   const focusedEntry = entries.find((entry) => entry.group.id === focused);
   const keptCount = selected.size;
@@ -352,7 +402,21 @@ export function HunkSheet({
                 <button
                   type="button"
                   key={entry.group.id}
-                  onClick={() => {
+                  {...{ [HUNK_ATTRIBUTE]: entry.group.id }}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return;
+                    // Otherwise the sweep drags out a text selection of the
+                    // paths it passes over.
+                    event.preventDefault();
+                    setFocused(entry.group.id);
+                    startPaint(entry.group.id);
+                  }}
+                  onClick={(event) => {
+                    // A pointer already toggled this row on pointerdown, and a
+                    // finished drag still delivers a trailing click that must
+                    // not toggle it back. What is left is the keyboard's
+                    // synthetic click, which carries no click count.
+                    if (event.detail !== 0) return;
                     setFocused(entry.group.id);
                     toggle(entry.group.id);
                   }}
