@@ -535,22 +535,25 @@ function Window({
             background: "var(--u-bg-window)",
           }}
         >
-          <div
-            className="sec row"
-            style={{
-              height: 26,
-              fontSize: "var(--u-font-size-small)",
-              borderBottom: "1px solid var(--u-line-faint)",
-              borderRadius: 0,
-            }}
-          >
-            <div />
-            <div>{t("Change")}</div>
-            <div>{t("Description")}</div>
-            <div>{t("Bookmarks")}</div>
-            <div />
-            <div style={{ textAlign: "right" }}>{t("When")}</div>
-          </div>
+          {/* Column labels for the graph's grid — the board has no such grid. */}
+          {view === "graph" && (
+            <div
+              className="sec row"
+              style={{
+                height: 26,
+                fontSize: "var(--u-font-size-small)",
+                borderBottom: "1px solid var(--u-line-faint)",
+                borderRadius: 0,
+              }}
+            >
+              <div />
+              <div>{t("Change")}</div>
+              <div>{t("Description")}</div>
+              <div>{t("Bookmarks")}</div>
+              <div />
+              <div style={{ textAlign: "right" }}>{t("When")}</div>
+            </div>
+          )}
 
           {view === "board" && (
             <Board

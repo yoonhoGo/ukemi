@@ -107,22 +107,35 @@ function Column({
         )}
       </div>
 
-      {head ? (
-        <Card revision={head} isHead onShow={onShow} />
-      ) : (
-        <div className="sec" style={{ fontSize: 12 }}>
-          {t("Working copy not in view.")}
-        </div>
-      )}
+      {/* A tall stack scrolls inside the column; the name stays put, because a
+          column you cannot identify is not a column. */}
+      <div
+        className="u-scroll"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          minHeight: 0,
+          overflowY: "auto",
+        }}
+      >
+        {head ? (
+          <Card revision={head} isHead onShow={onShow} />
+        ) : (
+          <div className="sec" style={{ fontSize: 12 }}>
+            {t("Working copy not in view.")}
+          </div>
+        )}
 
-      <div className="side-head" style={{ padding: "4px 0 0" }}>
-        {below.length === 0
-          ? t("NOTHING STACKED")
-          : t("{count} STACKED BELOW", { count: below.length })}
+        <div className="side-head" style={{ padding: "4px 0 0" }}>
+          {below.length === 0
+            ? t("NOTHING STACKED")
+            : t("{count} STACKED BELOW", { count: below.length })}
+        </div>
+        {below.map((r) => (
+          <Card key={r.changeId} revision={r} isHead={false} onShow={onShow} />
+        ))}
       </div>
-      {below.map((r) => (
-        <Card key={r.changeId} revision={r} isHead={false} onShow={onShow} />
-      ))}
     </section>
   );
 }
@@ -145,6 +158,7 @@ function Card({
       style={{
         display: "flex",
         flexDirection: "column",
+        flexShrink: 0,
         gap: 4,
         padding: "8px 10px",
         borderRadius: 8,
