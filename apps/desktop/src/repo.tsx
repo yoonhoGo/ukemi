@@ -27,6 +27,7 @@ import type {
   PullRequest,
   Revision,
   RevsetAlias,
+  RevsetFunction,
   Workspace,
 } from "@ukemi/domain";
 import {
@@ -73,6 +74,16 @@ interface RepoValue {
   pin(opId: OperationId | undefined): void;
   readonly revset: string;
   setRevset(revset: string): void;
+  /**
+   * What the revset field currently *reads*, which is not yet what the window
+   * is showing — the field applies on ⏎, never per keystroke.
+   *
+   * It lives here rather than inside `RevsetField` because the ⌘K palette
+   * writes into it: choosing a row completes the word being typed and leaves
+   * the applying to the field, so the two need one string between them.
+   */
+  readonly revsetDraft: string;
+  setRevsetDraft(draft: string): void;
 }
 
 const RepoContext = createContext<RepoValue | undefined>(undefined);
@@ -87,8 +98,16 @@ export function RepoProvider({
   children: ReactNode;
 }) {
   const [pinnedOpId, setPinnedOpId] = useState<OperationId | undefined>(undefined);
-  const [revset, setRevset] = useState(initialRevset);
+  const [revset, setRevsetState] = useState(initialRevset);
+  const [revsetDraft, setRevsetDraft] = useState(initialRevset);
   const port = useMemo(() => portFor(root), [root]);
+
+  // Applying a revset also settles the field: a sidebar row or ⌘4 must not
+  // leave a stale half-typed draft sitting in the toolbar.
+  const setRevset = useCallback((next: string) => {
+    setRevsetState(next);
+    setRevsetDraft(next);
+  }, []);
 
   // The repo head. Everything else keys off the resolved opId, so this one
   // query is the single point that decides "when" the window is looking at.
@@ -112,8 +131,10 @@ export function RepoProvider({
       pin: setPinnedOpId,
       revset,
       setRevset,
+      revsetDraft,
+      setRevsetDraft,
     }),
-    [root, port, pinnedOpId, head.data, revset],
+    [root, port, pinnedOpId, head.data, revset, setRevset, revsetDraft],
   );
 
   return <RepoContext.Provider value={value}>{children}</RepoContext.Provider>;
@@ -196,6 +217,17 @@ export function useRevsetAliases(): UseQueryResult<RevsetAlias[]> {
   return useQuery({
     queryKey: ["revset-aliases", root],
     queryFn: () => port.revsetAliases(),
+  });
+}
+
+export function useRevsetFunctions(): UseQueryResult<RevsetFunction[]> {
+  const { port } = useRepo();
+  return useQuery({
+    queryKey: ["revset-functions"],
+    queryFn: () => port.revsetFunctions(),
+    // The binary cannot change under a running window, so this is the one read
+    // that is fetched once and never again.
+    staleTime: Infinity,
   });
 }
 

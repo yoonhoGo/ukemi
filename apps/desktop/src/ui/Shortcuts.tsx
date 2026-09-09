@@ -13,6 +13,7 @@ const GROUPS = [
       ["⌘,", "Settings"],
       ["⌘R", "Reload from disk"],
       ["⌘⇧W", "Workspace board"],
+      ["⌘K", "Look up a revset"],
       ["⌘G", "Look up a git command"],
       ["⌘J", "Commands this window ran"],
       ["⌘O", "Open another repository"],

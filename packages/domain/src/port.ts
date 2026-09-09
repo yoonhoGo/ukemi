@@ -8,6 +8,7 @@ import type {
   OperationId,
   Revision,
   RevsetAlias,
+  RevsetFunction,
   Workspace,
 } from "./types.ts";
 import type { RebaseMode } from "./revset.ts";
@@ -111,6 +112,14 @@ export interface JjPort {
   saveRevsetAlias(name: string, revset: string): Promise<void>;
 
   deleteRevsetAlias(name: string): Promise<void>;
+
+  /**
+   * Every revset function the bundled jj knows, from `jj help -k revsets`.
+   *
+   * Neither pinned nor repo-dependent: this is a property of the binary, so it
+   * is the one read in this port that is the same all session.
+   */
+  revsetFunctions(): Promise<RevsetFunction[]>;
 
   // ---- writes -------------------------------------------------------------
 

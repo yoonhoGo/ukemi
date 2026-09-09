@@ -5,6 +5,7 @@ import { basename, join } from "node:path";
 import { ko } from "./ko/index.ts";
 import { t } from "./i18n.ts";
 import { MILESTONES } from "../ui/onboarding.ts";
+import { KIND_LABELS } from "../ui/revset-palette.ts";
 import { ROSETTA } from "../ui/rosetta.ts";
 import { LABELS as OPERATION_LABELS } from "../ui/operation-label.ts";
 
@@ -51,6 +52,7 @@ test("the prose in the data tables is translated too", () => {
     ...ROSETTA.flatMap((entry) => [entry.why, ...entry.steps.map((step) => step.label)]),
     ...MILESTONES.flatMap((milestone) => [milestone.label, milestone.title, milestone.body]),
     ...OPERATION_LABELS.map(([, key]) => key),
+    ...Object.values(KIND_LABELS),
   ];
   assert.deepEqual(
     fromData.filter((line) => !(line in ko)),

@@ -23,7 +23,7 @@ import { Inspector } from "./ui/Inspector.tsx";
 import { HunkSheet, type HunkSheetMode } from "./ui/HunkSheet.tsx";
 import { installAppMenu } from "./ui/menu.ts";
 import { milestoneForCommand, reachMilestone } from "./ui/onboarding.ts";
-import { Rosetta } from "./ui/Rosetta.tsx";
+import { Lookup, type LookupFocus } from "./ui/Lookup.tsx";
 import { Settings } from "./ui/Settings.tsx";
 import { SAVED_REVSETS, Sidebar } from "./ui/Sidebar.tsx";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
@@ -64,7 +64,10 @@ function Window({
   // The graph is the window; the board is the same data by workspace (§4.6).
   const [view, setView] = useState<"graph" | "board">("graph");
   const [showCommands, setShowCommands] = useState(false);
-  const [showRosetta, setShowRosetta] = useState(false);
+  // Which section of the lookup sheet the key that opened it aimed at —
+  // `undefined` is closed. One sheet, two entrances: ⌘G at the Git
+  // translation, ⌘K at the revset palette.
+  const [lookup, setLookup] = useState<LookupFocus | undefined>(undefined);
   const [showProgress, setShowProgress] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const commandLog = useCommandLog();
@@ -159,7 +162,7 @@ function Window({
       const meta = event.metaKey || event.ctrlKey;
 
       if (event.key === "Escape") {
-        if (showRosetta) setShowRosetta(false);
+        if (lookup) setLookup(undefined);
         else if (showProgress) setShowProgress(false);
         else if (showShortcuts) setShowShortcuts(false);
         else if (showSettings) setShowSettings(false);
@@ -176,7 +179,15 @@ function Window({
       // earning its key.
       if (meta && key === "g") {
         event.preventDefault();
-        setShowRosetta((open) => !open);
+        setLookup((open) => (open === "git" ? undefined : "git"));
+        return;
+      }
+      // The same sheet, aimed at the revset palette. Not ⌘R: that is "read the
+      // repo again", and ⌘K is where every other window in this decade keeps
+      // its palette — one letter from the ⌘L that focuses the field it fills.
+      if (meta && key === "k" && !event.shiftKey) {
+        event.preventDefault();
+        setLookup((open) => (open === "revset" ? undefined : "revset"));
         return;
       }
       if (meta && key === "/") {
@@ -268,7 +279,7 @@ function Window({
     return () => window.removeEventListener("keydown", onKey);
   }, [
     showShortcuts,
-    showRosetta,
+    lookup,
     showProgress,
     showSettings,
     diffPath,
@@ -563,10 +574,10 @@ function Window({
         />
       </div>
 
-      <CoachBubble onOpenRosetta={() => setShowRosetta(true)} />
+      <CoachBubble onOpenRosetta={() => setLookup("git")} />
 
       {showCommands && <CommandPanel onClose={() => setShowCommands(false)} />}
-      {showRosetta && <Rosetta onClose={() => setShowRosetta(false)} />}
+      {lookup && <Lookup focus={lookup} onClose={() => setLookup(undefined)} />}
       {showProgress && <ProgressPanel onClose={() => setShowProgress(false)} />}
       <Timeline />
       {drag && (

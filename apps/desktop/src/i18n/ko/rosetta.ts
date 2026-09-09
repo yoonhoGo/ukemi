@@ -1,12 +1,25 @@
-/** The ⌘G Git-to-jj sheet: step labels, the "why it differs" prose, and the panel's own chrome. */
+/**
+ * The ⌘G / ⌘K lookup sheet: step labels, the "why it differs" prose, the revset
+ * palette's badges, and the panel's own chrome.
+ */
 export const rosetta: Record<string, string> = {
   // The panel itself.
   "Look up a git command": "git 명령 찾아보기",
   "Type the git command you were reaching for": "손이 가던 git 명령을 입력",
   "Git command": "git 명령",
-  "ASKED MOST": "많이 찾는 것",
-  "{count} match": "{count}개 일치",
-  "{count} matches": "{count}개 일치",
+  // The palette half. `Revset` is in chrome.ts — the field wears the same word.
+  "Look up a revset": "리브셋 찾아보기",
+  "Type a name, a bookmark, or a jj function": "이름·북마크·jj 함수를 입력",
+  "IF YOU CAME FROM GIT": "git 에서 왔다면",
+  "TO PUT IN THE FIELD": "칸에 넣을 것",
+  "Nothing matches that. Names you save, your bookmarks and every jj function are here; a change ID goes straight in the field.":
+    "맞는 게 없습니다. 저장한 이름과 북마크, jj 함수 전부가 여기 있습니다. 체인지 ID는 칸에 바로 적으면 됩니다.",
+  // Row badges, `t(KIND_LABELS[kind])` at render — i18n.test.ts checks the
+  // table directly, because a call that passes a field is invisible to its scan.
+  saved: "저장",
+  bookmark: "북마크",
+  workspace: "워크스페이스",
+  function: "함수",
   "Nothing here matches that. The command may already work the same way — or it may be one jj has no answer for, which is worth knowing too.":
     "여기 맞는 게 없습니다. 그 명령은 이미 똑같이 동작할 수도 있고, jj가 답을 갖지 않는 명령일 수도 있습니다. 그것도 알아둘 만한 일입니다.",
   "No key for it; the command is the answer.": "단축키는 없습니다. 명령 자체가 답입니다.",

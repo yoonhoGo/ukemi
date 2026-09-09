@@ -80,6 +80,23 @@ export interface RevsetAlias {
   readonly revset: string;
 }
 
+/**
+ * One revset function, as jj's own help describes it.
+ *
+ * Read from the bundled binary rather than listed here, so the set moves with
+ * the jj the app ships. `about` is jj's English sentence, kept verbatim and
+ * untranslated for the same reason `runs` is in the Rosetta table: it is the
+ * tool's own wording, and paraphrasing it would make the window a less
+ * reliable teacher than the CLI.
+ */
+export interface RevsetFunction {
+  readonly name: string;
+  /** The parameter list as written, e.g. `[pattern]` or `x, [depth]`. */
+  readonly params: string;
+  /** The first sentence of jj's description. */
+  readonly about: string;
+}
+
 export interface Workspace {
   readonly name: string;
   /** The change this workspace's working copy sits on. */

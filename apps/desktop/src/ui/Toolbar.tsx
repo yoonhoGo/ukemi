@@ -11,13 +11,14 @@ import { dragWindowFrom } from "./window-drag.ts";
  * hiding it would make the app a worse teacher than the CLI. Edits apply on
  * Enter, not per keystroke: a half-typed revset is a syntax error, and running
  * one on every character would flood the window with red.
+ *
+ * The draft is context state rather than this component's own, because ⌘K
+ * writes into it — see `revsetDraft` in `repo.tsx`. Applying it is still only
+ * ever this field's ⏎, which is what keeps one key to one meaning.
  */
 function RevsetField() {
-  const { revset, setRevset } = useRepo();
-  const [draft, setDraft] = useState(revset);
+  const { revset, setRevset, revsetDraft: draft, setRevsetDraft: setDraft } = useRepo();
   const input = useRef<HTMLInputElement>(null);
-
-  useEffect(() => setDraft(revset), [revset]);
 
   useEffect(() => {
     const focus = (event: KeyboardEvent) => {
@@ -73,7 +74,10 @@ function RevsetField() {
             setDraft(revset);
             event.currentTarget.blur();
           }
-          // Text entry owns its keys; the window's map must not see them.
+          // Text entry owns its keys; the window's map must not see them. ⌘K
+          // still reaches the palette from in here: its menu accelerator is
+          // consumed before the web view, so this handler never sees it — the
+          // same reason ⌘N and ⌘G work with the caret in this field.
           event.stopPropagation();
         }}
         aria-label={t("Revset")}

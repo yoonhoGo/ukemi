@@ -477,6 +477,43 @@ call sites are not yet a helper. The click that follows a drag is dropped by
 `event.detail !== 0`, which keeps the keyboard's synthetic click (`detail === 0`)
 working; a suppression flag would have had to be cleared correctly instead.
 
+**One lookup sheet, two sections, two entrances.**
+The revset palette was drafted as a second sheet beside ⌘G, and merged into it
+instead. The argument for merging is a query neither sheet could answer alone:
+someone typing `branch` needs both halves — that the word here is *bookmark*,
+and `bookmarks(exact:"…")` to type — and the person asking is the one least able
+to know which sheet they should be in. Five queries overlap the two lists
+(`commit`, `diff`, `merge`, `tag`, `stage`/`tags`), so the collision that was the
+first objection is real and small, and `branch` shows it is a feature.
+
+What keeps the merge from diluting the Git table is that the two are *sections*,
+not one ranked list: each keeps its own best row, so twenty curated rows cannot
+be pushed under fifty-eight functions. The entrance sets which section leads and
+where the cursor starts — ⌘G at the translation, ⌘K at the palette — so each key
+keeps the aim it had as its own sheet. `Rosetta.tsx` became `Lookup.tsx`; the
+`rosetta.ts` table did not move.
+
+⏎ acts on the selected row and its meaning comes from that row: a Git row
+copies, a revset row completes the word in the field. That is not the collision
+refused inside the field, where two meanings would have competed over one hidden
+state — here the deciding row is under the cursor with its answer already open.
+
+**⌘K, and the palette writes a draft rather than applying one.**
+⌘R was the first choice and was already taken by "Reload from disk" (⌘⇧R is op
+restore). ⌘K is one letter from the ⌘L that focuses the field it fills. The
+sheet inserts into `revsetDraft` — lifted out of `RevsetField` into `repo.tsx`
+so the two share one string — and applying is still only ever the field's ⏎.
+Closing the sheet returns focus to the field on its own, because `useModal`
+already restores where it came from; no focus plumbing was added.
+
+**The function list is read from the bundled jj, not written down.**
+`jj help -k revsets` documents 58 functions with a sentence each, and
+`revset-help.ts` parses it. A transcribed list goes stale on the next
+`stage-jj.mjs` bump; this one moves with the binary. Two tests hold it: a unit
+test over copied output (no jj needed) and a contract test over whatever jj is
+on PATH. If the parse ever returns nothing the palette still lists saved
+revsets, bookmarks and workspaces — it gets worse, not broken.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
@@ -499,6 +536,14 @@ working; a suppression flag would have had to be cleared correctly instead.
   toggling that item's `enabled` while the sheet is up. Dragging across the
   checkboxes now covers what the key was for, so this is a documentation bug
   before it is a functional one — the shortcut sheet still promises ⌘A.
+- **`npm run typecheck` does not cover `apps/desktop`.** The root tsconfig
+  includes `packages/*/src/**/*.ts` only, so the UI is typechecked by
+  `tsc -p apps/desktop --noEmit` — which currently reports four errors that
+  predate this note (`i18n/i18n.ts` against `noUncheckedIndexedAccess`, and one
+  `exactOptionalPropertyTypes` mismatch in `menu.ts` against Tauri's
+  `MenuOptions`). Either the root include grows and those four get fixed, or the
+  workflow says two commands instead of one. Right now it says one and means
+  the packages.
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
 - **Licence and pricing for Ukemi itself.**
 - **Whether the graph should read the metric tokens** instead of the JS
@@ -528,8 +573,15 @@ No block editor for composing revsets. The ⌘L field is the composition UI, and
 a palette of AND/OR/NOT blocks on top of it would be a second query language
 that can never reach `roots(x..y)::` or `latest(x, n)` — so the moment a
 question got interesting the user would be back in the field, having learnt
-nothing transferable. Completion inside the field is the upgrade path if
-composing proves hard; a builder that hides the expression is not.
+nothing transferable. ⌘K completes words *into* the field instead, which leaves
+the expression visible and teaches its vocabulary.
+
+No completion inside the revset field itself. A dropdown under the field would
+have to take ⏎, and ⏎ in that field means apply — the one rule that keeps a
+half-typed revset from being run on every keystroke. `<datalist>` cannot stand
+in for it either: it matches the whole value, and the thing worth completing is
+a word in the middle. So the completion lives one keystroke away in a sheet with
+its own ⏎.
 
 No conflict prediction in the rebase preview. Nothing short of performing the
 rebase can know the outcome, and a fabricated "1 conflict resolves" would be

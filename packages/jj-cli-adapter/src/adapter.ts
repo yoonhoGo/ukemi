@@ -14,10 +14,12 @@ import type {
   RebaseMode,
   Revision,
   RevsetAlias,
+  RevsetFunction,
   Workspace,
   WriteResult,
 } from "@ukemi/domain";
 import { isAliasName } from "@ukemi/domain";
+import { parseRevsetFunctions } from "./revset-help.ts";
 import { JjError, observed, type CommandObserver, type JjExec } from "./exec.ts";
 import { planToolArgs, type PlanPreparer } from "./hunk-plan.ts";
 import {
@@ -327,6 +329,13 @@ export class JjCliAdapter implements JjPort {
   async deleteRevsetAlias(name: string): Promise<void> {
     if (!isAliasName(name)) throw new Error(`invalid revset alias name: ${name}`);
     await this.run([...this.base(), "config", "unset", "--repo", `${ALIAS_TABLE}.${name}`]);
+  }
+
+  async revsetFunctions(): Promise<RevsetFunction[]> {
+    // No repo flags at all: this asks the binary what it knows, and a broken
+    // or missing repo must not be able to empty the palette.
+    const out = await this.run(["--color=never", "--no-pager", "help", "-k", "revsets"]);
+    return parseRevsetFunctions(out);
   }
 
   // ---- writes -------------------------------------------------------------

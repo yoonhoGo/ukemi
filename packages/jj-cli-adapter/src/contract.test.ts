@@ -275,6 +275,33 @@ test("an alias name that could widen a revset is refused before it reaches jj", 
   raw("config", "unset", "--repo", 'revset-aliases."mine-but(x)"');
 });
 
+test("the revset functions the palette offers come from the real jj help", async () => {
+  // `revset-help.test.ts` pins the parse against copied output; this pins it
+  // against whatever jj is on PATH, which is the half that catches a jj that
+  // reformatted its own documentation.
+  const functions = await jj.revsetFunctions();
+  assert.ok(functions.length > 40, `too few functions parsed: ${functions.length}`);
+
+  const byName = new Map(functions.map((fn) => [fn.name, fn]));
+  // The four the palette leans on hardest, and the only ones a rewrite of this
+  // help page could plausibly drop without the count noticing.
+  for (const name of ["mine", "bookmarks", "empty", "conflicts"]) {
+    const fn = byName.get(name);
+    assert.ok(fn, `missing from jj help: ${name}()`);
+    assert.ok(fn.about.length > 0, `no description parsed for ${name}()`);
+    // A sentence, not a wall: the row shows this in one line.
+    assert.ok(fn.about.length < 200, `description not cut to a sentence: ${fn.about}`);
+  }
+
+  // Every name has to be callable as written, or a palette row inserts a
+  // syntax error. jj is the only thing that can say so.
+  for (const fn of functions.slice(0, 8)) {
+    const revset = fn.params.length === 0 ? `${fn.name}()` : undefined;
+    if (revset === undefined) continue;
+    await assert.doesNotReject(() => jj.log(revset), `not a usable revset: ${revset}`);
+  }
+});
+
 test("gitInfo sees the colocated .git and the committer field parses", async () => {
   const info = await jj.gitInfo();
   assert.equal(info.colocated, true, info.gitRoot);

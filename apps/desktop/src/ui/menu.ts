@@ -222,6 +222,10 @@ function viewMenu(): SubmenuOptions {
     items: [
       item({ label: "Workspace board", key: "w", shift: true, accelerator: "CmdOrCtrl+Shift+W" }),
       item({ label: "Focus the revset field", key: "l", accelerator: "CmdOrCtrl+L" }),
+      // Next to the field it fills, not beside ⌘G in Help: the palette is how
+      // you write a revset, and the Git translation it shares a sheet with is
+      // what you reach for when you have forgotten how to write anything.
+      item({ label: "Look up a revset", key: "k", accelerator: "CmdOrCtrl+K" }),
       SEPARATOR,
       {
         text: t("Saved revsets"),
