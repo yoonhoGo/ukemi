@@ -95,6 +95,20 @@ Every `jj`/`gh` call goes through an observer into a bounded module-level list
 read with `useSyncExternalStore`. Nothing is derived from it, so it does not
 violate "one server cache, no global store" — it is a log the panel displays.
 
+**jj-lib adapter — not needed; measured, not assumed.**
+On jj's own repository (15,210 commits, colocated) the adapter's reads are
+10–50 ms each for a window load and `log -r all()` is 265 ms including NDJSON
+parsing. Process spawn is not the bottleneck the draft feared. What would hurt
+is painting 15k rows, so `useLog` caps the revset with `latest(…, 1000)` and
+the footer says so. Option C from the design (§3-1) stays parked until a
+measurement says otherwise.
+
+**Stacked PRs — the whole path ran against GitHub once.**
+Private repo `yoonhoGo/ukemi-fixture`: `push --change` on a two-change stack
+minted `push-<change>` bookmarks, `gh pr create` opened #1 → main and
+#2 → push-first, `pullRequestFor` matched both through bookmark = head
+branch, and a describe + re-push moved both bookmarks with the same command.
+
 ## Still open
 
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.

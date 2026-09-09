@@ -30,6 +30,7 @@ import type {
 } from "@ukemi/domain";
 import {
   layoutGraph,
+  withLimit,
   parseGitDiff,
   rebaseSetRevset,
   verifyRoundTrip,
@@ -138,9 +139,22 @@ function useRepoQuery<T>(
   });
 }
 
+/**
+ * Rows the graph will draw at most.
+ *
+ * Measured on jj's own repo (15k commits): `jj log -r all()` through the
+ * adapter is 265 ms, so the CLI is not the ceiling — painting 15k rows is.
+ * `latest(…, N)` keeps the newest, which is what a revset that wide is asking
+ * to see first. ponytail: virtual scrolling is the upgrade if 1000 rows is
+ * ever too few.
+ */
+export const LOG_LIMIT = 1000;
+
 export function useLog(): UseQueryResult<Revision[]> {
   const { revset } = useRepo();
-  return useRepoQuery(["log", revset], (port, opId) => port.log(revset, { atOp: opId }));
+  return useRepoQuery(["log", revset, LOG_LIMIT], (port, opId) =>
+    port.log(withLimit(revset, LOG_LIMIT), { atOp: opId }),
+  );
 }
 
 /** The graph layout for the current revset. Pure, so it is derived, not fetched. */

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { ChangeId, RebaseMode } from "@ukemi/domain";
 import { JjError } from "@ukemi/jj-cli-adapter";
 import {
+  LOG_LIMIT,
   RepoProvider,
   useCommandLog,
   useGraph,
@@ -370,6 +371,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
           >
             <span>
               {rows.length} revision{rows.length === 1 ? "" : "s"}
+              {rows.length >= LOG_LIMIT && " · newest only; narrow the revset for more"}
               {rows.some((row) => row.revision.hasConflict) &&
                 ` · ${rows.filter((row) => row.revision.hasConflict).length} conflict`}
             </span>
