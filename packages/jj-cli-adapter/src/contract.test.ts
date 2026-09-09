@@ -20,6 +20,8 @@ import { JjError } from "./exec.ts";
 
 let repo: string;
 let jj: JjCliAdapter;
+/** The bare repo the tracking test pushes to; created by that test alone. */
+let bare: string | undefined;
 
 // The adapter's own exec inherits this; without it jj warns about an empty
 // identity on every write, which would drown the messages the tests read.
@@ -59,6 +61,7 @@ before(() => {
 
 after(() => {
   if (repo) rmSync(repo, { recursive: true, force: true });
+  if (bare) rmSync(bare, { recursive: true, force: true });
 });
 
 test("log parses every revision field", async () => {
@@ -322,6 +325,41 @@ test("absorb moves a line edit into the ancestor that last touched it", async ()
   assert.ok(result.message && /absorb/i.test(result.message), result.message);
   const base = (await jj.log("all()")).find((r) => r.description === "absorb-base")!;
   assert.equal(await jj.fileContent(base.changeId, "z.txt"), "ONE\ntwo\n");
+});
+
+test("tracking a remote-only bookmark mints the local one", async () => {
+  // The state a fetch leaves behind for someone else's bookmark: jj's default
+  // `git.auto-local-bookmark = false` imports the remote ref without making a
+  // local bookmark for it. Reached here by pushing one and then dropping the
+  // local side, which is the only way to arrange it in a single repo.
+  bare = mkdtempSync(join(tmpdir(), "ukemi-remote-"));
+  execFileSync("git", ["init", "--bare", "--quiet", bare]);
+  raw("git", "remote", "add", "origin", bare);
+  raw("bookmark", "create", "shared", "-r", "trunk");
+  raw("git", "push", "--bookmark", "shared");
+  raw("bookmark", "untrack", "shared@origin");
+  raw("bookmark", "forget", "shared");
+
+  const untracked = (await jj.bookmarks()).filter((b) => b.name === "shared");
+  assert.deepEqual(
+    untracked.map((b) => b.remote),
+    ["origin"],
+    "only the remote row may survive the forget",
+  );
+  // No counts is what marks the row untracked — the sidebar's whole test for
+  // whether it should offer to track it.
+  assert.equal(untracked[0]!.ahead, undefined);
+
+  await jj.bookmarkTrack("shared", "origin");
+
+  const tracked = (await jj.bookmarks()).filter((b) => b.name === "shared");
+  assert.ok(
+    tracked.some((b) => b.remote === undefined),
+    "tracking must mint the local bookmark",
+  );
+  const remote = tracked.find((b) => b.remote === "origin");
+  assert.equal(typeof remote?.ahead, "number");
+  assert.equal(typeof remote?.behind, "number");
 });
 
 test("the observer sees each invocation with its argv and exit code", async () => {

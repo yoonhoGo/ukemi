@@ -15,6 +15,7 @@ import { t } from "../i18n/i18n.ts";
 import {
   useBookmarks,
   useDeleteRevsetAlias,
+  useJjMutation,
   useRepo,
   useRevsetAliases,
   useSaveRevsetAlias,
@@ -204,6 +205,31 @@ function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
     });
 }
 
+/**
+ * Remote rows with no local bookmark behind them — a teammate's work, as a
+ * fetch leaves it.
+ *
+ * jj's `git.auto-local-bookmark` defaults to off, so a fetch imports the ref
+ * without minting a local name for it: the bookmark is in the repo but no
+ * revset the sidebar offers can see it. Absent counts is what marks a row
+ * untracked, and that same test keeps the colocated `@git` rows out, since
+ * those are tracked by construction.
+ */
+function untrackedRemotes(
+  bookmarks: readonly Bookmark[],
+): { name: string; remote: string }[] {
+  const local = new Set(
+    bookmarks.filter((bookmark) => bookmark.remote === undefined).map((b) => b.name),
+  );
+  return bookmarks.flatMap((bookmark) =>
+    bookmark.remote !== undefined &&
+    bookmark.ahead === undefined &&
+    !local.has(bookmark.name)
+      ? [{ name: bookmark.name, remote: bookmark.remote }]
+      : [],
+  );
+}
+
 export function Sidebar({
   view,
   onToggleBoard,
@@ -218,6 +244,9 @@ export function Sidebar({
   const { revset, setRevset } = useRepo();
   const bookmarks = useBookmarks();
   const workspaces = useWorkspaces();
+  const track = useJjMutation((port, args: { name: string; remote: string }) =>
+    port.bookmarkTrack(args.name, args.remote),
+  );
 
   return (
     <nav
@@ -279,6 +308,42 @@ export function Sidebar({
             </button>
           );
         })}
+
+      {/* Under the same head, but muted and named the way jj names them: these
+          are not bookmarks of this repo yet, and the whole row is the verb.
+          ponytail: a failed track leaves the row where it is and says nothing —
+          the error strip in `App` is for the mutations it owns, and one row
+          that did not move is a mild enough tell to wait for a complaint. */}
+      {bookmarks.data &&
+        untrackedRemotes(bookmarks.data).map((remote) => (
+          <button
+            type="button"
+            className="side-item"
+            key={`${remote.name}@${remote.remote}`}
+            disabled={track.isPending}
+            onClick={() => track.mutate(remote)}
+            title={t("Track {name} to get a local bookmark for it", {
+              name: `${remote.name}@${remote.remote}`,
+            })}
+          >
+            <BookmarkIcon />
+            <span
+              className="ter"
+              style={{
+                flexGrow: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textAlign: "left",
+              }}
+            >
+              {remote.name}@{remote.remote}
+            </span>
+            <span className="ter" style={{ fontSize: 11 }}>
+              {t("Track")}
+            </span>
+          </button>
+        ))}
 
       <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {t("Workspaces")}

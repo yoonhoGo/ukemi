@@ -372,6 +372,10 @@ export class JjCliAdapter implements JjPort {
     return this.write(["bookmark", "delete", name]);
   }
 
+  bookmarkTrack(name: string, remote: string): Promise<WriteResult> {
+    return this.write(["bookmark", "track", `${name}@${remote}`]);
+  }
+
   fetch(remote?: string): Promise<WriteResult> {
     const args = ["git", "fetch"];
     if (remote !== undefined) args.push("--remote", remote);

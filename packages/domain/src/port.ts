@@ -150,6 +150,9 @@ export interface JjPort {
 
   bookmarkDelete(name: string): Promise<WriteResult>;
 
+  /** Track `name@remote`, which is what mints the local bookmark for it. */
+  bookmarkTrack(name: string, remote: string): Promise<WriteResult>;
+
   /** Fetch from `remote`, or every configured remote when omitted. */
   fetch(remote?: string): Promise<WriteResult>;
 

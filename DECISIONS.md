@@ -598,6 +598,25 @@ rather than a Sidebar row because the pill is already the handle — the sidebar
 lists bookmarks, the graph is where you point at one. No confirmation dialog,
 for the reason nothing else here has one: the pill comes back with ⌘Z.
 
+**A remote-only bookmark is tracked from the sidebar, not by flipping a jj
+config.** jj already has the switch — `git.auto-local-bookmark = true` makes
+every fetched ref mint a local bookmark, and one write to the repo config would
+have removed the need for a row at all. The window leaves it alone. That setting
+changes what `jj git fetch` does at a terminal, for everyone who works in the
+repo, and jj's default is off for a reason: on a busy remote it turns every
+teammate's branch into a local bookmark you then have to delete. A GUI that
+edits shared config to save itself a button is the kind of thing that makes
+people distrust GUIs, which is the argument the command log is already built on.
+
+So the untracked rows sit under the same **Bookmarks** head, muted and spelled
+`feat/x@origin` the way jj spells them, and the whole row is the verb — one `jj
+bookmark track`, undone by ⌘Z like every other write. What marks a row as one of
+these is that it has no ahead/behind counts: `tracking_*_count` only answers for
+a tracked ref, so absent counts *is* "nobody tracks this", and the same test
+keeps the colocated `@git` rows out, since those are tracked by construction.
+Untracking is not offered here. The row it would give back is the one you just
+clicked, so nothing is lost by leaving `jj bookmark untrack` at a terminal.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
