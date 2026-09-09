@@ -20,6 +20,15 @@ const GROUPS = [
     ],
   },
   {
+    title: "Move history",
+    items: [
+      ["⌥ drag", "Rebase a revision onto another"],
+      ["R", "…moving this revision only"],
+      ["S", "…moving it and its descendants"],
+      ["B", "…moving its whole branch"],
+    ],
+  },
+  {
     title: "Time travel",
     items: [
       ["← →", "Move the operation playhead"],

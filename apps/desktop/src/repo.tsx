@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-query";
 import type {
   Bookmark,
+  ChangeId,
   FileChange,
   JjPort,
   Operation,
@@ -21,7 +22,7 @@ import type {
   Revision,
   Workspace,
 } from "@ukemi/domain";
-import { layoutGraph, type GraphLayout } from "@ukemi/domain";
+import { layoutGraph, rebaseSetRevset, type GraphLayout, type RebaseMode } from "@ukemi/domain";
 import { portFor, rememberRepo } from "./jj.ts";
 
 /**
@@ -210,4 +211,43 @@ export function useJjMutation<TArgs>(
 export function useRememberRepo(root: string): void {
   const remember = useCallback(() => rememberRepo(root), [root]);
   useMemo(remember, [remember]);
+}
+
+/**
+ * Which revisions each rebase mode would move, for the drag preview.
+ *
+ * Asks jj rather than deriving it from the on-screen graph: the visible revset
+ * may not contain every descendant, so a locally computed count could
+ * understate how much history is about to move — and the number in the HUD is
+ * the whole reason the preview is worth showing.
+ *
+ * Keyed like every other read, so dragging back and forth over the same target
+ * is free after the first look.
+ */
+export function useRebasePreview(
+  rev: ChangeId | undefined,
+  onto: ChangeId | undefined,
+): Record<RebaseMode, ChangeId[] | undefined> {
+  const { root, port, opId } = useRepo();
+  const enabled = opId !== undefined && rev !== undefined && onto !== undefined;
+
+  const useMode = (mode: RebaseMode) =>
+    useQuery({
+      queryKey: ["repo", root, opId, "rebase-preview", mode, rev, onto],
+      queryFn: () =>
+        port
+          .log(rebaseSetRevset(mode, rev!, onto!), { atOp: opId })
+          .then((revisions) => revisions.map((revision) => revision.changeId)),
+      enabled,
+      staleTime: Infinity,
+      // A revset that cannot resolve (dropping onto a descendant) is a normal
+      // outcome of hovering, not something to retry or surface as an error.
+      retry: false,
+    });
+
+  return {
+    revision: useMode("revision").data,
+    source: useMode("source").data,
+    branch: useMode("branch").data,
+  };
 }

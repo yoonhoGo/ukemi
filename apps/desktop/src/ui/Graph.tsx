@@ -12,6 +12,7 @@ import {
   rowY,
 } from "./graph-geometry.ts";
 import { relativeTime } from "./time.ts";
+import { ROW_ATTRIBUTE } from "./drag-rebase.tsx";
 
 function Lanes({ layout, width }: { layout: GraphLayout; width: number }) {
   const height = Math.max(layout.rows.length * ROW, ROW);
@@ -142,10 +143,19 @@ function Row({
   revision,
   selected,
   onSelect,
+  onDragStart,
+  moving,
+  isTarget,
+  targetBlocked,
 }: {
   revision: Revision;
   selected: boolean;
   onSelect(changeId: ChangeId): void;
+  onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
+  /** Ghosted because a pending rebase would move it. */
+  moving: boolean;
+  isTarget: boolean;
+  targetBlocked: boolean;
 }) {
   const color = nodeColor(revision);
   return (
@@ -154,7 +164,23 @@ function Row({
       className="row"
       role="option"
       aria-selected={selected}
+      // The pointer is mapped back to a revision through this attribute during
+      // a drag; per-row enter events do not fire once the source row has
+      // implicit pointer capture.
+      {...{ [ROW_ATTRIBUTE]: revision.changeId }}
       onClick={() => onSelect(revision.changeId)}
+      onPointerDown={(event) => onDragStart(revision.changeId, event)}
+      style={{
+        ...(moving ? { opacity: 0.45 } : {}),
+        ...(isTarget
+          ? {
+              boxShadow: `inset 0 0 0 1.5px ${
+                targetBlocked ? "var(--u-conflict)" : "var(--u-accent)"
+              }`,
+              background: targetBlocked ? "var(--u-conflict-soft)" : "var(--u-accent-soft)",
+            }
+          : {}),
+      }}
     >
       <div />
       <div className="mono">
@@ -182,6 +208,14 @@ function Row({
           </span>
         )}
         {revision.isDivergent && <span className="pill">divergent</span>}
+        {isTarget && !targetBlocked && (
+          <span
+            className="pill"
+            style={{ background: "var(--u-accent)", color: "var(--u-accent-ink)" }}
+          >
+            new parent
+          </span>
+        )}
       </div>
       <div style={{ display: "flex", gap: 4, minWidth: 0 }}>
         {revision.bookmarks.map((name) => (
@@ -213,10 +247,19 @@ export function Graph({
   layout,
   selected,
   onSelect,
+  onDragStart,
+  moving,
+  target,
+  targetBlocked,
 }: {
   layout: GraphLayout;
   selected: ChangeId | undefined;
   onSelect(changeId: ChangeId): void;
+  onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
+  /** Revisions a pending rebase would move; ghosted while dragging. */
+  moving?: ReadonlySet<ChangeId> | undefined;
+  target?: ChangeId | undefined;
+  targetBlocked?: boolean | undefined;
 }) {
   // The gutter widens with the graph so lanes never overlap the change column.
   const gutter = gutterWidth(layout.laneCount);
@@ -243,6 +286,10 @@ export function Graph({
             revision={row.revision}
             selected={row.revision.changeId === selected}
             onSelect={onSelect}
+            onDragStart={onDragStart}
+            moving={moving?.has(row.revision.changeId) ?? false}
+            isTarget={row.revision.changeId === target}
+            targetBlocked={targetBlocked ?? false}
           />
         ))}
       </div>

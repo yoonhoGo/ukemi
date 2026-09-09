@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ChangeId } from "@ukemi/domain";
+import type { ChangeId, RebaseMode } from "@ukemi/domain";
 import { JjError } from "@ukemi/jj-cli-adapter";
 import {
   RepoProvider,
   useGraph,
   useJjMutation,
   useOperations,
+  useRebasePreview,
   useRepo,
 } from "./repo.tsx";
 import { Graph } from "./ui/Graph.tsx";
@@ -15,6 +16,8 @@ import { SAVED_REVSETS, Sidebar } from "./ui/Sidebar.tsx";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
 import { Toolbar } from "./ui/Toolbar.tsx";
+import { useDragRebase, type DragState } from "./ui/drag-rebase.tsx";
+import { DragGhost, RebaseHud } from "./ui/RebaseHud.tsx";
 import { DEFAULT_REVSET } from "@ukemi/domain";
 
 /**
@@ -45,6 +48,23 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
   const selectedRevision = rows.find(
     (row) => row.revision.changeId === effectiveSelection,
   )?.revision;
+
+  const rebase = useJjMutation(
+    (port, args: { mode: RebaseMode; rev: string; onto: string }) =>
+      port.rebase(args.mode, args.rev, args.onto),
+  );
+  const { drag, start: startDrag } = useDragRebase((finished: DragState) => {
+    if (!finished.onto) return;
+    rebase.mutate({ mode: finished.mode, rev: finished.rev, onto: finished.onto });
+  });
+
+  const preview = useRebasePreview(drag?.rev, drag?.onto);
+  const movingList = drag ? preview[drag.mode] : undefined;
+  const moving = useMemo(() => new Set(movingList ?? []), [movingList]);
+  // jj refuses to rebase a revision onto its own descendant, and the moved set
+  // is exactly the answer to that question — so the HUD can say so before the
+  // drop instead of surfacing an error after it.
+  const dropBlocked = drag?.onto !== undefined && moving.has(drag.onto);
 
   const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
@@ -164,7 +184,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
     setRevset,
   ]);
 
-  const failure = [newChange, edit, abandon, undo, restore, fetch, push].find(
+  const failure = [newChange, edit, abandon, undo, restore, fetch, push, rebase].find(
     (mutation) => mutation.error,
   )?.error;
 
@@ -265,7 +285,15 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
             </div>
           )}
           {layout && layout.rows.length > 0 && (
-            <Graph layout={layout} selected={effectiveSelection} onSelect={setSelected} />
+            <Graph
+              layout={layout}
+              selected={effectiveSelection}
+              onSelect={setSelected}
+              onDragStart={startDrag}
+              moving={drag ? moving : undefined}
+              target={drag?.onto}
+              targetBlocked={dropBlocked}
+            />
           )}
 
           <div
@@ -285,6 +313,9 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
               {rows.length} revision{rows.length === 1 ? "" : "s"}
               {rows.some((row) => row.revision.hasConflict) &&
                 ` · ${rows.filter((row) => row.revision.hasConflict).length} conflict`}
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span className="key">⌥</span> drag = rebase
             </span>
             <span style={{ flexGrow: 1 }} />
             {/* Transparency: the app never hides which jj command it ran. */}
@@ -320,6 +351,23 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       </div>
 
       <Timeline />
+      {drag && (
+        <>
+          <RebaseHud
+            drag={drag}
+            moved={preview}
+            dragged={rows.find((row) => row.revision.changeId === drag.rev)?.revision}
+            target={rows.find((row) => row.revision.changeId === drag.onto)?.revision}
+            blocked={dropBlocked}
+          />
+          {rows.find((row) => row.revision.changeId === drag.rev) && (
+            <DragGhost
+              drag={drag}
+              revision={rows.find((row) => row.revision.changeId === drag.rev)!.revision}
+            />
+          )}
+        </>
+      )}
       {showShortcuts && <Shortcuts onClose={() => setShowShortcuts(false)} />}
     </div>
   );
