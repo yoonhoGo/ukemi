@@ -283,6 +283,20 @@ button {
   background: var(--u-accent-soft);
   color: var(--u-accent);
 }
+/* A pull request chip; `data-state` is open | merged | closed. */
+.pill[data-kind="pr"] {
+  gap: 4px;
+  background: var(--u-added-soft);
+  color: var(--u-added);
+}
+.pill[data-kind="pr"][data-state="merged"] {
+  background: var(--u-bg-selected);
+  color: var(--u-text-secondary);
+}
+.pill[data-kind="pr"][data-state="closed"] {
+  background: var(--u-removed-soft);
+  color: var(--u-removed);
+}
 
 /** An author chip. */
 .avatar {

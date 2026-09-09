@@ -4,12 +4,17 @@ import type { ChangeId, RebaseMode } from "@ukemi/domain";
 import { JjError } from "@ukemi/jj-cli-adapter";
 import {
   RepoProvider,
+  useCommandLog,
   useGraph,
   useJjMutation,
   useOperations,
+  usePullRequests,
   useRebasePreview,
   useRepo,
 } from "./repo.tsx";
+import { Board } from "./ui/Board.tsx";
+import { CommandPanel } from "./ui/CommandPanel.tsx";
+import { isRead, shellLine } from "./ui/command-line.ts";
 import { Graph } from "./ui/Graph.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
 import { HunkSheet, type HunkSheetMode } from "./ui/HunkSheet.tsx";
@@ -38,6 +43,15 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sheet, setSheet] = useState<HunkSheetMode | undefined>(undefined);
   const [copied, setCopied] = useState(false);
+  // The graph is the window; the board is the same data by workspace (§4.6).
+  const [view, setView] = useState<"graph" | "board">("graph");
+  const [showCommands, setShowCommands] = useState(false);
+  const commandLog = useCommandLog();
+  const pullRequests = usePullRequests();
+  const prsByBranch = useMemo(
+    () => new Map((pullRequests.data ?? []).map((pr) => [pr.headBranch, pr])),
+    [pullRequests.data],
+  );
 
   const rows = layout?.rows ?? [];
   // Default the selection to the working copy: it is the change you are in.
@@ -75,6 +89,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
   const restore = useJjMutation((port, id: string) => port.restoreOperation(id));
   const fetch = useJjMutation((port) => port.fetch());
   const push = useJjMutation((port) => port.push());
+  const absorb = useJjMutation((port, rev: string) => port.absorb(rev));
 
   const move = useCallback(
     (delta: number) => {
@@ -85,8 +100,14 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
     [rows, effectiveSelection],
   );
 
-  /** The argv of the most recent operation — design §4.8's transparency panel. */
-  const lastCommand = operations.data?.find((operation) => operation.args)?.args;
+  /**
+   * The last write this window ran, or — before it has run one — the argv of
+   * the most recent operation from the op log (design §4.8).
+   */
+  const lastWrite = [...commandLog].reverse().find((record) => !isRead(record));
+  const lastCommand = lastWrite
+    ? shellLine(lastWrite)
+    : operations.data?.find((operation) => operation.args)?.args;
 
   const copyLastCommand = useCallback(() => {
     if (!lastCommand) return;
@@ -110,6 +131,16 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       if (meta && key === "/") {
         event.preventDefault();
         setShowShortcuts((open) => !open);
+        return;
+      }
+      if (meta && key === "j") {
+        event.preventDefault();
+        setShowCommands((open) => !open);
+        return;
+      }
+      if (meta && event.shiftKey && key === "w") {
+        event.preventDefault();
+        setView((current) => (current === "graph" ? "board" : "graph"));
         return;
       }
       if (!meta) {
@@ -154,6 +185,11 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       } else if (key === "k" && event.shiftKey) {
         event.preventDefault();
         if (!isPinned && selectedRevision?.parents.length === 1) setSheet("squash");
+      } else if (key === "a" && event.shiftKey) {
+        event.preventDefault();
+        if (!isPinned && selectedRevision && !selectedRevision.isEmpty) {
+          absorb.mutate(selectedRevision.changeId);
+        }
       } else if (key === "f" && event.shiftKey) {
         event.preventDefault();
         if (!isPinned) fetch.mutate(undefined);
@@ -188,12 +224,13 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
     abandon,
     fetch,
     push,
+    absorb,
     copyLastCommand,
     setRevset,
     selectedRevision,
   ]);
 
-  const failure = [newChange, edit, abandon, undo, restore, fetch, push, rebase].find(
+  const failure = [newChange, edit, abandon, undo, restore, fetch, push, rebase, absorb].find(
     (mutation) => mutation.error,
   )?.error;
 
@@ -256,7 +293,10 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       )}
 
       <div style={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
-        <Sidebar />
+        <Sidebar
+          view={view}
+          onToggleBoard={() => setView((current) => (current === "graph" ? "board" : "graph"))}
+        />
         <main
           style={{
             flexGrow: 1,
@@ -283,19 +323,29 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
             <div style={{ textAlign: "right" }}>When</div>
           </div>
 
-          {query.isPending && (
+          {view === "board" && (
+            <Board
+              onShow={(changeId) => {
+                setSelected(changeId);
+                setRevset(`${changeId} | (::${changeId} & mutable()) | present(trunk())`);
+                setView("graph");
+              }}
+            />
+          )}
+          {view === "graph" && query.isPending && (
             <div className="sec" style={{ padding: 16 }}>
               Reading the repository…
             </div>
           )}
-          {layout && layout.rows.length === 0 && (
+          {view === "graph" && layout && layout.rows.length === 0 && (
             <div className="sec" style={{ padding: 16 }}>
               No revisions match <span className="mono">{revset}</span>.
             </div>
           )}
-          {layout && layout.rows.length > 0 && (
+          {view === "graph" && layout && layout.rows.length > 0 && (
             <Graph
               layout={layout}
+              pullRequests={prsByBranch}
               selected={effectiveSelection}
               onSelect={setSelected}
               onDragStart={startDrag}
@@ -332,7 +382,8 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
               <button
                 type="button"
                 onClick={copyLastCommand}
-                title="Copy this command (⌘⌥C)"
+                onDoubleClick={() => setShowCommands(true)}
+                title="Copy this command (⌘⌥C). Double-click for every command (⌘J)."
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -359,6 +410,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
         <Inspector revision={selectedRevision} onOpenSheet={setSheet} />
       </div>
 
+      {showCommands && <CommandPanel onClose={() => setShowCommands(false)} />}
       <Timeline />
       {drag && (
         <>

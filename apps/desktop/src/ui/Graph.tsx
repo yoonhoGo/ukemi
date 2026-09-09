@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import type { ChangeId, GraphLayout, GraphRow, Revision } from "@ukemi/domain";
+import type { ChangeId, GraphLayout, GraphRow, PullRequest, Revision } from "@ukemi/domain";
 import { ELIDED_ROW } from "@ukemi/domain";
+import { PrLabel } from "./Stack.tsx";
 import { authorInitials, nodeColor } from "./change-color.ts";
 import {
   edgePath,
@@ -147,8 +148,11 @@ function Row({
   moving,
   isTarget,
   targetBlocked,
+  pr,
 }: {
   revision: Revision;
+  /** The PR whose head is one of this revision's bookmarks. */
+  pr: PullRequest | undefined;
   selected: boolean;
   onSelect(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
@@ -228,6 +232,11 @@ function Row({
             {name}
           </span>
         ))}
+        {pr && (
+          <span className="pill" data-kind="pr" data-state={pr.state} title={pr.title}>
+            <PrLabel pr={pr} />
+          </span>
+        )}
       </div>
       <div
         className="avatar"
@@ -251,8 +260,11 @@ export function Graph({
   moving,
   target,
   targetBlocked,
+  pullRequests,
 }: {
   layout: GraphLayout;
+  /** PRs by head branch; a revision shows the one on its bookmark. */
+  pullRequests?: ReadonlyMap<string, PullRequest> | undefined;
   selected: ChangeId | undefined;
   onSelect(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
@@ -290,6 +302,7 @@ export function Graph({
             moving={moving?.has(row.revision.changeId) ?? false}
             isTarget={row.revision.changeId === target}
             targetBlocked={targetBlocked ?? false}
+            pr={row.revision.bookmarks.map((b) => pullRequests?.get(b)).find(Boolean)}
           />
         ))}
       </div>

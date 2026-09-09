@@ -24,7 +24,13 @@ function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
     });
 }
 
-export function Sidebar() {
+export function Sidebar({
+  view,
+  onToggleBoard,
+}: {
+  view: "graph" | "board";
+  onToggleBoard(): void;
+}) {
   const { revset, setRevset } = useRepo();
   const bookmarks = useBookmarks();
   const workspaces = useWorkspaces();
@@ -90,7 +96,21 @@ export function Sidebar() {
           );
         })}
 
-      <div className="side-head">Workspaces</div>
+      <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        Workspaces
+        <span style={{ flexGrow: 1 }} />
+        <button
+          type="button"
+          className="tb-btn"
+          style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
+          aria-pressed={view === "board"}
+          {...(view === "board" ? { "data-variant": "primary" } : {})}
+          onClick={onToggleBoard}
+          title="Workspace board (⌘⇧W)"
+        >
+          Board
+        </button>
+      </div>
       {workspaces.data?.map((workspace, index) => (
         <button
           type="button"

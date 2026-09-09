@@ -214,8 +214,8 @@ export function useFileDiff(
  * cache and the whole window refetches at the new point in time — no manual
  * per-query invalidation, and no window that half-updates.
  */
-export function useJjMutation<TArgs>(
-  run: (port: JjPort, args: TArgs) => Promise<unknown>,
+export function useJjMutation<TArgs, TResult = unknown>(
+  run: (port: JjPort, args: TArgs) => Promise<TResult>,
 ) {
   const { root, port, pin } = useRepo();
   const client = useQueryClient();
@@ -416,4 +416,10 @@ export function useBoardRevisions(
   const ids = workspaces?.map((workspace) => workspace.changeId) ?? [];
   const revset = ids.length > 0 ? `(${ids.join(" | ")}) | (::(${ids.join(" | ")}) & mutable())` : "none()";
   return useRepoQuery(["board", revset], (port, opId) => port.log(revset, { atOp: opId }));
+}
+
+/** The bookmark on `trunk()`, for PR bases. `undefined` while loading or if unnamed. */
+export function useTrunkBookmark(): string | undefined {
+  const trunk = useRepoQuery(["trunk"], (port, opId) => port.show("trunk()", { atOp: opId }));
+  return trunk.data?.bookmarks[0];
 }

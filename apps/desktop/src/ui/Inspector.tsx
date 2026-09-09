@@ -5,6 +5,7 @@ import { authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
 import type { HunkSheetMode } from "./HunkSheet.tsx";
 import { Conflicts } from "./Conflicts.tsx";
+import { StackPanel } from "./Stack.tsx";
 
 const STATUS_MARK: Record<FileChange["status"], { mark: string; color: string }> = {
   added: { mark: "A", color: "var(--u-added)" },
@@ -171,6 +172,7 @@ export function Inspector({
   const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
   const abandon = useJjMutation((port, rev: string) => port.abandon([rev]));
+  const absorb = useJjMutation((port, rev: string) => port.absorb(rev));
 
   useEffect(() => setOpenFile(undefined), [revision?.changeId]);
 
@@ -308,6 +310,34 @@ export function Inspector({
           onRun={() => onOpenSheet("squash")}
         />
         <Step
+          label="Absorb into ancestors"
+          shortcut="⌘⇧A"
+          disabled={readOnly || revision.isEmpty || absorb.isPending}
+          title={
+            readOnlyReason ??
+            (revision.isEmpty
+              ? "Nothing to absorb"
+              : "Move each edit into the mutable ancestor that last touched those lines (jj absorb). One ⌘Z takes it back.")
+          }
+          onRun={() => absorb.mutate(revision.changeId)}
+        />
+        {/* jj has no dry run for absorb, so the honest preview is the result:
+            jj's own account of what moved where, with undo one key away. */}
+        {absorb.data?.message && (
+          <div
+            className="mono selectable"
+            style={{
+              fontSize: 11,
+              padding: "6px 8px",
+              borderRadius: 6,
+              background: "var(--u-accent-soft)",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {absorb.data.message}
+          </div>
+        )}
+        <Step
           label="Edit this change"
           shortcut="⌘E"
           disabled={readOnly || revision.isWorkingCopy}
@@ -326,6 +356,8 @@ export function Inspector({
       {revision.hasConflict && (
         <Conflicts revision={revision} onShowRevision={() => onOpenSheet("split")} />
       )}
+
+      {!revision.isImmutable && <StackPanel revision={revision} />}
 
       <div
         style={{

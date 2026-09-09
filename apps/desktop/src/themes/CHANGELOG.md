@@ -4,6 +4,12 @@ The classes and custom properties in `contract.css` are a public API. A theme
 written against version *n* must keep working until this file records a
 breaking change and the version is bumped.
 
+## v1.1 — 2026-09-09
+
+Additive. `.pill[data-kind="pr"]` with `data-state` (`open`, `merged`,
+`closed`) for pull-request chips in the graph and the stack panel. A v1 theme
+that restyles `.pill` keeps working; the chip falls back to the base pill.
+
 ## v1 — 2026-09-09
 
 Initial contract.
