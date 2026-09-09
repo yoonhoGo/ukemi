@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 apps/desktop/src-tauri/target/
 .DS_Store
+apps/desktop/src-tauri/jj
+apps/desktop/src-tauri/LICENSE-jj

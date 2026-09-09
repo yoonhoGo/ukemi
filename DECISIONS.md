@@ -103,6 +103,15 @@ is painting 15k rows, so `useLog` caps the revset with `latest(…, 1000)` and
 the footer says so. Option C from the design (§3-1) stays parked until a
 measurement says otherwise.
 
+**The sidecar's `bundle.resources` lives in an overlay config.**
+Tauri errors on a resource path that does not exist — a literal one raises
+`ResourcePathNotFound`, and a glob that matches nothing raises
+`GlobPathNotFound` — so listing `jj` in `tauri.conf.json` would break
+`cargo build` for every checkout without a staged binary. The base config stays
+dev-clean and `tauri.bundle-jj.conf.json` adds the two resources at release
+time. `stage-jj.mjs` refuses a `jj` that is not the pinned version, because a
+sidecar whose version nobody checks is just a slower PATH lookup.
+
 **Stacked PRs — the whole path ran against GitHub once.**
 Private repo `yoonhoGo/ukemi-fixture`: `push --change` on a two-change stack
 minted `push-<change>` bookmarks, `gh pr create` opened #1 → main and

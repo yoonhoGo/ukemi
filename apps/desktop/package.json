@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "build:bundled": "node src-tauri/stage-jj.mjs && tauri build --config src-tauri/tauri.bundle-jj.conf.json",
     "vite": "vite",
     "vite:build": "vite build"
   },

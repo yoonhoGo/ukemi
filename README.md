@@ -53,19 +53,15 @@ The bundled `jj` is Apache-2.0; see `NOTICE`.
 The Rust shell resolves `jj` from the app's resource directory and falls back
 to `jj` on PATH, so a dev checkout needs no setup. For a release:
 
-1. Copy the `jj` binary for the target into `apps/desktop/src-tauri/`.
-2. Copy jj's Apache-2.0 licence text alongside it as `LICENSE-jj`.
-3. Add both to `bundle.resources` in `tauri.conf.json`.
-4. Run `npm run build --workspace @ukemi/desktop`.
+    npm run build:bundled --workspace @ukemi/desktop
 
-Step 3 is deliberately not committed: `tauri build` fails on a missing
-resource, which would break the build for anyone who has not fetched a binary.
+That stages the binary (`src-tauri/stage-jj.mjs`) and builds with
+`src-tauri/tauri.bundle-jj.conf.json`, an overlay that adds `bundle.resources`.
+The overlay is separate because Tauri errors on a resource path that does not
+exist, so listing `jj` in the base config would break `cargo build` for anyone
+who has not staged one.
 
-## Themes
-
-`apps/desktop/src/themes/contract.css` is a public API — tokens plus a set of
-semantic classes. A theme overrides those and nothing else. Built-in themes
-load through the same path an external one would, which is how the contract
-gets checked for sufficiency rather than just documented.
-
-Contract version and its change history: `apps/desktop/src/themes/CHANGELOG.md`.
+Staging refuses a `jj` whose version is not the `PINNED` constant in
+`stage-jj.mjs` — that pin is the point of shipping a sidecar. Bump it and run
+the adapter's contract test in the same change, never separately. The
+Apache-2.0 licence text is fetched to `src-tauri/LICENSE-jj` if missing.
