@@ -1,0 +1,21 @@
+<!--
+  The mark is 受身 read as a commit graph: you fall, you roll, you stand back
+  up unhurt. Two nodes and the trajectory between them — which is also what
+  the operation log is for. The node you land on is the accent one, because
+  in jj the interesting revision is always the one you ended up at.
+
+  This file is the source; `npx tauri icon` derives every raster from it.
+  Everything is stroked at 96/1024 (~9%) so the arc survives a 16px menu bar.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" rx="230" fill="#1d1d1f" />
+  <path
+    d="M296 316 C296 640 360 800 512 800 C664 800 728 592 728 268"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="96"
+    stroke-linecap="round"
+  />
+  <circle cx="296" cy="316" r="78" fill="#ffffff" />
+  <circle cx="728" cy="268" r="78" fill="#007aff" />
+</svg>

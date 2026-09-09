@@ -1,3 +1,5 @@
+<img src="apps/desktop/src-tauri/icons/icon.png" width="96" align="right" alt="">
+
 # Ukemi
 
 A desktop GUI for [Jujutsu (jj)](https://github.com/jj-vcs/jj).

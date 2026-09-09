@@ -514,6 +514,15 @@ test over copied output (no jj needed) and a contract test over whatever jj is
 on PATH. If the parse ever returns nothing the palette still lists saved
 revsets, bookmarks and workspaces — it gets worse, not broken.
 
+**The logo is one SVG, and the mark is the op log.** 受身 is the breakfall — you
+fall, you roll, you stand back up unhurt — which is what the operation log is
+for, so the mark is two commit nodes and the trajectory between them. It also
+reads as the U it starts with. `icons/icon.svg` is the source: `rsvg-convert`
+renders it to a 1024px master and `npx tauri icon` derives the `.icns`, the
+`.ico` and the three PNGs `tauri.conf.json` lists. The near-black ground with a
+single accent node is the one colour the icon spends, on the node you land on,
+because in jj the interesting revision is always the one you ended up at.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
@@ -618,3 +627,8 @@ sidebar, timeline), because every one of the seven is about one of those
 regions. Measuring real anchor elements is the upgrade if a hint ever needs to
 point at something that moves.
 
+No mobile or Store icons. `npx tauri icon` also writes an `ios/` tree, an
+`android/` mipmap set and the ten `Square*Logo.png` files an MSIX package
+wants. `bundle.targets` is `app` and `dmg`; nothing in this repo reads any of
+them, and a stale unreferenced raster is worse than a missing one. They come
+back with one command if a target ever appears.
