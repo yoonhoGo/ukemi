@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Ukemi's main window: pick a repository folder, and run the bundled jj.","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open"]}}
+{"default":{"identifier":"default","description":"Ukemi's main window: pick a repository folder, run the bundled jj, and let the toolbar move and zoom the window the way a title bar does.","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open","core:window:allow-start-dragging","core:window:allow-toggle-maximize"]}}

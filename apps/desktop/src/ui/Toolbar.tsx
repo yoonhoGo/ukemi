@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n/i18n.ts";
 import { useJjMutation, useRepo } from "../repo.tsx";
 import { FetchIcon, FilterIcon, PlusIcon, PushIcon } from "./icons.tsx";
+import { dragWindowFrom } from "./window-drag.ts";
 
 /**
  * The revset field.
@@ -31,9 +32,18 @@ function RevsetField() {
 
   return (
     <div
+      // Carved out of the toolbar's drag region: the header drags from anywhere
+      // that is not a control, and every part of this field that is not the
+      // `<input>` itself — the funnel, the ⌘L cap, the 10px of padding either
+      // side — would otherwise move the window instead of putting the caret in
+      // the field, which is the one thing a click on a text field has to do.
+      // `window-drag.ts` reads this attribute as the opt-out.
+      data-tauri-drag-region="false"
+      onClick={() => input.current?.focus()}
       style={{
         display: "flex",
         alignItems: "center",
+        cursor: "text",
         gap: 8,
         // Grows into whatever the toolbar's centre has left rather than
         // truncating the default revset at a fixed 460px. The floor is what
@@ -257,8 +267,10 @@ export function Toolbar({
         background: "var(--u-bg-toolbar)",
         borderBottom: "1px solid var(--u-line-strong)",
       }}
-      // Lets the window be dragged by its toolbar, as a native one is.
-      data-tauri-drag-region
+      // The toolbar is this window's title bar, so it moves and zooms the
+      // window. Not through `data-tauri-drag-region` — see `window-drag.ts`
+      // for why the attribute could not be made reliable here.
+      onMouseDown={dragWindowFrom}
     >
       {/* Room for the traffic lights, which the overlay title bar draws over us. */}
       <div style={{ width: 68, flexShrink: 0 }} />
