@@ -29,7 +29,7 @@ import { SAVED_REVSETS, Sidebar } from "./ui/Sidebar.tsx";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
 import { Toolbar } from "./ui/Toolbar.tsx";
-import { useDragRebase, type DragState } from "./ui/drag-rebase.tsx";
+import { useDragBookmark, useDragRebase, type DragState } from "./ui/drag-rebase.tsx";
 import { DragGhost, RebaseHud } from "./ui/RebaseHud.tsx";
 import { DEFAULT_REVSET, stackRevset } from "@ukemi/domain";
 import { t, tParts } from "./i18n/i18n.ts";
@@ -104,6 +104,18 @@ function Window({
   // is exactly the answer to that question — so the HUD can say so before the
   // drop instead of surfacing an error after it.
   const dropBlocked = drag?.onto !== undefined && moving.has(drag.onto);
+
+  // Moving a bookmark is a drop, not a dialog: the way back is ⌘Z, same as
+  // every other write in this window.
+  const bookmarkSet = useJjMutation((port, args: { name: string; rev: string }) =>
+    port.bookmarkSet(args.name, args.rev),
+  );
+  const { drag: bookmarkDrag, start: startBookmarkDrag } = useDragBookmark(
+    (name: string, onto: ChangeId) => {
+      if (isPinned) return;
+      bookmarkSet.mutate({ name, rev: onto });
+    },
+  );
 
   const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
@@ -294,7 +306,18 @@ function Window({
    * that one is dismissed by identity. The same `Error` object stays hidden;
    * the next genuine failure is a different object and shows.
    */
-  const mutations = [newChange, edit, abandon, undo, restore, fetch, push, rebase, absorb];
+  const mutations = [
+    newChange,
+    edit,
+    abandon,
+    undo,
+    restore,
+    fetch,
+    push,
+    rebase,
+    absorb,
+    bookmarkSet,
+  ];
   const failure = mutations.find((mutation) => mutation.error)?.error;
   const error = failure ?? query.error ?? undefined;
   const [dismissed, setDismissed] = useState<unknown>(undefined);
@@ -468,8 +491,12 @@ function Window({
               selected={effectiveSelection}
               onSelect={setSelected}
               onDragStart={startDrag}
+              onBookmarkDragStart={startBookmarkDrag}
               moving={drag ? moving : undefined}
-              target={drag?.onto}
+              target={drag?.onto ?? bookmarkDrag?.onto}
+              targetLabel={
+                bookmarkDrag ? t("{name} here", { name: bookmarkDrag.name }) : undefined
+              }
               targetBlocked={dropBlocked}
             />
           )}

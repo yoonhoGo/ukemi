@@ -146,8 +146,10 @@ function Row({
   selected,
   onSelect,
   onDragStart,
+  onBookmarkDragStart,
   moving,
   isTarget,
+  targetLabel,
   targetBlocked,
   pr,
 }: {
@@ -157,9 +159,11 @@ function Row({
   selected: boolean;
   onSelect(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
+  onBookmarkDragStart(name: string, from: ChangeId, event: React.PointerEvent): void;
   /** Ghosted because a pending rebase would move it. */
   moving: boolean;
   isTarget: boolean;
+  targetLabel: string;
   targetBlocked: boolean;
 }) {
   const color = nodeColor(revision);
@@ -220,13 +224,23 @@ function Row({
             className="pill"
             style={{ background: "var(--u-accent)", color: "var(--u-accent-ink)" }}
           >
-            {t("new parent")}
+            {targetLabel}
           </span>
         )}
       </div>
       <div style={{ display: "flex", gap: 4, minWidth: 0 }}>
         {revision.bookmarks.map((name) => (
-          <span className="pill" data-kind="bookmark" key={name}>
+          /* Drag it to another row to move the bookmark there. `cursor: grab`
+             is the whole affordance — a name on a commit is the one thing in
+             the graph you move by hand rather than by command. */
+          <span
+            className="pill"
+            data-kind="bookmark"
+            key={name}
+            style={{ cursor: "grab" }}
+            title={t("Drag {name} onto a revision to move it there.", { name })}
+            onPointerDown={(event) => onBookmarkDragStart(name, revision.changeId, event)}
+          >
             {name}
           </span>
         ))}
@@ -260,8 +274,10 @@ export function Graph({
   selected,
   onSelect,
   onDragStart,
+  onBookmarkDragStart,
   moving,
   target,
+  targetLabel,
   targetBlocked,
   pullRequests,
 }: {
@@ -271,9 +287,12 @@ export function Graph({
   selected: ChangeId | undefined;
   onSelect(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
+  onBookmarkDragStart(name: string, from: ChangeId, event: React.PointerEvent): void;
   /** Revisions a pending rebase would move; ghosted while dragging. */
   moving?: ReadonlySet<ChangeId> | undefined;
   target?: ChangeId | undefined;
+  /** What the target row is about to become; a rebase target is a new parent. */
+  targetLabel?: string | undefined;
   targetBlocked?: boolean | undefined;
 }) {
   // The gutter widens with the graph so lanes never overlap the change column.
@@ -302,8 +321,10 @@ export function Graph({
             selected={row.revision.changeId === selected}
             onSelect={onSelect}
             onDragStart={onDragStart}
+            onBookmarkDragStart={onBookmarkDragStart}
             moving={moving?.has(row.revision.changeId) ?? false}
             isTarget={row.revision.changeId === target}
+            targetLabel={targetLabel ?? t("new parent")}
             targetBlocked={targetBlocked ?? false}
             pr={row.revision.bookmarks.map((b) => pullRequests?.get(b)).find(Boolean)}
           />

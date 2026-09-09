@@ -36,6 +36,8 @@ export const chrome: Record<string, string> = {
   conflict: "충돌",
   divergent: "갈라짐",
   "new parent": "새 부모",
+  "Drag {name} onto a revision to move it there.": "{name}을(를) 리비전 위로 끌면 그 자리로 옮겨집니다.",
+  "{name} here": "{name}을(를) 여기로",
 
   // ── Timeline ───────────────────────────────────────────────────────────
   OPERATIONS: "오퍼레이션",
