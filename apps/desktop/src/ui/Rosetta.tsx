@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { t } from "../i18n/i18n.ts";
+import { t, tParts } from "../i18n/i18n.ts";
 import { lookup, type RosettaEntry } from "./rosetta.ts";
 
 /**
@@ -202,9 +202,7 @@ export function Rosetta({ onClose }: { onClose(): void }) {
 
           <div className="sec" style={{ marginTop: 14, fontSize: 11.5, lineHeight: 1.5 }}>
             <KeyLine
-              line={t(
-                "Ukemi never hides the command it ran — {key} lists every one this window has run, in order.",
-              )}
+              line="Ukemi never hides the command it ran — {key} lists every one this window has run, in order."
               cap="⌘J"
             />
           </div>
@@ -286,7 +284,7 @@ function Answer({
         </button>
         <span style={{ flexGrow: 1 }} />
         <span className="sec" style={{ fontSize: 11.5 }}>
-          <KeyLine line={t("Whatever you run, {key} takes it back.")} cap="⌘Z" />
+          <KeyLine line="Whatever you run, {key} takes it back." cap="⌘Z" />
         </span>
       </div>
     </div>
@@ -304,7 +302,7 @@ const Rule = () => <div style={{ height: 1, background: "var(--u-line-faint)" }}
  * right.
  */
 function KeyLine({ line, cap }: { line: string; cap: string }) {
-  const [before, after = ""] = line.split("{key}");
+  const [before, after] = tParts(line, "key");
   return (
     <>
       {before}
