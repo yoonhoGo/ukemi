@@ -88,3 +88,25 @@ export function rebaseSetRevset(mode: RebaseMode, rev: string, onto: string): st
       return `roots(${onto}..${rev})::`;
   }
 }
+
+/**
+ * Whether `name` is safe to save as a revset alias.
+ *
+ * A trust boundary, like `quote()` above, and for the same reason in reverse:
+ * the alias name goes into a config key *and* comes back out as a bare symbol
+ * inside a revset expression, where it cannot be quoted. jj itself validates
+ * neither — `jj config set 'revset-aliases."a | all()"' none()` is accepted and
+ * would widen every revset that named it — so the narrowing happens here.
+ *
+ * A plain symbol only: a letter, then letters, digits, `_` or `-`. That is
+ * narrower than jj's own grammar (which allows a quoted name, and a `name(x)`
+ * function alias) and deliberately so — the app only offers what it can put in
+ * a sidebar row and click.
+ *
+ * ponytail: does not reject a name that shadows a bookmark. `main` as an alias
+ * would quietly outrank the bookmark `main` in every revset; the fix is to
+ * check the loaded bookmark list at save time, once that has bitten someone.
+ */
+export function isAliasName(name: string): boolean {
+  return /^[A-Za-z][A-Za-z0-9_-]*$/.test(name);
+}

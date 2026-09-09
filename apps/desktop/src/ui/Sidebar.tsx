@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Bookmark } from "@ukemi/domain";
 import {
   ALL_REVSET,
@@ -6,11 +7,19 @@ import {
   CONFLICTS_REVSET,
   DEFAULT_REVSET,
   EMPTY_REVSET,
+  isAliasName,
   stackRevset,
   UNPUSHED_REVSET,
 } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
-import { useBookmarks, useRepo, useWorkspaces } from "../repo.tsx";
+import {
+  useBookmarks,
+  useDeleteRevsetAlias,
+  useRepo,
+  useRevsetAliases,
+  useSaveRevsetAlias,
+  useWorkspaces,
+} from "../repo.tsx";
 import { TransitionStrip } from "./Coach.tsx";
 import {
   BookmarkIcon,
@@ -30,6 +39,157 @@ export const SAVED_REVSETS = [
   { label: "Empty changes", revset: EMPTY_REVSET, key: "⌘6" },
   { label: "Everything", revset: ALL_REVSET, key: "⌘7" },
 ] as const;
+
+/**
+ * The seven built-in revsets, the user's own named ones under them, and the
+ * one field that adds to the second list.
+ *
+ * A row sets the revset to the *name*, not the expression it stands for: the
+ * ⌘L field then reads `my-stack`, which is exactly what the same query is
+ * called at a terminal. Seeing the expansion is one hover away, and the point
+ * of storing these as jj aliases rather than app state is that the short name
+ * is real everywhere.
+ */
+function SavedAliases() {
+  const { revset, setRevset } = useRepo();
+  const aliases = useRevsetAliases();
+  const save = useSaveRevsetAlias();
+  const remove = useDeleteRevsetAlias();
+  const [naming, setNaming] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const taken = aliases.data?.some((alias) => alias.name === draft) ?? false;
+  const valid = isAliasName(draft);
+
+  const commit = () => {
+    if (!valid) return;
+    // The expression saved is whatever the window is showing: clicking ＋ can
+    // only mean "this one", so there is nothing to pick and nothing to type
+    // twice.
+    save.mutate({ name: draft, revset });
+    setDraft("");
+    setNaming(false);
+  };
+
+  return (
+    <>
+      <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {t("Saved revsets")}
+        <span style={{ flexGrow: 1 }} />
+        <button
+          type="button"
+          className="tb-btn"
+          style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
+          aria-pressed={naming}
+          onClick={() => setNaming((open) => !open)}
+          title={t("Name the current revset")}
+          aria-label={t("Name the current revset")}
+        >
+          ＋
+        </button>
+      </div>
+
+      {naming && (
+        <div className="side-item" style={{ gap: 6 }}>
+          <RevsetIcon />
+          <input
+            className="mono selectable"
+            autoFocus
+            value={draft}
+            spellCheck={false}
+            aria-label={t("Name for this revset")}
+            aria-invalid={draft.length > 0 && !valid}
+            placeholder={t("Name")}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commit();
+              if (event.key === "Escape") {
+                setDraft("");
+                setNaming(false);
+              }
+              // Text entry owns its keys; the window's map must not see them.
+              event.stopPropagation();
+            }}
+            style={{
+              flexGrow: 1,
+              minWidth: 0,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+            }}
+          />
+          <span className="key">⏎</span>
+        </div>
+      )}
+      {/* Said only while it is wrong, and it says the rule rather than that a
+          rule was broken. The name becomes a bare symbol inside a revset, so
+          the narrow shape is `isAliasName`'s doing, not a UI preference. */}
+      {naming && draft.length > 0 && !valid && (
+        <div className="ter" style={{ padding: "0 8px 2px", fontSize: 11 }}>
+          {t("A letter, then letters, digits, - or _.")}
+        </div>
+      )}
+      {naming && valid && taken && (
+        <div className="ter" style={{ padding: "0 8px 2px", fontSize: 11 }}>
+          {t("Replaces the revset {name} already stands for.", { name: draft })}
+        </div>
+      )}
+
+      {SAVED_REVSETS.map((saved) => (
+        <button
+          type="button"
+          className="side-item"
+          key={saved.label}
+          aria-current={revset === saved.revset}
+          onClick={() => setRevset(saved.revset)}
+        >
+          <RevsetIcon />
+          <span style={{ flexGrow: 1 }}>{t(saved.label)}</span>
+          <span className="key">{saved.key}</span>
+        </button>
+      ))}
+
+      {aliases.data?.map((alias) => (
+        <div
+          className="side-item"
+          key={alias.name}
+          aria-current={revset === alias.name}
+          title={alias.revset}
+        >
+          <RevsetIcon />
+          <button
+            type="button"
+            onClick={() => setRevset(alias.name)}
+            style={{
+              flexGrow: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              textAlign: "left",
+            }}
+          >
+            {alias.name}
+          </button>
+          {/* No confirmation sheet: the row is one line of repo config, the
+              expression it removes is in the tooltip beside it, and `jj config
+              set` puts it back. ponytail: if a longer expression starts being
+              hard to retype, undo belongs here rather than a dialog. */}
+          <button
+            type="button"
+            className="ter"
+            onClick={() => remove.mutate(alias.name)}
+            title={t("Forget {name}", { name: alias.name })}
+            aria-label={t("Forget {name}", { name: alias.name })}
+            style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </>
+  );
+}
 
 /** Local rows only; remote-tracking rows fold into their local row's counts. */
 function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
@@ -151,20 +311,7 @@ export function Sidebar({
         </button>
       ))}
 
-      <div className="side-head">{t("Saved revsets")}</div>
-      {SAVED_REVSETS.map((saved) => (
-        <button
-          type="button"
-          className="side-item"
-          key={saved.label}
-          aria-current={revset === saved.revset}
-          onClick={() => setRevset(saved.revset)}
-        >
-          <RevsetIcon />
-          <span style={{ flexGrow: 1 }}>{t(saved.label)}</span>
-          <span className="key">{saved.key}</span>
-        </button>
-      ))}
+      <SavedAliases />
 
       {/* The theme and language pickers used to sit under this strip. They are
           the user's settings, not this repository's, so they moved behind ⌘,

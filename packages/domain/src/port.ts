@@ -7,6 +7,7 @@ import type {
   PullRequest,
   OperationId,
   Revision,
+  RevsetAlias,
   Workspace,
 } from "./types.ts";
 import type { RebaseMode } from "./revset.ts";
@@ -86,6 +87,30 @@ export interface JjPort {
 
   /** Git directory, colocation and remotes. Not pinned: this is about the repo, not a point in it. */
   gitInfo(): Promise<GitInfo>;
+
+  /**
+   * The revsets the user has named, from this repo's own config.
+   *
+   * Repo scope only (`jj config --repo`): jj's built-in aliases — `trunk()`,
+   * `immutable_heads()` and friends — live in the defaults and would otherwise
+   * flood a list whose whole job is "the ones you made". A user-global alias is
+   * invisible here for the same reason, which is the ceiling of reading one
+   * scope.
+   *
+   * Not a `ReadOptions` read: config is not part of an operation, so there is
+   * no point in time to pin it to.
+   */
+  revsetAliases(): Promise<RevsetAlias[]>;
+
+  /**
+   * Name a revset, or rename what an existing name stands for.
+   *
+   * Returns no `WriteResult` because a config edit creates no operation — which
+   * also means ⌘Z does not reach it. Deleting is the undo.
+   */
+  saveRevsetAlias(name: string, revset: string): Promise<void>;
+
+  deleteRevsetAlias(name: string): Promise<void>;
 
   // ---- writes -------------------------------------------------------------
 

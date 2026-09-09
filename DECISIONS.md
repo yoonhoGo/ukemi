@@ -410,6 +410,28 @@ theme nobody has checked. One `side-item` row — label, gear, `⌘,` — is the
 smallest thing that teaches the shortcut instead of replacing it, and it reads
 the way the transition strip below it already does.
 
+**Saved revsets are jj's `revset-aliases`, not app state.**
+The obvious place for a user's named queries was a `ukemi:revsets` key beside
+the recent-repos list in `localStorage`. It was the wrong place: a saved query
+the GUI alone understands is a second, weaker idea of something jj already has.
+`jj config set --repo revset-aliases.<name> '<expr>'` stores it, `unset` removes
+it, and the name then works in the ⌘L field *and* in `jj log -r <name>` at a
+terminal — which is also why a sidebar row sets the revset to the name rather
+than to the expansion.
+
+Three consequences, all deliberate. Repo scope only (`--repo`), because jj's
+built-in aliases live in the defaults and a list including `trunk()` and
+`immutable_heads()` would bury the seven rows the user actually made; a
+user-global alias is invisible in the window, which is the ceiling. A config
+edit creates no operation, so ⌘Z does not reach it and the mutations skip
+`useJjMutation` — naming a revset while parked in the past must not throw the
+window back to the present. And the name is a trust boundary in the direction
+`quote()` does not cover: it enters a config key and comes back out as a bare
+symbol inside an expression, jj accepts `revset-aliases."a | all()"` without
+complaint, so `isAliasName` narrows it to a plain symbol and the adapter
+re-checks before the argv. A hand-written function alias (`mine-but(x)`) is
+skipped by the reader rather than shown as a row nothing can safely click.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
@@ -454,6 +476,13 @@ No line-by-line hunk selection (the design's "⇧ + click to split finer").
 Change-runs are the natural unit of a unified diff and cover the cases that
 motivated the feature; splitting inside a run means synthesising a diff jj
 never produced, which is a different and riskier job.
+
+No block editor for composing revsets. The ⌘L field is the composition UI, and
+a palette of AND/OR/NOT blocks on top of it would be a second query language
+that can never reach `roots(x..y)::` or `latest(x, n)` — so the moment a
+question got interesting the user would be back in the field, having learnt
+nothing transferable. Completion inside the field is the upgrade path if
+composing proves hard; a builder that hides the expression is not.
 
 No conflict prediction in the rebase preview. Nothing short of performing the
 rebase can know the outcome, and a fabricated "1 conflict resolves" would be

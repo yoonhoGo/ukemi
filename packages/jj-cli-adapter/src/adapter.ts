@@ -13,17 +13,23 @@ import type {
   ReadOptions,
   RebaseMode,
   Revision,
+  RevsetAlias,
   Workspace,
   WriteResult,
 } from "@ukemi/domain";
+import { isAliasName } from "@ukemi/domain";
 import { JjError, observed, type CommandObserver, type JjExec } from "./exec.ts";
 import { planToolArgs, type PlanPreparer } from "./hunk-plan.ts";
 import {
   BOOKMARK_TEMPLATE,
+  CONFIG_TEMPLATE,
   OPERATION_TEMPLATE,
   REVISION_TEMPLATE,
   WORKSPACE_TEMPLATE,
 } from "./templates.ts";
+
+/** The config table jj keeps named revsets in. */
+const ALIAS_TABLE = "revset-aliases";
 
 /** Raw shapes as the templates emit them, before normalisation. */
 interface RawRevision extends Omit<Revision, "description" | "parents"> {
@@ -39,6 +45,10 @@ interface RawBookmark {
   ahead: number | null;
   behind: number | null;
   target: ChangeId | null;
+}
+interface RawConfig {
+  name: string;
+  value: unknown;
 }
 interface RawOperation {
   id: string;
@@ -277,6 +287,46 @@ export class JjCliAdapter implements JjPort {
     // someone has one.
     const colocated = /[\/\\]\.git$/.test(gitRoot) && !/[\/\\]\.jj[\/\\]/.test(gitRoot);
     return { gitRoot, colocated, remotes };
+  }
+
+  async revsetAliases(): Promise<RevsetAlias[]> {
+    // `config list` exits non-zero when nothing matches, which for a repo that
+    // has never saved an alias is the normal case, not an error.
+    const result = await this.exec([
+      ...this.base(),
+      "config",
+      "list",
+      "--repo",
+      ALIAS_TABLE,
+      "-T",
+      CONFIG_TEMPLATE,
+    ]);
+    if (result.code !== 0) return [];
+    const aliases: RevsetAlias[] = [];
+    for (const raw of parseNdjson<RawConfig>(result.stdout)) {
+      const name = raw.name.slice(ALIAS_TABLE.length + 1);
+      // Anything the app would not have written: a quoted name (`"a | all()"`),
+      // a function alias (`mine(x)`), a value that is not a string. Skipped
+      // rather than shown, because a row the sidebar cannot safely click is
+      // worse than a row that is missing — the config file is still the truth
+      // and `jj config list` still shows it.
+      if (!isAliasName(name) || typeof raw.value !== "string") continue;
+      aliases.push({ name, revset: raw.value });
+    }
+    return aliases;
+  }
+
+  async saveRevsetAlias(name: string, revset: string): Promise<void> {
+    // The name reaches jj as part of a config key and comes back as a bare
+    // revset symbol, so it is checked here as well as in the UI: this is the
+    // last point before it enters an argv.
+    if (!isAliasName(name)) throw new Error(`invalid revset alias name: ${name}`);
+    await this.run([...this.base(), "config", "set", "--repo", `${ALIAS_TABLE}.${name}`, revset]);
+  }
+
+  async deleteRevsetAlias(name: string): Promise<void> {
+    if (!isAliasName(name)) throw new Error(`invalid revset alias name: ${name}`);
+    await this.run([...this.base(), "config", "unset", "--repo", `${ALIAS_TABLE}.${name}`]);
   }
 
   // ---- writes -------------------------------------------------------------

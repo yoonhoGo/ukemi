@@ -28,6 +28,14 @@ export const chrome: Record<string, string> = {
   "All bookmarks": "북마크 전체",
   "Empty changes": "빈 체인지",
   Everything: "전부",
+  // Named revsets the user saved — jj's own `revset-aliases`, repo scope.
+  "Name the current revset": "지금 리브셋에 이름 붙이기",
+  "Name for this revset": "이 리브셋의 이름",
+  Name: "이름",
+  "A letter, then letters, digits, - or _.": "첫 글자는 영문자, 그다음은 영문자·숫자·- 또는 _.",
+  "Replaces the revset {name} already stands for.":
+    "{name}이 지금 가리키는 리브셋을 덮어씁니다.",
+  "Forget {name}": "{name} 지우기",
 
   // ── Graph rows ─────────────────────────────────────────────────────────
   Revisions: "리비전",

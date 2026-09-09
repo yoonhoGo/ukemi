@@ -67,3 +67,19 @@ export const WORKSPACE_TEMPLATE = [
   '",\\"changeId\\":" ++ json(target.change_id())',
   '"}\\n"',
 ].join(" ++ ");
+
+/**
+ * One line per config variable.
+ *
+ * `name` is TOML dotted-key format, so a name jj had to quote arrives quoted —
+ * `revset-aliases."a | all()"` — and the alias reader uses that as its signal
+ * to skip the row. `value` is a `ConfigValue`, which `json()` renders in its
+ * own type: a string for everything this app writes, but a hand-edited config
+ * can hold a number or a table, hence the type check on the way out.
+ */
+export const CONFIG_TEMPLATE = [
+  '"{"',
+  '"\\"name\\":" ++ json(name)',
+  '",\\"value\\":" ++ json(value)',
+  '"}\\n"',
+].join(" ++ ");

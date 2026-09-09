@@ -229,6 +229,52 @@ test("the default revset shows every mutable head, not just bookmarked ones", as
   );
 });
 
+test("a saved revset round-trips through jj's own config and then resolves", async () => {
+  // The whole point of storing these as `revset-aliases` rather than as app
+  // state: the name has to be a *revset* afterwards, not just a label the
+  // sidebar remembers. So the test saves one, reads the list back, and then
+  // asks jj to evaluate the name — including under `latest(…)`, which is how
+  // `useLog` always wraps it.
+  assert.deepEqual(await jj.revsetAliases(), [], "a fresh repo has no saved revsets");
+
+  await jj.saveRevsetAlias("my-trunk", 'bookmarks(exact:"trunk")');
+  assert.deepEqual(await jj.revsetAliases(), [
+    { name: "my-trunk", revset: 'bookmarks(exact:"trunk")' },
+  ]);
+
+  const { withLimit } = await import("@ukemi/domain");
+  const direct = await jj.log("my-trunk");
+  assert.equal(direct.length, 1, "the alias name must resolve as a revset");
+  await assert.doesNotReject(() => jj.log(withLimit("my-trunk", 10)));
+
+  // Repo scope only: jj's built-ins (`trunk()`, `immutable_heads()`) come from
+  // the defaults, and a list that included them would bury the user's own.
+  const names = (await jj.revsetAliases()).map((alias) => alias.name);
+  assert.deepEqual(names, ["my-trunk"]);
+
+  await jj.deleteRevsetAlias("my-trunk");
+  assert.deepEqual(await jj.revsetAliases(), []);
+  await assert.rejects(() => jj.log("my-trunk"), "the name must stop resolving once forgotten");
+});
+
+test("an alias name that could widen a revset is refused before it reaches jj", async () => {
+  // jj accepts `revset-aliases."a | all()"` without complaint, and the name
+  // comes back out as a bare symbol inside an expression where it cannot be
+  // quoted. `isAliasName` is the narrowing, and the adapter re-checks it
+  // because this is the last point before the name enters an argv.
+  for (const name of ["a | all()", "", "-x", "1", 'has"quote', "a b"]) {
+    await assert.rejects(
+      () => jj.saveRevsetAlias(name, "none()"),
+      `accepted a name it should have refused: ${JSON.stringify(name)}`,
+    );
+  }
+  // And a function alias someone wrote by hand is skipped rather than offered
+  // as a row the sidebar could not safely click.
+  raw("config", "set", "--repo", 'revset-aliases."mine-but(x)"', "none()");
+  assert.deepEqual(await jj.revsetAliases(), []);
+  raw("config", "unset", "--repo", 'revset-aliases."mine-but(x)"');
+});
+
 test("gitInfo sees the colocated .git and the committer field parses", async () => {
   const info = await jj.gitInfo();
   assert.equal(info.colocated, true, info.gitRoot);

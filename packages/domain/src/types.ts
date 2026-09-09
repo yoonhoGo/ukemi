@@ -66,6 +66,20 @@ export interface Operation {
   readonly isCurrent: boolean;
 }
 
+/**
+ * A revset the user named and kept.
+ *
+ * Stored as one of jj's own `revset-aliases`, so the name works in the ⌘L
+ * field *and* in `jj log -r <name>` at a terminal. That is the whole reason
+ * this is not an app-private list: a saved query that only the GUI understands
+ * would be a second, weaker idea of the same thing.
+ */
+export interface RevsetAlias {
+  readonly name: string;
+  /** The expression the name stands for. */
+  readonly revset: string;
+}
+
 export interface Workspace {
   readonly name: string;
   /** The change this workspace's working copy sits on. */

@@ -26,6 +26,7 @@ import type {
   OperationId,
   PullRequest,
   Revision,
+  RevsetAlias,
   Workspace,
 } from "@ukemi/domain";
 import {
@@ -174,6 +175,47 @@ export function useBookmarks(): UseQueryResult<Bookmark[]> {
 
 export function useWorkspaces(): UseQueryResult<Workspace[]> {
   return useRepoQuery(["workspaces"], (port, opId) => port.workspaces({ atOp: opId }));
+}
+
+/**
+ * The revsets the user has named, and the two calls that change that list.
+ *
+ * Not a `useRepoQuery`: config sits outside the operation log, so there is no
+ * opId to key on and nothing that makes a cached entry immutable — the user can
+ * edit `.jj/repo/config.toml` in a terminal. Keyed on the root and invalidated
+ * by its own mutations; a focus refetch is React Query's default and covers the
+ * terminal case the same way the op head does.
+ *
+ * The mutations deliberately do *not* go through `useJjMutation`: that hook
+ * releases the operation pin and invalidates the head, which is right for
+ * anything that rewrites history and wrong here. Naming a revset while parked
+ * in the past must not throw the window back to the present.
+ */
+export function useRevsetAliases(): UseQueryResult<RevsetAlias[]> {
+  const { root, port } = useRepo();
+  return useQuery({
+    queryKey: ["revset-aliases", root],
+    queryFn: () => port.revsetAliases(),
+  });
+}
+
+export function useSaveRevsetAlias() {
+  const { root, port } = useRepo();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { name: string; revset: string }) =>
+      port.saveRevsetAlias(args.name, args.revset),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["revset-aliases", root] }),
+  });
+}
+
+export function useDeleteRevsetAlias() {
+  const { root, port } = useRepo();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => port.deleteRevsetAlias(name),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["revset-aliases", root] }),
+  });
 }
 
 /**
