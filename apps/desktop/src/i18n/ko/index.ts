@@ -9,6 +9,7 @@
 import { app } from "./app.ts";
 import { chrome } from "./chrome.ts";
 import { editing } from "./editing.ts";
+import { menu } from "./menu.ts";
 import { onboarding } from "./onboarding.ts";
 import { rosetta } from "./rosetta.ts";
 
@@ -16,6 +17,7 @@ export const ko: Record<string, string> = {
   ...app,
   ...chrome,
   ...editing,
+  ...menu,
   ...onboarding,
   ...rosetta,
 };

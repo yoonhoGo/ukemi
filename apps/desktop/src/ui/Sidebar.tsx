@@ -13,8 +13,6 @@ import { t } from "../i18n/i18n.ts";
 import { useBookmarks, useRepo, useWorkspaces } from "../repo.tsx";
 import { TransitionStrip } from "./Coach.tsx";
 import { BookmarkIcon, CurrentWorkspaceIcon, RevsetIcon, WorkspaceIcon } from "./icons.tsx";
-import { LanguagePicker } from "./LanguagePicker.tsx";
-import { ThemePicker } from "./ThemePicker.tsx";
 
 /** Saved revsets, bound to ⌘1…⌘7 by position. Handled in `App`'s key map too. */
 export const SAVED_REVSETS = [
@@ -160,10 +158,12 @@ export function Sidebar({
         </button>
       ))}
 
+      {/* The theme and language pickers used to sit under this strip. They
+          are the user's settings, not this repository's, so they moved behind
+          ⌘, and the bottom of the navigation is the transition strip alone —
+          which is about the repository in front of you. */}
       <span style={{ flexGrow: 1, minHeight: 12 }} />
       <TransitionStrip onOpen={onOpenProgress} />
-      <ThemePicker />
-      <LanguagePicker />
     </nav>
   );
 }

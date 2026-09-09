@@ -20,8 +20,10 @@ import { isRead, shellLine } from "./ui/command-line.ts";
 import { Graph } from "./ui/Graph.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
 import { HunkSheet, type HunkSheetMode } from "./ui/HunkSheet.tsx";
+import { installAppMenu } from "./ui/menu.ts";
 import { milestoneForCommand, reachMilestone } from "./ui/onboarding.ts";
 import { Rosetta } from "./ui/Rosetta.tsx";
+import { Settings } from "./ui/Settings.tsx";
 import { SAVED_REVSETS, Sidebar } from "./ui/Sidebar.tsx";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
@@ -59,6 +61,7 @@ function Window({
   const [showCommands, setShowCommands] = useState(false);
   const [showRosetta, setShowRosetta] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const commandLog = useCommandLog();
   const pullRequests = usePullRequests();
   const prsByBranch = useMemo(
@@ -142,6 +145,7 @@ function Window({
         if (showRosetta) setShowRosetta(false);
         else if (showProgress) setShowProgress(false);
         else if (showShortcuts) setShowShortcuts(false);
+        else if (showSettings) setShowSettings(false);
         else if (isPinned) pin(undefined);
         return;
       }
@@ -161,6 +165,13 @@ function Window({
       if (meta && key === "j") {
         event.preventDefault();
         setShowCommands((open) => !open);
+        return;
+      }
+      // ⌘, is where macOS keeps preferences, and the menu's Settings… item
+      // reaches this branch by synthesising the same chord.
+      if (meta && key === ",") {
+        event.preventDefault();
+        setShowSettings((open) => !open);
         return;
       }
       if (meta && event.shiftKey && key === "w") {
@@ -237,6 +248,7 @@ function Window({
     showShortcuts,
     showRosetta,
     showProgress,
+    showSettings,
     isPinned,
     pin,
     move,
@@ -258,9 +270,27 @@ function Window({
     selectedRevision,
   ]);
 
-  const failure = [newChange, edit, abandon, undo, restore, fetch, push, rebase, absorb].find(
-    (mutation) => mutation.error,
-  )?.error;
+  /**
+   * The one thing the window says out loud when a command fails, and the way
+   * out of it.
+   *
+   * A failed mutation holds on to its error until something clears it, so the
+   * strip used to sit there until the next command happened to fail. `reset()`
+   * on each failed mutation is what actually clears it — a flag over the top
+   * would be undone by the next render, because the error is still in the
+   * mutation. A failed *read* has no equivalent: resetting the query would
+   * re-run the read that just failed and put the same banner straight back, so
+   * that one is dismissed by identity. The same `Error` object stays hidden;
+   * the next genuine failure is a different object and shows.
+   */
+  const mutations = [newChange, edit, abandon, undo, restore, fetch, push, rebase, absorb];
+  const failure = mutations.find((mutation) => mutation.error)?.error;
+  const error = failure ?? query.error ?? undefined;
+  const [dismissed, setDismissed] = useState<unknown>(undefined);
+  const dismissError = () => {
+    for (const mutation of mutations) if (mutation.error) mutation.reset();
+    setDismissed(error);
+  };
 
   /**
    * Tick off the transition from Git.
@@ -329,7 +359,7 @@ function Window({
         </div>
       )}
 
-      {(failure || query.error) && (
+      {error !== undefined && error !== dismissed && (
         <div
           role="alert"
           style={{
@@ -347,8 +377,19 @@ function Window({
           {/* jj's own stderr, shown verbatim: it is written for humans and is
               more useful than anything we would paraphrase. */}
           <span className="mono selectable" style={{ whiteSpace: "pre-wrap" }}>
-            {messageFor(failure ?? query.error)}
+            {messageFor(error)}
           </span>
+          <span style={{ flexGrow: 1 }} />
+          {/* Same affordance as "Back to now" in the strip above: the row is
+              thin, so the way out of it is a word in it, not an icon. */}
+          <button
+            type="button"
+            className="tb-btn"
+            style={{ height: 20, fontSize: 11, background: "transparent" }}
+            onClick={dismissError}
+          >
+            {t("Dismiss")}
+          </button>
         </div>
       )}
 
@@ -510,6 +551,7 @@ function Window({
         />
       )}
       {showShortcuts && <Shortcuts onClose={() => setShowShortcuts(false)} />}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
   );
 }
@@ -529,6 +571,17 @@ export function App({
   recents: readonly string[];
   onOpenRepo(path?: string): void;
 }) {
+  /*
+   * The menu bar is built here rather than in Rust so its labels come from the
+   * same catalogue as the window (see `ui/menu.ts`), which means it has to be
+   * rebuilt when the language changes. `main.tsx` re-keys this tree on the
+   * locale, so a mount effect is already "once per locale" — no subscription,
+   * and nothing rebuilt per render.
+   */
+  useEffect(() => {
+    void installAppMenu();
+  }, []);
+
   return (
     <RepoProvider root={root} initialRevset={DEFAULT_REVSET}>
       <Window recents={recents} onOpenRepo={onOpenRepo} />

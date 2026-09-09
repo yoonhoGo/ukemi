@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { applyLocale, currentLocale, LOCALES, subscribeLocale, t } from "../i18n/i18n.ts";
 
 /**
- * Language switch, sitting under the theme one.
+ * Language switch, sitting beside the theme one in the Settings sheet.
  *
  * Each language is listed in its own name, because a picker written in a
  * language you cannot read is no help to the person who needs it.
@@ -11,10 +11,8 @@ export function LanguagePicker() {
   const active = useSyncExternalStore(subscribeLocale, currentLocale);
 
   return (
-    <div style={{ paddingTop: 10 }}>
-      <div className="side-head" style={{ padding: "0 8px 4px" }}>
-        {t("Language")}
-      </div>
+    <section>
+      <div className="side-head">{t("Language")}</div>
       {LOCALES.map((locale) => (
         <button
           type="button"
@@ -28,6 +26,6 @@ export function LanguagePicker() {
           </span>
         </button>
       ))}
-    </div>
+    </section>
   );
 }
