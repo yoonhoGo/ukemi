@@ -64,6 +64,37 @@ which is the finest unit the diff actually supports.
 need no editor at all, so file-level split/squash and "take a side" resolution
 avoid the protocol entirely. Only true hunk-level editing needs it.
 
+**absorb has no dry run — the result is the preview.**
+`jj absorb` offers no `--dry-run` in 0.43, and predicting where each hunk
+lands would mean reimplementing its blame walk. So the inspector runs it and
+shows jj's own stderr account ("Absorbed changes into …") next to the button,
+with ⌘Z one key away. Same stance as the rebase preview: state the true thing.
+To make that message reach the UI, writes no longer pass `--quiet`; reads do.
+
+**Stacks are recognised, not declared.**
+A stack is the run of mutable revisions from the first immutable ancestor up
+to where the chain forks (`stackOf`, in the domain). Pushing it is
+`jj git push --change` per revision, which both mints the bookmark on first
+push and moves it after a rebase, so one button covers create and update. PRs
+are matched to revisions through bookmark = head branch, never by predicting
+the bookmark name jj will mint.
+
+**`gh` is borrowed, not bundled.**
+It carries the user's GitHub login. The forge adapter passes `-R owner/repo`
+on every call (slug parsed from `jj git remote list`), so a non-colocated repo
+whose Git dir is under `.jj/` works too. No GitHub remote or no `gh` means no
+forge, and the stack panel degrades to push-only — a normal state, not an error.
+
+**Colocation is judged by the shape of `jj git root`.**
+A `.git` outside `.jj/` is colocated; `.jj/repo/store/git` is not. Comparing
+against the workspace path failed on macOS, where `/var` is a symlink to
+`/private/var`.
+
+**The command log is a buffer, not a store.**
+Every `jj`/`gh` call goes through an observer into a bounded module-level list
+read with `useSyncExternalStore`. Nothing is derived from it, so it does not
+violate "one server cache, no global store" — it is a log the panel displays.
+
 ## Still open
 
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
@@ -88,6 +119,15 @@ never produced, which is a different and riskier job.
 No conflict prediction in the rebase preview. Nothing short of performing the
 rebase can know the outcome, and a fabricated "1 conflict resolves" would be
 worse than silence. The HUD promises the true thing instead: one ⌘Z.
+
+No per-workspace "last operation by which process" on the board. jj's op log
+records `user@host` but not the workspace, so nothing honest can be shown per
+column; the working-copy commit's committer time is the true signal and is
+what the card shows.
+
+No Git index warning in the transparency panel. In a colocated repo jj resets
+the index to match `@` on every command, and the app runs commands constantly,
+so a staged-only state cannot persist long enough to warn about.
 
 No three-way merge editor. The conflict panel offers "take a side"; anything
 finer is a hunk edit, and that editor already exists. A second merge UI would

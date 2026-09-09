@@ -38,6 +38,12 @@ loudly if a template's shape moves. That test is the version guard.
 
 Node 24 runs the TypeScript directly, so packages have no build step.
 
+## Optional: GitHub
+
+Stacked PRs use the `gh` CLI from your PATH, with your own login. Without it,
+or without a GitHub remote, everything else works and the stack panel only
+pushes.
+
 ## Licence
 
 The bundled `jj` is Apache-2.0; see `NOTICE`.
