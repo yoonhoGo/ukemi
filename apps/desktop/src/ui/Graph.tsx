@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import type { ChangeId, GraphLayout, GraphRow, PullRequest, Revision } from "@ukemi/domain";
-import { ELIDED_ROW } from "@ukemi/domain";
+import { ELIDED_ROW, stackHeads } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import { PrLabel } from "./Stack.tsx";
-import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
+import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
 import {
   edgePath,
   elidedPath,
@@ -19,13 +19,17 @@ import { ROW_ATTRIBUTE } from "./drag-rebase.tsx";
 
 function Lanes({ layout, width }: { layout: GraphLayout; width: number }) {
   const height = Math.max(layout.rows.length * ROW, ROW);
+  const heads = useMemo(() => stackHeads(layout.rows.map((row) => row.revision)), [layout]);
   const paths = useMemo(() => {
     const out: { key: string; d: string; color: string; elided: boolean }[] = [];
     for (const row of layout.rows) {
       for (const edge of row.edges) {
-        // An edge is coloured by the *child* whose lane it leaves, so a stack
-        // keeps one colour from its tip down to where it joins its base.
-        const color = nodeColor(row.revision);
+        // An edge is coloured by the head of the stack the *child* belongs to,
+        // so one thread keeps one colour from its tip down to where it joins
+        // its base — a dot is a change, a line is the stack through it.
+        const color = row.revision.isImmutable
+          ? nodeColor(row.revision)
+          : colorForChange(heads.get(row.revision.changeId) ?? row.revision.changeId);
         out.push(
           edge.toRow === ELIDED_ROW
             ? {
@@ -44,7 +48,7 @@ function Lanes({ layout, width }: { layout: GraphLayout; width: number }) {
       }
     }
     return out;
-  }, [layout]);
+  }, [layout, heads]);
 
   return (
     <svg

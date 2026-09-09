@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { prBaseFor, pullRequestFor, stackOf, unpushableReason } from "./stack.ts";
+import { prBaseFor, pullRequestFor, stackHeads, stackOf, unpushableReason } from "./stack.ts";
 import type { PullRequest, Revision } from "./types.ts";
 
 function rev(
@@ -53,6 +53,26 @@ test("a fork above the selection ends the stack there", () => {
 
 test("an immutable selection has no stack", () => {
   assert.deepEqual(stackOf([c, b, a, trunk], "trunk"), []);
+});
+
+test("stack heads name a chain by its tip, and a fork by each branch", () => {
+  assert.deepEqual(
+    [...stackHeads([c, b, a, trunk])],
+    [
+      ["c", "c"],
+      ["b", "c"],
+      ["a", "c"],
+    ],
+    "a linear chain is one colour, the tip's",
+  );
+
+  const d = rev("d", ["a"]);
+  const forked = stackHeads([d, c, b, a, trunk]);
+  assert.equal(forked.get("c"), "c");
+  assert.equal(forked.get("b"), "c");
+  assert.equal(forked.get("d"), "d", "the other branch is its own stack");
+  assert.equal(forked.get("a"), "a", "the base below a fork belongs to neither");
+  assert.equal(forked.has("trunk"), false, "immutable revisions sit in no stack");
 });
 
 test("empty and undescribed revisions are reported as unpushable", () => {

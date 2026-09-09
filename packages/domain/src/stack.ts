@@ -49,6 +49,32 @@ export function stackOf(revisions: readonly Revision[], head: ChangeId): Revisio
 }
 
 /**
+ * Every mutable revision mapped to the head of the stack it sits in.
+ *
+ * The head — the topmost member — is the stack's name here, because it is what
+ * survives: rebasing a stack moves its base, not its tip, so a key taken from
+ * the head keeps a stack's identity across the move. Immutable revisions are
+ * absent from the map: they belong to no stack, and a caller that wants a
+ * colour for one already has `isImmutable` to branch on.
+ *
+ * ponytail: O(n²) — one `stackOf` walk per revision. The revset the window
+ * loads is bounded (jj's `revsets.log`, tens of rows), so this stays under a
+ * millisecond; memoise the walk if a log-everything revset ever lands here.
+ */
+export function stackHeads(revisions: readonly Revision[]): Map<ChangeId, ChangeId> {
+  const heads = new Map<ChangeId, ChangeId>();
+  for (const revision of revisions) {
+    // Asking from each revision rather than once per stack is what makes a
+    // fork resolve the way the graph draws it: the shared base below a fork is
+    // its own stack, each branch above it another.
+    const stack = stackOf(revisions, revision.changeId);
+    const head = stack[stack.length - 1];
+    if (head) heads.set(revision.changeId, head.changeId);
+  }
+  return heads;
+}
+
+/**
  * Why a revision cannot be pushed as a PR, or `undefined` when it can.
  * Mirrors the two refusals `jj git push` makes on its own.
  */

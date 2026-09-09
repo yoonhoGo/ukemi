@@ -14,6 +14,15 @@ so the template composes those explicitly; and `tracking_ahead_count` *raises*
 on an untracked ref, so it is guarded by `if(tracked, …)` and read via
 `.lower()` because it is a size hint, not an integer.
 
+**Graph colour — lines by stack head, dots by change.**
+An edge takes the colour of the head of the stack its child sits in
+(`stackHeads`), so a chain reads as one thread from tip to base; the node dot
+and the two-letter change prefix keep the change's own colour. Recolouring the
+dots to match was refused: the inspector, the board, the hunk sheet and the
+rebase HUD all name a revision by its change colour, and the graph has to agree
+with them. The head is the key because rebasing a stack moves its base, not its
+tip.
+
 **Frontend framework — React.**
 Chosen by the human. Familiarity dominates for a solo project, and the
 performance-sensitive part (the graph) is hand-drawn SVG over a pure layout
