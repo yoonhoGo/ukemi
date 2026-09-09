@@ -179,7 +179,7 @@ export function Inspector({
 
   if (!revision) {
     return (
-      <aside style={panelStyle}>
+      <aside className="u-scroll" style={panelStyle}>
         <div className="sec" style={{ padding: 16 }}>
           {t("Select a revision.")}
         </div>
@@ -196,7 +196,7 @@ export function Inspector({
       : undefined;
 
   return (
-    <aside style={panelStyle}>
+    <aside className="u-scroll" style={panelStyle}>
       <div
         style={{
           display: "flex",
@@ -418,8 +418,6 @@ export function Inspector({
         <div
           className="u-scroll"
           style={{
-            flexGrow: 1,
-            minHeight: 0,
             margin: "6px 16px 14px",
             borderRadius: 8,
             background: "var(--u-bg-raised)",
@@ -438,12 +436,15 @@ export function Inspector({
   );
 }
 
+/**
+ * The panel scrolls as one block rather than pinning a header over a scrolling
+ * diff: the steps, the stack and the file list together outgrow the window
+ * long before the diff does, and as flex items they were clipped with no way
+ * to reach them.
+ */
 const panelStyle: React.CSSProperties = {
   width: 372,
   flexShrink: 0,
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
   background: "var(--u-bg-inspector)",
   borderLeft: "1px solid var(--u-line)",
 };
