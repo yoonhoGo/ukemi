@@ -173,6 +173,35 @@ One `localStorage` key, not one per repo: the habits being unlearned are the
 person's, and re-teaching "there is no index" on their second repository would
 be insulting. It also means the three welcome cards appear exactly once, ever.
 
+**Localisation — English source strings as the keys, no framework.**
+The earlier entry deferred this as an app-wide decision rather than an
+onboarding one; the decision is Korean alongside English, everywhere, including
+the Rosetta table and the seven milestones. `t("Back to now")` keys on the
+English string itself, so English is the empty catalogue, a missing translation
+falls back to a sentence rather than a key, and the same line written in two
+files is one entry. i18next was weighed and skipped: no namespaces, no plural
+categories the two languages disagree on, nothing worth an async boundary.
+
+The two structural consequences. Prose that lives in *data* — `ROSETTA`,
+`MILESTONES`, `THEMES` — stays English in the table and is translated where it
+is drawn (`t(entry.why)`), which keeps those tables plain constants and their
+tests untouched. And a sentence with something styled inside it (a revset in
+mono, a branch name) is one key split on its placeholder by `tParts`, never two
+half-keys concatenated: Korean puts the halves in the other order.
+
+`i18n.test.ts` is the guard. It scans every literal `t("…")` in the source, and
+reads the three data tables directly, so a string that ships untranslated fails
+the build rather than appearing in English next to Korean. It also fails on two
+files translating one key differently — which caught twelve, all of them a
+shortcut-table label and a Rosetta step being the same English sentence.
+
+**"now" means two things and gets one word.**
+The cost of keying on the source string, found immediately: `t("now")` is a
+commit timestamp under a minute old in one place and the present edge of the
+operation timeline in the other. Rather than add a context-prefix convention
+for a single collision, both take 지금. Add the convention when a second
+collision is one where the two really cannot share a word.
+
 ## Still open
 
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
@@ -221,7 +250,3 @@ sidebar, timeline), because every one of the seven is about one of those
 regions. Measuring real anchor elements is the upgrade if a hint ever needs to
 point at something that moves.
 
-No localisation of the onboarding copy. It is written in the same voice as the
-rest of the window, which is English; translating onboarding alone would make
-it the one screen that does not match the app around it. Localisation is an
-app-wide decision, not an onboarding one.

@@ -1,5 +1,6 @@
 import type { ChangeId, Revision } from "@ukemi/domain";
 import { useConflicts, useJjMutation } from "../repo.tsx";
+import { t } from "../i18n/i18n.ts";
 import { nodeColor } from "./change-color.ts";
 
 /**
@@ -41,15 +42,18 @@ export function Conflicts({
     >
       <div className="side-head" style={{ padding: "0 0 4px" }}>
         {conflicts.data
-          ? `${conflicts.data.length} CONFLICTED FILE${conflicts.data.length === 1 ? "" : "S"}`
-          : "CONFLICTS"}
+          ? conflicts.data.length === 1
+            ? t("1 CONFLICTED FILE")
+            : t("{count} CONFLICTED FILES", { count: conflicts.data.length })
+          : t("CONFLICTS")}
       </div>
       <div className="sec" style={{ fontSize: 11.5, paddingBottom: 4 }}>
-        Nothing is blocked. Resolve now or later — descendants pick it up
-        automatically.
+        {t(
+          "Nothing is blocked. Resolve now or later — descendants pick it up automatically.",
+        )}
       </div>
 
-      {conflicts.isPending && <div className="sec">Reading conflicts…</div>}
+      {conflicts.isPending && <div className="sec">{t("Reading conflicts…")}</div>}
       {conflicts.data?.map((file) => (
         <div
           key={file.path}
@@ -89,30 +93,30 @@ export function Conflicts({
               className="tb-btn"
               style={{ height: 22, fontSize: 11.5 }}
               disabled={resolve.isPending}
-              title="Keep the first side (jj's :ours)"
+              title={t("Keep the first side (jj's :ours)")}
               onClick={() => resolve.mutate({ path: file.path, side: "ours" })}
             >
-              Take ours
+              {t("Take ours")}
             </button>
             <button
               type="button"
               className="tb-btn"
               style={{ height: 22, fontSize: 11.5 }}
               disabled={resolve.isPending}
-              title="Keep the second side (jj's :theirs)"
+              title={t("Keep the second side (jj's :theirs)")}
               onClick={() => resolve.mutate({ path: file.path, side: "theirs" })}
             >
-              Take theirs
+              {t("Take theirs")}
             </button>
             <span style={{ flexGrow: 1 }} />
             <button
               type="button"
               className="tb-btn"
               style={{ height: 22, fontSize: 11.5 }}
-              title="Edit the conflict markers by hunk instead"
+              title={t("Edit the conflict markers by hunk instead")}
               onClick={() => onShowRevision(revision.changeId)}
             >
-              Edit by hunk <span className="key">⌘⇧S</span>
+              {t("Edit by hunk")} <span className="key">⌘⇧S</span>
             </button>
           </div>
         </div>
@@ -136,5 +140,5 @@ export function Conflicts({
  * `conflicts()` already lists them, so this is only the inspector's local view.
  */
 export function conflictLabel(count: number): string {
-  return `${count} conflict${count === 1 ? "" : "s"}`;
+  return count === 1 ? t("1 conflict") : t("{count} conflicts", { count });
 }

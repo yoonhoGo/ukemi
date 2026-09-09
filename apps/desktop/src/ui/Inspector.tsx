@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FileChange, Revision } from "@ukemi/domain";
 import { useDiffSummary, useFileDiff, useJjMutation, useRepo } from "../repo.tsx";
+import { t } from "../i18n/i18n.ts";
 import { authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
 import type { HunkSheetMode } from "./HunkSheet.tsx";
@@ -66,7 +67,7 @@ function DescriptionEditor({ revision }: { revision: Revision }) {
           // Everything else is text entry: keep the window's shortcuts out of it.
           event.stopPropagation();
         }}
-        placeholder="Describe this change…"
+        placeholder={t("Describe this change…")}
         rows={Math.min(6, Math.max(2, draft.split("\n").length))}
         spellCheck={false}
         style={{
@@ -81,7 +82,7 @@ function DescriptionEditor({ revision }: { revision: Revision }) {
       />
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="sec" style={{ fontSize: "var(--u-font-size-small)" }}>
-          {describe.isPending ? "Saving…" : dirty ? "Unsaved" : ""}
+          {describe.isPending ? t("Saving…") : dirty ? t("Unsaved") : ""}
         </span>
         <span style={{ flexGrow: 1 }} />
         <span className="key">⌘↩</span>
@@ -180,7 +181,7 @@ export function Inspector({
     return (
       <aside style={panelStyle}>
         <div className="sec" style={{ padding: 16 }}>
-          Select a revision.
+          {t("Select a revision.")}
         </div>
       </aside>
     );
@@ -189,9 +190,9 @@ export function Inspector({
   const color = nodeColor(revision);
   const readOnly = isPinned || revision.isImmutable;
   const readOnlyReason = isPinned
-    ? "The window is parked on a past operation. Return to now to make changes."
+    ? t("The window is parked on a past operation. Return to now to make changes.")
     : revision.isImmutable
-      ? "This revision is immutable."
+      ? t("This revision is immutable.")
       : undefined;
 
   return (
@@ -209,10 +210,10 @@ export function Inspector({
             <span style={{ color }}>{revision.changeId.slice(0, 2)}</span>
             {revision.changeId.slice(2, 12)}
           </div>
-          {revision.isWorkingCopy && <span className="pill">@ working copy</span>}
+          {revision.isWorkingCopy && <span className="pill">{t("@ working copy")}</span>}
           {revision.hasConflict && (
             <span className="pill" data-kind="conflict">
-              conflict
+              {t("conflict")}
             </span>
           )}
           <span style={{ flexGrow: 1 }} />
@@ -230,7 +231,7 @@ export function Inspector({
               background: "var(--u-bg-sunken)",
             }}
           >
-            {revision.description || "(no description set)"}
+            {revision.description || t("(no description set)")}
           </div>
         ) : (
           <DescriptionEditor revision={revision} />
@@ -241,7 +242,7 @@ export function Inspector({
           style={{ display: "flex", gap: 14, fontSize: 11.5, flexWrap: "wrap" }}
         >
           <span>
-            {revision.parents.length === 1 ? "Parent " : "Parents "}
+            {revision.parents.length === 1 ? t("Parent ") : t("Parents ")}
             {revision.parents.map((parent) => (
               <span className="mono" key={parent}>
                 {parent.slice(0, 8)}{" "}
@@ -273,10 +274,10 @@ export function Inspector({
         style={{ padding: "0 16px 12px", display: "flex", flexDirection: "column", gap: 6 }}
       >
         <div className="side-head" style={{ padding: 0 }}>
-          NEXT STEPS
+          {t("NEXT STEPS")}
         </div>
         <Step
-          label="Start new change on top"
+          label={t("Start new change on top")}
           shortcut="⌘N"
           primary
           disabled={readOnly}
@@ -284,17 +285,17 @@ export function Inspector({
           onRun={() => newChange.mutate(revision.changeId)}
         />
         <Step
-          label="Split into two changes"
+          label={t("Split into two changes")}
           shortcut="⌘⇧S"
           disabled={readOnly || (files.data?.length ?? 0) === 0}
           title={
             readOnlyReason ??
-            ((files.data?.length ?? 0) === 0 ? "Nothing to split" : undefined)
+            ((files.data?.length ?? 0) === 0 ? t("Nothing to split") : undefined)
           }
           onRun={() => onOpenSheet("split")}
         />
         <Step
-          label="Squash hunks into parent"
+          label={t("Squash hunks into parent")}
           shortcut="⌘⇧K"
           disabled={
             readOnly || revision.parents.length !== 1 || (files.data?.length ?? 0) === 0
@@ -302,22 +303,24 @@ export function Inspector({
           title={
             readOnlyReason ??
             (revision.parents.length !== 1
-              ? "A merge has no single parent to squash into"
+              ? t("A merge has no single parent to squash into")
               : (files.data?.length ?? 0) === 0
-                ? "Nothing to squash"
+                ? t("Nothing to squash")
                 : undefined)
           }
           onRun={() => onOpenSheet("squash")}
         />
         <Step
-          label="Absorb into ancestors"
+          label={t("Absorb into ancestors")}
           shortcut="⌘⇧A"
           disabled={readOnly || revision.isEmpty || absorb.isPending}
           title={
             readOnlyReason ??
             (revision.isEmpty
-              ? "Nothing to absorb"
-              : "Move each edit into the mutable ancestor that last touched those lines (jj absorb). One ⌘Z takes it back.")
+              ? t("Nothing to absorb")
+              : t(
+                  "Move each edit into the mutable ancestor that last touched those lines (jj absorb). One ⌘Z takes it back.",
+                ))
           }
           onRun={() => absorb.mutate(revision.changeId)}
         />
@@ -338,14 +341,14 @@ export function Inspector({
           </div>
         )}
         <Step
-          label="Edit this change"
+          label={t("Edit this change")}
           shortcut="⌘E"
           disabled={readOnly || revision.isWorkingCopy}
           title={readOnlyReason}
           onRun={() => edit.mutate(revision.changeId)}
         />
         <Step
-          label="Abandon this change"
+          label={t("Abandon this change")}
           shortcut="⌘⌫"
           disabled={readOnly}
           title={readOnlyReason}
@@ -369,11 +372,13 @@ export function Inspector({
         }}
       >
         <div className="side-head" style={{ padding: "0 0 4px" }}>
-          {files.data ? `${files.data.length} FILES CHANGED` : "FILES CHANGED"}
+          {files.data
+            ? t("{count} FILES CHANGED", { count: files.data.length })
+            : t("FILES CHANGED")}
         </div>
         {files.data?.length === 0 && (
           <div className="sec" style={{ fontSize: 12 }}>
-            No file changes.
+            {t("No file changes.")}
           </div>
         )}
         {files.data?.map((file) => {
@@ -423,7 +428,7 @@ export function Inspector({
         >
           {diff.isPending && (
             <div className="sec" style={{ padding: 10 }}>
-              Loading diff…
+              {t("Loading diff…")}
             </div>
           )}
           {diff.data && <Diff text={diff.data} />}

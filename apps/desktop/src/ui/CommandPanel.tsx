@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { CommandRecord } from "@ukemi/domain";
+import { t } from "../i18n/i18n.ts";
 import { useCommandLog, useGitInfo } from "../repo.tsx";
 import { isRead, shellLine } from "./command-line.ts";
 import { clockTime } from "./time.ts";
@@ -46,13 +47,13 @@ export function CommandPanel({ onClose }: { onClose(): void }) {
         style={{ display: "flex", alignItems: "center", gap: 12, height: 30, padding: "0 14px" }}
       >
         <span className="side-head" style={{ padding: 0 }}>
-          COMMANDS
+          {t("COMMANDS")}
         </span>
         <span className="sec" style={{ fontSize: "var(--u-font-size-small)" }}>
           {git.data
             ? git.data.colocated
-              ? "Colocated with Git: every bookmark is exported as a branch after each command."
-              : "Not colocated: Git tools see .jj/repo/store/git, not this folder."
+              ? t("Colocated with Git: every bookmark is exported as a branch after each command.")
+              : t("Not colocated: Git tools see .jj/repo/store/git, not this folder.")
             : ""}
           {git.data && git.data.remotes.length > 0 && (
             <>
@@ -68,17 +69,17 @@ export function CommandPanel({ onClose }: { onClose(): void }) {
             checked={showReads}
             onChange={(event) => setShowReads(event.target.checked)}
           />
-          show reads
+          {t("show reads")}
         </label>
         <button type="button" className="tb-btn" style={{ height: 24, fontSize: 12 }} onClick={onClose}>
-          Close <span className="key">⌘J</span>
+          {t("Close")} <span className="key">⌘J</span>
         </button>
       </div>
 
       <div className="u-scroll" style={{ flexGrow: 1, minHeight: 0, padding: "0 14px 10px" }}>
         {shown.length === 0 && (
           <div className="sec" style={{ fontSize: 12 }}>
-            {showReads ? "Nothing has run yet." : "No write has run in this window yet."}
+            {showReads ? t("Nothing has run yet.") : t("No write has run in this window yet.")}
           </div>
         )}
         {shown.map((record) => (
@@ -107,7 +108,7 @@ export function CommandPanel({ onClose }: { onClose(): void }) {
               )}
             </span>
             <span className="ter" style={{ fontSize: 10.5, flexShrink: 0 }}>
-              {record.code !== 0 ? `exit ${record.code} · ` : ""}
+              {record.code !== 0 ? `${t("exit {code}", { code: record.code })} · ` : ""}
               {record.durationMs}ms
             </span>
             <button
@@ -115,9 +116,9 @@ export function CommandPanel({ onClose }: { onClose(): void }) {
               className="key"
               style={{ flexShrink: 0 }}
               onClick={() => copy(record)}
-              title="Copy"
+              title={t("Copy")}
             >
-              {copied === record.startedAt ? "copied" : "copy"}
+              {copied === record.startedAt ? t("copied") : t("copy")}
             </button>
           </div>
         ))}

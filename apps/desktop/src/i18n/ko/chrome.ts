@@ -1,0 +1,154 @@
+/** The window's chrome: toolbar, sidebar, graph rows, timeline, board, stack, HUDs. */
+export const chrome: Record<string, string> = {
+  // ── Toolbar ────────────────────────────────────────────────────────────
+  Revset: "리브셋",
+  "Open another repository (⌘O)": "다른 저장소 열기 (⌘O)",
+  "All shortcuts (⌘/)": "단축키 전체 (⌘/)",
+  Fetch: "페치",
+  "Fetching…": "페치 중…",
+  Push: "푸시",
+  "Pushing…": "푸시 중…",
+  New: "새 체인지",
+
+  // ── Sidebar ────────────────────────────────────────────────────────────
+  Bookmarks: "북마크",
+  "None yet.": "아직 없다.",
+  local: "로컬",
+  Workspaces: "워크스페이스",
+  Board: "보드",
+  "Workspace board (⌘⇧W)": "워크스페이스 보드 (⌘⇧W)",
+  "Working copy of {name}": "{name}의 작업 사본",
+  "Saved revsets": "저장한 리브셋",
+  // SAVED_REVSETS names. The revset expressions themselves are never translated.
+  "Recent work": "최근 작업",
+  "Mine, unpushed": "내 것, 푸시 안 함",
+  Conflicts: "충돌",
+
+  // ── Graph rows ─────────────────────────────────────────────────────────
+  Revisions: "리비전",
+  "(no description set)": "(설명 없음)",
+  "working copy": "작업 사본",
+  conflict: "충돌",
+  divergent: "갈라짐",
+  "new parent": "새 부모",
+
+  // ── Timeline ───────────────────────────────────────────────────────────
+  OPERATIONS: "오퍼레이션",
+  "Viewing a past state. Nothing has changed yet.":
+    "과거 상태를 보고 있다. 아직 바뀐 것은 없다.",
+  "Drag the playhead to preview any past state. Nothing changes until you restore.":
+    "플레이헤드를 끌면 과거 상태를 미리 볼 수 있다. 복원하기 전까지는 아무것도 바뀌지 않는다.",
+  "Back to now": "지금으로",
+  "Return to now to undo": "되돌리려면 지금으로 돌아와라",
+  Undo: "되돌리기",
+  "Undo the last operation": "마지막 오퍼레이션 되돌리기",
+  "Restore here": "여기로 복원",
+  "Restore the repository to this operation": "저장소를 이 오퍼레이션으로 복원",
+  "Park the playhead on a past operation first":
+    "먼저 플레이헤드를 과거 오퍼레이션에 세워라",
+  "Operation timeline": "오퍼레이션 타임라인",
+  "No operations yet.": "아직 오퍼레이션이 없다.",
+  now: "지금",
+
+  // ── Command panel ──────────────────────────────────────────────────────
+  COMMANDS: "명령",
+  "Colocated with Git: every bookmark is exported as a branch after each command.":
+    "Git과 콜로케이트 상태다. 명령이 끝날 때마다 북마크가 그대로 브랜치가 된다.",
+  "Not colocated: Git tools see .jj/repo/store/git, not this folder.":
+    "콜로케이트가 아니다. Git 도구는 이 폴더가 아니라 .jj/repo/store/git을 본다.",
+  "show reads": "읽기도 보기",
+  Close: "닫기",
+  "Nothing has run yet.": "아직 실행한 것이 없다.",
+  "No write has run in this window yet.": "이 창에서 쓰기 명령은 아직 없었다.",
+  "exit {code}": "종료 {code}",
+  Copy: "복사",
+  copy: "복사",
+  copied: "복사함",
+
+  // ── Workspace board ────────────────────────────────────────────────────
+  "Reading workspaces…": "워크스페이스를 읽는 중…",
+  "this window": "이 창",
+  "1 conflict": "충돌 1개",
+  "{count} conflicts": "충돌 {count}개",
+  "Working copy not in view.": "작업 사본이 화면에 없다.",
+  "NOTHING STACKED": "쌓인 것 없음",
+  "{count} STACKED BELOW": "아래에 {count}개 쌓임",
+  "Show in graph": "그래프에서 보기",
+  empty: "비었음",
+
+  // ── Stack panel ────────────────────────────────────────────────────────
+  "STACK · 1 CHANGE": "스택 · 체인지 1개",
+  "STACK · {count} CHANGES": "스택 · 체인지 {count}개",
+  "Return to now to push": "푸시하려면 지금으로 돌아와라",
+  "Nothing here can be pushed yet": "여기서 푸시할 수 있는 것이 아직 없다",
+  "Push stack ({count})": "스택 푸시 ({count})",
+  "One PR per change on {slug}, each based on the one below.":
+    "{slug}에 체인지마다 PR 하나. 각 PR은 아래 것을 기준으로 삼는다.",
+  "No GitHub remote or gh login: pushing works, PRs do not.":
+    "GitHub 리모트도 gh 로그인도 없다. 푸시는 되지만 PR은 안 된다.",
+  "(no description)": "(설명 없음)",
+  "Open PR": "PR 열기",
+  "push first": "푸시가 먼저",
+  // `unpushableReason` — why a revision cannot be pushed yet.
+  "no description": "설명 없음",
+  conflicted: "충돌",
+  // PR state and review status.
+  open: "열림",
+  merged: "머지됨",
+  closed: "닫힘",
+  draft: "초안",
+  approved: "승인",
+  changes: "변경 요청",
+
+  // ── Drag-rebase HUD ────────────────────────────────────────────────────
+  "WHAT MOVES · hold a key to switch": "무엇이 움직이나 · 키를 눌러 바꾼다",
+  "This revision only": "이 리비전만",
+  "With its descendants": "자손까지 함께",
+  "Its whole branch": "브랜치 전체",
+  "1 change": "체인지 1개",
+  "{count} changes": "체인지 {count}개",
+  Command: "명령어",
+  Onto: "대상",
+  "Cannot rebase onto its own descendant": "자기 자손 위로는 리베이스할 수 없다",
+  "Drop on a revision": "리비전 위에 놓아라",
+  "always one {key}": "언제나 {key} 한 번",
+  "Release to rebase · {key} cancel": "놓으면 리베이스 · {key}로 취소",
+
+  // ── Shortcut sheet ─────────────────────────────────────────────────────
+  "Keyboard shortcuts": "키보드 단축키",
+  Shortcuts: "단축키",
+  "No command is typed. Every jj verb is a key or a drag.":
+    "명령을 타이핑하지 않는다. jj 동작은 하나같이 키 아니면 드래그다.",
+  Done: "완료",
+  Navigate: "이동",
+  "Move selection": "선택 옮기기",
+  "Focus the revset field": "리브셋 입력란으로",
+  "Reload from disk": "디스크에서 다시 읽기",
+  "Workspace board": "워크스페이스 보드",
+  "Look up a git command": "git 명령 찾아보기",
+  "Commands this window ran": "이 창이 실행한 명령",
+  "Open another repository": "다른 저장소 열기",
+  "Change the history": "히스토리 고치기",
+  "New change on top of the selection": "선택한 것 위에 새 체인지",
+  "Edit the selected change": "선택한 체인지 편집",
+  "Abandon the selected change": "선택한 체인지 버리기",
+  "Split by hunk": "헝크 단위로 분리",
+  "Squash hunks into the parent": "헝크를 부모에 스쿼시",
+  "Absorb into the ancestors that last touched each line":
+    "각 줄을 마지막으로 건드린 조상에 absorb",
+  "Save the description / run the sheet": "설명 저장 / 시트 실행",
+  "Move history": "히스토리 옮기기",
+  "Rebase a revision onto another": "리비전을 다른 리비전 위로 리베이스",
+  "…moving this revision only": "…이 리비전만 옮긴다",
+  "…moving it and its descendants": "…이 리비전과 자손까지 옮긴다",
+  "…moving its whole branch": "…브랜치 전체를 옮긴다",
+  "Time travel": "시간 이동",
+  "Move the operation playhead": "오퍼레이션 플레이헤드 옮기기",
+  "Restore to the parked operation": "세워둔 오퍼레이션으로 복원",
+  "In the hunk sheet": "헝크 시트에서",
+  "Check or uncheck the focused hunk": "포커스된 헝크를 체크하거나 해제",
+  "Move between hunks": "헝크 사이 이동",
+  "Check or uncheck everything": "전부 체크하거나 해제",
+  Remotes: "리모트",
+  "Copy the last jj command": "마지막 jj 명령 복사",
+};

@@ -1,3 +1,4 @@
+import { t, tParts } from "../i18n/i18n.ts";
 import { markWelcomed } from "./onboarding.ts";
 
 /**
@@ -96,6 +97,14 @@ function ShieldCheck() {
 
 export function Welcome({ root }: { root: string }) {
   const name = root.split("/").filter(Boolean).pop() ?? root;
+  // Sentences with a key badge inside them: one catalog entry each, split at the
+  // slot, because Korean does not put the badge where English does.
+  const answers = tParts("Everything else, {shortcut} answers when you ask it.", "shortcut");
+  const undoable = tParts(
+    "Anything you do in this window is one {shortcut} away. That is deliberate — you are meant to be able to make a mess.",
+    "shortcut",
+  );
+  const lookUp = tParts("Or look any of it up again later with {shortcut}", "shortcut");
 
   return (
     <div
@@ -121,10 +130,12 @@ export function Welcome({ root }: { root: string }) {
         }}
       >
         <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>
-          Three things differ. Then you are on your own.
+          {t("Three things differ. Then you are on your own.")}
         </div>
         <div className="sec" style={{ fontSize: 13 }}>
-          Everything else, <span className="key">⌘G</span> answers when you ask it.
+          {answers[0]}
+          <span className="key">⌘G</span>
+          {answers[1]}
         </div>
       </div>
 
@@ -159,7 +170,7 @@ export function Welcome({ root }: { root: string }) {
               }}
             >
               <div className="side-head" style={{ padding: 0 }}>
-                {card.eyebrow}
+                {t(card.eyebrow)}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {card.git.map((line) => (
@@ -191,17 +202,17 @@ export function Welcome({ root }: { root: string }) {
                 flexGrow: 1,
               }}
             >
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{card.headline}</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{t(card.headline)}</div>
               <div className="sec" style={{ lineHeight: 1.6, flexGrow: 1 }}>
-                {card.body}
+                {t(card.body)}
               </div>
               <div className="sec" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
-                {card.lead}
+                {t(card.lead)}
               </div>
               {/* Not a button: these keys need a repository open, and a control
                   that looks live but is not would be its own small lie. */}
               <div className="step" {...(card.primary ? { "data-variant": "primary" } : {})}>
-                <span>{card.step}</span>
+                <span>{t(card.step)}</span>
                 <span className="key">{card.shortcut}</span>
               </div>
             </div>
@@ -225,7 +236,7 @@ export function Welcome({ root }: { root: string }) {
       >
         <ShieldCheck />
         <div style={{ color: "var(--u-accent)", fontWeight: 500 }}>
-          Anything you do in this window is one{" "}
+          {undoable[0]}
           <span
             className="key"
             style={{
@@ -235,8 +246,8 @@ export function Welcome({ root }: { root: string }) {
             }}
           >
             ⌘Z
-          </span>{" "}
-          away. That is deliberate — you are meant to be able to make a mess.
+          </span>
+          {undoable[1]}
         </div>
       </div>
 
@@ -257,10 +268,12 @@ export function Welcome({ root }: { root: string }) {
           autoFocus
           onClick={markWelcomed}
         >
-          Open {name} <span className="key">⏎</span>
+          {t("Open {name}", { name })} <span className="key">⏎</span>
         </button>
         <span className="sec" style={{ fontSize: 12 }}>
-          Or look any of it up again later with <span className="key">⌘G</span>
+          {lookUp[0]}
+          <span className="key">⌘G</span>
+          {lookUp[1]}
         </span>
       </div>
     </div>

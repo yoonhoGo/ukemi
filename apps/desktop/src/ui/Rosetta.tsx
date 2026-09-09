@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../i18n/i18n.ts";
 import { lookup, type RosettaEntry } from "./rosetta.ts";
 
 /**
@@ -61,7 +62,7 @@ export function Rosetta({ onClose }: { onClose(): void }) {
     >
       <div
         role="dialog"
-        aria-label="Look up a git command"
+        aria-label={t("Look up a git command")}
         onClick={(event) => event.stopPropagation()}
         style={{
           display: "flex",
@@ -76,7 +77,7 @@ export function Rosetta({ onClose }: { onClose(): void }) {
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
           <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
-            Type the git command you were reaching for
+            {t("Type the git command you were reaching for")}
           </h2>
           <span style={{ flexGrow: 1 }} />
           <button
@@ -133,7 +134,7 @@ export function Rosetta({ onClose }: { onClose(): void }) {
               // Text entry owns its keys; the window's map must not see them.
               event.stopPropagation();
             }}
-            aria-label="Git command"
+            aria-label={t("Git command")}
             style={{
               flexGrow: 1,
               minWidth: 0,
@@ -150,13 +151,16 @@ export function Rosetta({ onClose }: { onClose(): void }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 16 }}>
             <div className="side-head" style={{ padding: "0 0 4px" }}>
               {query.trim()
-                ? `${results.length} match${results.length === 1 ? "" : "es"}`
-                : "ASKED MOST"}
+                ? t(results.length === 1 ? "{count} match" : "{count} matches", {
+                    count: results.length,
+                  })
+                : t("ASKED MOST")}
             </div>
             {results.length === 0 && (
               <div className="sec" style={{ padding: "4px 4px 8px" }}>
-                Nothing here matches that. The command may already work the same way — or
-                it may be one jj has no answer for, which is worth knowing too.
+                {t(
+                  "Nothing here matches that. The command may already work the same way — or it may be one jj has no answer for, which is worth knowing too.",
+                )}
               </div>
             )}
             {results.map((entry, index) => (
@@ -187,18 +191,22 @@ export function Rosetta({ onClose }: { onClose(): void }) {
                 <span className="mono">{entry.runs[0] ?? "—"}</span>
                 <span className="sec" style={{ fontSize: 11.5 }}>
                   {entry.steps[0]
-                    ? `${entry.steps[0].label}${
+                    ? `${t(entry.steps[0].label)}${
                         entry.steps[0].shortcut ? ` · ${entry.steps[0].shortcut}` : ""
                       }`
-                    : "No key for it; the command is the answer."}
+                    : t("No key for it; the command is the answer.")}
                 </span>
               </button>
             ))}
           </div>
 
           <div className="sec" style={{ marginTop: 14, fontSize: 11.5, lineHeight: 1.5 }}>
-            Ukemi never hides the command it ran — <span className="key">⌘J</span> lists every
-            one this window has run, in order.
+            <KeyLine
+              line={t(
+                "Ukemi never hides the command it ran — {key} lists every one this window has run, in order.",
+              )}
+              cap="⌘J"
+            />
           </div>
         </div>
       </div>
@@ -230,7 +238,7 @@ function Answer({
       {entry.steps.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div className="side-head" style={{ padding: 0 }}>
-            IN THIS WINDOW
+            {t("IN THIS WINDOW")}
           </div>
           {entry.steps.map((step, index) => (
             <div key={step.label} className="step" data-variant="primary">
@@ -240,7 +248,7 @@ function Answer({
                     {index + 1}
                   </span>
                 )}
-                {step.label}
+                {t(step.label)}
               </span>
               {step.shortcut && <span className="key">{step.shortcut}</span>}
             </div>
@@ -252,7 +260,7 @@ function Answer({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         <div className="side-head" style={{ padding: 0 }}>
-          WHAT ACTUALLY RUNS
+          {t("WHAT ACTUALLY RUNS")}
         </div>
         <div className="mono selectable" style={{ lineHeight: 1.75 }}>
           {entry.runs.map((run) => (
@@ -265,20 +273,20 @@ function Answer({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         <div className="side-head" style={{ padding: 0 }}>
-          WHY IT DIFFERS
+          {t("WHY IT DIFFERS")}
         </div>
         <div className="sec" style={{ lineHeight: 1.6 }}>
-          {entry.why}
+          {t(entry.why)}
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 2 }}>
         <button type="button" className="tb-btn" data-variant="primary" onClick={onCopy}>
-          {copied ? "Copied" : "Copy the commands"} <span className="key">⏎</span>
+          {copied ? t("Copied") : t("Copy the commands")} <span className="key">⏎</span>
         </button>
         <span style={{ flexGrow: 1 }} />
         <span className="sec" style={{ fontSize: 11.5 }}>
-          Whatever you run, <span className="key">⌘Z</span> takes it back.
+          <KeyLine line={t("Whatever you run, {key} takes it back.")} cap="⌘Z" />
         </span>
       </div>
     </div>
@@ -286,3 +294,22 @@ function Answer({
 }
 
 const Rule = () => <div style={{ height: 1, background: "var(--u-line-faint)" }} />;
+
+/**
+ * A sentence with one key cap in it, kept as a single catalog entry.
+ *
+ * Splitting the translated line on its `{key}` placeholder is what lets the cap
+ * sit where the sentence wants it: Korean puts it near the verb, English near
+ * the subject, and concatenating two halves could only ever get one of them
+ * right.
+ */
+function KeyLine({ line, cap }: { line: string; cap: string }) {
+  const [before, after = ""] = line.split("{key}");
+  return (
+    <>
+      {before}
+      <span className="key">{cap}</span>
+      {after}
+    </>
+  );
+}

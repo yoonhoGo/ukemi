@@ -29,6 +29,7 @@ import { Toolbar } from "./ui/Toolbar.tsx";
 import { useDragRebase, type DragState } from "./ui/drag-rebase.tsx";
 import { DragGhost, RebaseHud } from "./ui/RebaseHud.tsx";
 import { DEFAULT_REVSET } from "@ukemi/domain";
+import { t, tParts } from "./i18n/i18n.ts";
 
 /**
  * The main window.
@@ -60,6 +61,8 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
   );
 
   const rows = layout?.rows ?? [];
+  const conflicts = rows.filter((row) => row.revision.hasConflict).length;
+  const [emptyBefore, emptyAfter] = tParts("No revisions match {revset}.", "revset");
   // Default the selection to the working copy: it is the change you are in.
   const effectiveSelection = useMemo(() => {
     if (selected && rows.some((row) => row.revision.changeId === selected)) return selected;
@@ -307,14 +310,14 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
             fontWeight: 600,
           }}
         >
-          Viewing a past operation — the repository is untouched.
+          {t("Viewing a past operation — the repository is untouched.")}
           <button
             type="button"
             className="tb-btn"
             style={{ height: 20, fontSize: 11, background: "transparent" }}
             onClick={() => pin(undefined)}
           >
-            Back to now <span className="key">Esc</span>
+            {t("Back to now")} <span className="key">Esc</span>
           </button>
         </div>
       )}
@@ -370,11 +373,11 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
             }}
           >
             <div />
-            <div>Change</div>
-            <div>Description</div>
-            <div>Bookmarks</div>
+            <div>{t("Change")}</div>
+            <div>{t("Description")}</div>
+            <div>{t("Bookmarks")}</div>
             <div />
-            <div style={{ textAlign: "right" }}>When</div>
+            <div style={{ textAlign: "right" }}>{t("When")}</div>
           </div>
 
           {view === "board" && (
@@ -388,12 +391,14 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
           )}
           {view === "graph" && query.isPending && (
             <div className="sec" style={{ padding: 16 }}>
-              Reading the repository…
+              {t("Reading the repository…")}
             </div>
           )}
           {view === "graph" && layout && layout.rows.length === 0 && (
             <div className="sec" style={{ padding: 16 }}>
-              No revisions match <span className="mono">{revset}</span>.
+              {emptyBefore}
+              <span className="mono">{revset}</span>
+              {emptyAfter}
             </div>
           )}
           {view === "graph" && layout && layout.rows.length > 0 && (
@@ -423,13 +428,15 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
             }}
           >
             <span>
-              {rows.length} revision{rows.length === 1 ? "" : "s"}
-              {rows.length >= LOG_LIMIT && " · newest only; narrow the revset for more"}
-              {rows.some((row) => row.revision.hasConflict) &&
-                ` · ${rows.filter((row) => row.revision.hasConflict).length} conflict`}
+              {rows.length === 1
+                ? t("1 revision")
+                : t("{count} revisions", { count: rows.length })}
+              {rows.length >= LOG_LIMIT && ` · ${t("newest only; narrow the revset for more")}`}
+              {conflicts > 0 &&
+                ` · ${conflicts === 1 ? t("1 conflict") : t("{count} conflicts", { count: conflicts })}`}
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span className="key">⌥</span> drag = rebase
+              <span className="key">⌥</span> {t("drag = rebase")}
             </span>
             <span style={{ flexGrow: 1 }} />
             {/* Transparency: the app never hides which jj command it ran. */}
@@ -438,7 +445,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
                 type="button"
                 onClick={copyLastCommand}
                 onDoubleClick={() => setShowCommands(true)}
-                title="Copy this command (⌘⌥C). Double-click for every command (⌘J)."
+                title={t("Copy this command (⌘⌥C). Double-click for every command (⌘J).")}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -457,7 +464,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
                 >
                   {lastCommand}
                 </span>
-                <span className="key">{copied ? "copied" : "⌘⌥C"}</span>
+                <span className="key">{copied ? t("copied") : "⌘⌥C"}</span>
               </button>
             )}
           </div>

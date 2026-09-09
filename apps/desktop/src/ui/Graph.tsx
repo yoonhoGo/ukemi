@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { ChangeId, GraphLayout, GraphRow, PullRequest, Revision } from "@ukemi/domain";
 import { ELIDED_ROW } from "@ukemi/domain";
+import { t } from "../i18n/i18n.ts";
 import { PrLabel } from "./Stack.tsx";
 import { authorInitials, nodeColor } from "./change-color.ts";
 import {
@@ -202,22 +203,22 @@ function Row({
           </span>
         ) : (
           <span className="sec" style={{ fontStyle: "italic" }}>
-            (no description set)
+            {t("(no description set)")}
           </span>
         )}
-        {revision.isWorkingCopy && <span className="pill">working copy</span>}
+        {revision.isWorkingCopy && <span className="pill">{t("working copy")}</span>}
         {revision.hasConflict && (
           <span className="pill" data-kind="conflict">
-            conflict
+            {t("conflict")}
           </span>
         )}
-        {revision.isDivergent && <span className="pill">divergent</span>}
+        {revision.isDivergent && <span className="pill">{t("divergent")}</span>}
         {isTarget && !targetBlocked && (
           <span
             className="pill"
             style={{ background: "var(--u-accent)", color: "var(--u-accent-ink)" }}
           >
-            new parent
+            {t("new parent")}
           </span>
         )}
       </div>
@@ -280,7 +281,7 @@ export function Graph({
       className="u-scroll"
       style={{ position: "relative", flexGrow: 1, minHeight: 0 }}
       role="listbox"
-      aria-label="Revisions"
+      aria-label={t("Revisions")}
     >
       <div
         style={

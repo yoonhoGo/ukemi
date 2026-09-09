@@ -1,4 +1,5 @@
 import type { ChangeId, Revision, Workspace } from "@ukemi/domain";
+import { t } from "../i18n/i18n.ts";
 import { useBoardRevisions, useWorkspaces } from "../repo.tsx";
 import { authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
@@ -29,7 +30,7 @@ export function Board({
   if (workspaces.isPending || revisions.isPending) {
     return (
       <div className="sec" style={{ padding: 16 }}>
-        Reading workspaces…
+        {t("Reading workspaces…")}
       </div>
     );
   }
@@ -95,11 +96,13 @@ function Column({
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontWeight: 600 }}>{workspace.name}</span>
-        {isThis && <span className="pill">this window</span>}
+        {isThis && <span className="pill">{t("this window")}</span>}
         <span style={{ flexGrow: 1 }} />
         {conflicts > 0 && (
           <span className="pill" data-kind="conflict">
-            {conflicts} conflict{conflicts === 1 ? "" : "s"}
+            {conflicts === 1
+              ? t("1 conflict")
+              : t("{count} conflicts", { count: conflicts })}
           </span>
         )}
       </div>
@@ -108,12 +111,14 @@ function Column({
         <Card revision={head} isHead onShow={onShow} />
       ) : (
         <div className="sec" style={{ fontSize: 12 }}>
-          Working copy not in view.
+          {t("Working copy not in view.")}
         </div>
       )}
 
       <div className="side-head" style={{ padding: "4px 0 0" }}>
-        {below.length === 0 ? "NOTHING STACKED" : `${below.length} STACKED BELOW`}
+        {below.length === 0
+          ? t("NOTHING STACKED")
+          : t("{count} STACKED BELOW", { count: below.length })}
       </div>
       {below.map((r) => (
         <Card key={r.changeId} revision={r} isHead={false} onShow={onShow} />
@@ -136,7 +141,7 @@ function Card({
     <button
       type="button"
       onClick={() => onShow(revision.changeId)}
-      title="Show in graph"
+      title={t("Show in graph")}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -157,10 +162,10 @@ function Card({
           </span>
         </span>
         {isHead && <span className="pill">@</span>}
-        {revision.isEmpty && <span className="pill">empty</span>}
+        {revision.isEmpty && <span className="pill">{t("empty")}</span>}
         {revision.hasConflict && (
           <span className="pill" data-kind="conflict">
-            conflict
+            {t("conflict")}
           </span>
         )}
       </div>
@@ -174,7 +179,7 @@ function Card({
       >
         {revision.description.split("\n")[0] || (
           <span className="sec" style={{ fontStyle: "italic" }}>
-            (no description set)
+            {t("(no description set)")}
           </span>
         )}
       </div>

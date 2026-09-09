@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { Operation } from "@ukemi/domain";
 import { useJjMutation, useOperations, useRepo } from "../repo.tsx";
+import { t } from "../i18n/i18n.ts";
 import { clockTime, relativeTime } from "./time.ts";
 
 /**
@@ -63,17 +64,17 @@ export function Timeline() {
         style={{ display: "flex", alignItems: "center", height: 30, padding: "0 14px", gap: 12 }}
       >
         <span className="side-head" style={{ padding: 0 }}>
-          OPERATIONS
+          {t("OPERATIONS")}
         </span>
         <span className="sec" style={{ fontSize: "var(--u-font-size-small)" }}>
           {isPinned
-            ? "Viewing a past state. Nothing has changed yet."
-            : "Drag the playhead to preview any past state. Nothing changes until you restore."}
+            ? t("Viewing a past state. Nothing has changed yet.")
+            : t("Drag the playhead to preview any past state. Nothing changes until you restore.")}
         </span>
         <span style={{ flexGrow: 1 }} />
         {isPinned && (
           <button type="button" className="tb-btn" style={btn} onClick={() => pin(undefined)}>
-            Back to now <span className="key">Esc</span>
+            {t("Back to now")} <span className="key">Esc</span>
           </button>
         )}
         <button
@@ -81,10 +82,10 @@ export function Timeline() {
           className="tb-btn"
           style={btn}
           disabled={isPinned || undo.isPending}
-          title={isPinned ? "Return to now to undo" : "Undo the last operation"}
+          title={isPinned ? t("Return to now to undo") : t("Undo the last operation")}
           onClick={() => undo.mutate(undefined)}
         >
-          Undo <span className="key">⌘Z</span>
+          {t("Undo")} <span className="key">⌘Z</span>
         </button>
         <button
           type="button"
@@ -93,12 +94,12 @@ export function Timeline() {
           disabled={!isPinned || restore.isPending}
           title={
             isPinned
-              ? "Restore the repository to this operation"
-              : "Park the playhead on a past operation first"
+              ? t("Restore the repository to this operation")
+              : t("Park the playhead on a past operation first")
           }
           onClick={() => pinnedOpId && restore.mutate(pinnedOpId)}
         >
-          Restore here <span className="key">⌘⇧R</span>
+          {t("Restore here")} <span className="key">⌘⇧R</span>
         </button>
       </div>
 
@@ -108,11 +109,11 @@ export function Timeline() {
         style={{ flexGrow: 1, margin: "0 14px 10px", overflowY: "hidden" }}
         role="slider"
         tabIndex={0}
-        aria-label="Operation timeline"
+        aria-label={t("Operation timeline")}
         aria-valuemin={0}
         aria-valuemax={Math.max(0, ordered.length - 1)}
         aria-valuenow={Math.max(0, activeIndex)}
-        aria-valuetext={ordered[activeIndex]?.description ?? "now"}
+        aria-valuetext={ordered[activeIndex]?.description ?? t("now")}
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") {
             event.preventDefault();
@@ -146,7 +147,7 @@ function Track({
   if (operations.length === 0) {
     return (
       <div className="sec" style={{ fontSize: "var(--u-font-size-small)" }}>
-        No operations yet.
+        {t("No operations yet.")}
       </div>
     );
   }
@@ -204,7 +205,7 @@ function Track({
               fill="var(--u-text-tertiary)"
               style={{ fontFamily: "var(--u-font)" }}
             >
-              {isNewest && !isPinned ? "now" : clockTime(operation.time)}
+              {isNewest && !isPinned ? t("now") : clockTime(operation.time)}
             </text>
           </g>
         );

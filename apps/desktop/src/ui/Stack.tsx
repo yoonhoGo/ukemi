@@ -1,5 +1,6 @@
 import type { PullRequest, Revision } from "@ukemi/domain";
 import { prBaseFor, prHeadFor, pullRequestFor, stackOf, unpushableReason } from "@ukemi/domain";
+import { t } from "../i18n/i18n.ts";
 import {
   useForge,
   useForgeMutation,
@@ -56,7 +57,9 @@ export function StackPanel({ revision }: { revision: Revision }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="side-head" style={{ padding: 0 }}>
-          STACK · {stack.length} CHANGE{stack.length === 1 ? "" : "S"}
+          {stack.length === 1
+            ? t("STACK · 1 CHANGE")
+            : t("STACK · {count} CHANGES", { count: stack.length })}
         </span>
         <span style={{ flexGrow: 1 }} />
         <button
@@ -66,20 +69,22 @@ export function StackPanel({ revision }: { revision: Revision }) {
           disabled={isPinned || pushable.length === 0 || push.isPending}
           title={
             isPinned
-              ? "Return to now to push"
+              ? t("Return to now to push")
               : pushable.length === 0
-                ? "Nothing here can be pushed yet"
+                ? t("Nothing here can be pushed yet")
                 : `jj git push ${pushable.map((r) => `--change ${r.changeId.slice(0, 8)}`).join(" ")}`
           }
           onClick={() => push.mutate(undefined)}
         >
-          {push.isPending ? "Pushing…" : `Push stack (${pushable.length})`}
+          {push.isPending
+            ? t("Pushing…")
+            : t("Push stack ({count})", { count: pushable.length })}
         </button>
       </div>
       <div className="sec" style={{ fontSize: 11.5, paddingBottom: 4 }}>
         {forge
-          ? `One PR per change on ${forge.slug}, each based on the one below.`
-          : "No GitHub remote or gh login: pushing works, PRs do not."}
+          ? t("One PR per change on {slug}, each based on the one below.", { slug: forge.slug })
+          : t("No GitHub remote or gh login: pushing works, PRs do not.")}
       </div>
 
       {/* Top of the stack first, to match the graph. */}
@@ -120,9 +125,9 @@ export function StackPanel({ revision }: { revision: Revision }) {
                 fontSize: 12,
               }}
             >
-              {r.description.split("\n")[0] || <span className="sec">(no description)</span>}
+              {r.description.split("\n")[0] || <span className="sec">{t("(no description)")}</span>}
             </span>
-            {reason && <span className="pill">{reason}</span>}
+            {reason && <span className="pill">{t(reason)}</span>}
             {pr ? (
               <button
                 type="button"
@@ -146,14 +151,14 @@ export function StackPanel({ revision }: { revision: Revision }) {
                   openPr.mutate({ head: head!, base: base!, title: title!, body: rest.join("\n").trim() });
                 }}
               >
-                Open PR
+                {t("Open PR")}
               </button>
             ) : (
               !reason &&
               forge &&
               head === undefined && (
                 <span className="ter" style={{ fontSize: 11 }}>
-                  push first
+                  {t("push first")}
                 </span>
               )
             )}
@@ -188,7 +193,7 @@ export function PrLabel({ pr }: { pr: PullRequest }) {
             : "open";
   return (
     <>
-      #{pr.number} <span style={{ fontWeight: 400 }}>{status}</span>
+      #{pr.number} <span style={{ fontWeight: 400 }}>{t(status)}</span>
     </>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { DiffGroup, FileDiff, PlanFile, Revision } from "@ukemi/domain";
 import { allGroups, applySelectedGroups } from "@ukemi/domain";
 import { useHunkEditData, useJjMutation } from "../repo.tsx";
+import { t, tParts } from "../i18n/i18n.ts";
 import { nodeColor } from "./change-color.ts";
 
 /**
@@ -23,8 +24,7 @@ export type HunkSheetMode = "split" | "squash";
 const COPY: Record<
   HunkSheetMode,
   {
-    prefix: string;
-    suffix: string;
+    title: string;
     blurb: string;
     keptLabel: string;
     restLabel: string;
@@ -32,8 +32,7 @@ const COPY: Record<
   }
 > = {
   split: {
-    prefix: "Split ",
-    suffix: " into two changes",
+    title: "Split {change} into two changes",
     blurb:
       "Checked hunks stay in the first change. Everything else moves to a new change on top. Nothing is staged; both are real commits when you finish.",
     keptLabel: "First change",
@@ -41,8 +40,7 @@ const COPY: Record<
     verb: "Split",
   },
   squash: {
-    prefix: "Squash part of ",
-    suffix: " into its parent",
+    title: "Squash part of {change} into its parent",
     blurb:
       "Checked hunks move into the parent commit. Everything else stays where it is. The parent keeps its own description.",
     keptLabel: "Moves into parent",
@@ -73,7 +71,7 @@ function entriesFor(files: readonly FileDiff[]): Entry[] {
           deletions: 0,
         },
         file,
-        label: "binary",
+        label: t("binary"),
       });
       continue;
     }
@@ -83,9 +81,9 @@ function entriesFor(files: readonly FileDiff[]): Entry[] {
         file,
         label:
           file.status === "added"
-            ? "new file"
+            ? t("new file")
             : file.status === "removed"
-              ? "deleted"
+              ? t("deleted")
               : `@${group.oldStart}`,
       });
     }
@@ -149,6 +147,10 @@ export function HunkSheet({
   // new change to name, so it does not show one.
   const [message, setMessage] = useState("");
   const copy = COPY[mode];
+  // Korean puts the change ID first and the verb last, so the sentence stays one
+  // key and the coloured ID drops into the slot.
+  const [beforeChange, afterChange] = tParts(copy.title, "change");
+  const [beforeCommand, afterCommand] = tParts("Runs {command} · undo with", "command");
 
   const splitHunks = useJjMutation((port, plan: PlanFile[]) =>
     port.splitHunks({ rev: revision.changeId, keep: plan, message }),
@@ -240,7 +242,7 @@ export function HunkSheet({
     >
       <div
         role="dialog"
-        aria-label={copy.verb}
+        aria-label={t(copy.verb)}
         onClick={(event) => event.stopPropagation()}
         style={{
           display: "flex",
@@ -257,14 +259,14 @@ export function HunkSheet({
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "18px 20px 10px" }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>
-            {copy.prefix}
+            {beforeChange}
             <span className="mono" style={{ color: nodeColor(revision) }}>
               {revision.changeId.slice(0, 2)}
             </span>
             <span className="mono sec">{revision.changeId.slice(2, 8)}</span>
-            {copy.suffix}
+            {afterChange}
           </div>
-          <div className="sec">{copy.blurb}</div>
+          <div className="sec">{t(copy.blurb)}</div>
           {mode === "split" && (
             <input
               value={message}
@@ -273,7 +275,7 @@ export function HunkSheet({
                 // ⌘↩ still submits; everything else is text entry.
                 if (!(event.key === "Enter" && event.metaKey)) event.stopPropagation();
               }}
-              placeholder="Describe the first change… (optional)"
+              placeholder={t("Describe the first change… (optional)")}
               spellCheck={false}
               style={{
                 marginTop: 8,
@@ -313,11 +315,12 @@ export function HunkSheet({
             }}
           >
             <div className="side-head" style={{ padding: "2px 4px" }}>
-              HUNKS · <span className="key">space</span> toggle · <span className="key">⌘A</span> all
+              {t("HUNKS")} · <span className="key">space</span> {t("toggle")} ·{" "}
+              <span className="key">⌘A</span> {t("all")}
             </div>
-            {data.isPending && <div className="sec">Reading the diff…</div>}
+            {data.isPending && <div className="sec">{t("Reading the diff…")}</div>}
             {entries.length === 0 && !data.isPending && (
-              <div className="sec">This revision changes nothing.</div>
+              <div className="sec">{t("This revision changes nothing.")}</div>
             )}
             {entries.map((entry) => {
               const checked = selected.has(entry.group.id);
@@ -391,8 +394,8 @@ export function HunkSheet({
                 background: "var(--u-bg-sunken)",
               }}
             >
-              <Tally color="var(--u-accent)" label={copy.keptLabel} count={keptCount} />
-              <Tally color="var(--u-added)" label={copy.restLabel} count={restCount} />
+              <Tally color="var(--u-accent)" label={t(copy.keptLabel)} count={keptCount} />
+              <Tally color="var(--u-added)" label={t(copy.restLabel)} count={restCount} />
             </div>
           </div>
 
@@ -410,7 +413,7 @@ export function HunkSheet({
               <HunkPreview entry={focusedEntry} selected={selected.has(focusedEntry.group.id)} />
             ) : (
               <div className="sec" style={{ padding: 12 }}>
-                Select a hunk.
+                {t("Select a hunk.")}
               </div>
             )}
           </div>
@@ -422,18 +425,22 @@ export function HunkSheet({
               <span style={{ color: "var(--u-conflict)" }}>
                 {/* Refusing is the only safe answer: jj would commit whatever
                     tree we hand it, including a wrong one. */}
-                Cannot edit by hunk — {data.data?.problem}
+                {t("Cannot edit by hunk — {problem}", {
+                  problem: data.data?.problem ?? "",
+                })}
               </span>
             ) : (
               <>
-                Runs <span className="mono">jj {mode}</span> · undo with{" "}
+                {beforeCommand}
+                <span className="mono">jj {mode}</span>
+                {afterCommand}{" "}
                 <span className="key">⌘Z</span>
               </>
             )}
           </span>
           <span style={{ flexGrow: 1 }} />
           <button type="button" className="tb-btn" onClick={onClose}>
-            Cancel <span className="key">esc</span>
+            {t("Cancel")} <span className="key">esc</span>
           </button>
           <button
             type="button"
@@ -442,9 +449,9 @@ export function HunkSheet({
             disabled={!canRun}
             title={
               keptCount === 0
-                ? "Check at least one hunk"
+                ? t("Check at least one hunk")
                 : restCount === 0
-                  ? "Leave at least one hunk behind"
+                  ? t("Leave at least one hunk behind")
                   : undefined
             }
             onClick={() =>
@@ -454,7 +461,7 @@ export function HunkSheet({
               })
             }
           >
-            {run.isPending ? "Working…" : copy.verb} <span className="key">⌘↩</span>
+            {run.isPending ? t("Working…") : t(copy.verb)} <span className="key">⌘↩</span>
           </button>
         </div>
 
@@ -483,7 +490,7 @@ function Tally({ color, label, count }: { color: string; label: string; count: n
       <span style={{ width: 8, height: 8, borderRadius: 4, background: color }} />
       <span style={{ flexGrow: 1, fontSize: 12 }}>{label}</span>
       <span className="sec" style={{ fontSize: 11 }}>
-        {count} hunk{count === 1 ? "" : "s"}
+        {count === 1 ? t("1 hunk") : t("{count} hunks", { count })}
       </span>
     </div>
   );
@@ -519,12 +526,12 @@ function HunkPreview({ entry, selected }: { entry: Entry; selected: boolean }) {
         <span className="mono">{entry.file.path}</span>
         {hunk && <span className="mono sec">{hunk.header.split("@@")[1]?.trim()}</span>}
         <span style={{ flexGrow: 1 }} />
-        <span className="sec">{selected ? "checked" : "unchecked"}</span>
+        <span className="sec">{selected ? t("checked") : t("unchecked")}</span>
       </div>
       <div className="u-scroll mono selectable" style={{ flexGrow: 1, padding: "6px 0" }}>
         {entry.file.isBinary && (
           <div className="sec" style={{ padding: "0 10px" }}>
-            Binary file — it can only be taken or left whole.
+            {t("Binary file — it can only be taken or left whole.")}
           </div>
         )}
         {hunk?.lines.map((line, index) => {

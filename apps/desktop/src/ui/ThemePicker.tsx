@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { applyTheme, currentTheme, THEMES } from "../themes/themes.ts";
+import { t } from "../i18n/i18n.ts";
 
 /**
  * Theme switch.
@@ -14,7 +15,7 @@ export function ThemePicker() {
   return (
     <div style={{ marginTop: "auto", paddingTop: 14 }}>
       <div className="side-head" style={{ padding: "0 8px 4px" }}>
-        Theme
+        {t("Theme")}
       </div>
       {THEMES.map((theme) => (
         <button
@@ -22,13 +23,13 @@ export function ThemePicker() {
           className="side-item"
           key={theme.id}
           aria-current={theme.id === active}
-          title={theme.note}
+          title={t(theme.note)}
           onClick={() => {
             applyTheme(theme.id);
             setActive(theme.id);
           }}
         >
-          <span style={{ flexGrow: 1 }}>{theme.name}</span>
+          <span style={{ flexGrow: 1 }}>{t(theme.name)}</span>
         </button>
       ))}
     </div>

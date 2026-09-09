@@ -1,4 +1,5 @@
 import { useSyncExternalStore, type CSSProperties } from "react";
+import { t, tParts } from "../i18n/i18n.ts";
 import {
   acknowledgeHint,
   hasGraduated,
@@ -77,14 +78,17 @@ export function CoachBubble({ onOpenRosetta }: { onOpenRosetta(): void }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{hint.title}</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{t(hint.title)}</div>
           <span style={{ flexGrow: 1 }} />
           <span className="sec" style={{ fontSize: 10.5, whiteSpace: "nowrap" }}>
-            hint {reachedCount(progress)} of {MILESTONE_COUNT}
+            {t("hint {done} of {total}", {
+              done: reachedCount(progress),
+              total: MILESTONE_COUNT,
+            })}
           </span>
         </div>
         <div className="sec" style={{ lineHeight: 1.6 }}>
-          {hint.body}
+          {t(hint.body)}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 2 }}>
           <button
@@ -94,7 +98,7 @@ export function CoachBubble({ onOpenRosetta }: { onOpenRosetta(): void }) {
             style={{ height: 26 }}
             onClick={() => acknowledgeHint(hint.id)}
           >
-            Got it
+            {t("Got it")}
           </button>
           <button
             type="button"
@@ -107,7 +111,7 @@ export function CoachBubble({ onOpenRosetta }: { onOpenRosetta(): void }) {
               onOpenRosetta();
             }}
           >
-            Look up a git command <span className="key">⌘G</span>
+            {t("Look up a git command")} <span className="key">⌘G</span>
           </button>
         </div>
       </div>
@@ -131,7 +135,7 @@ export function TransitionStrip({ onOpen }: { onOpen(): void }) {
     <button
       type="button"
       onClick={onOpen}
-      title="Moving from Git — seven habits and where each one went"
+      title={t("Moving from Git — seven habits and where each one went")}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -146,16 +150,16 @@ export function TransitionStrip({ onOpen }: { onOpen(): void }) {
     >
       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
         <span className="side-head" style={{ padding: 0 }}>
-          FROM GIT
+          {t("FROM GIT")}
         </span>
         <span style={{ flexGrow: 1 }} />
         <span className="sec" style={{ fontSize: 11 }}>
-          {done} of {MILESTONE_COUNT}
+          {t("{done} of {total}", { done, total: MILESTONE_COUNT })}
         </span>
       </div>
       <Meter done={done} />
       <div className="sec" style={{ fontSize: 11, lineHeight: 1.45 }}>
-        Look up a git command <span className="key">⌘G</span>
+        {t("Look up a git command")} <span className="key">⌘G</span>
       </div>
     </button>
   );
@@ -184,6 +188,10 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
   const progress = useProgress();
   const done = reachedCount(progress);
   const nextUp = MILESTONES.find((entry) => !progress.reached.includes(entry.id));
+  const shortcutStays = tParts("{shortcut} stays either way.", "shortcut");
+  // Korean puts the command first and the postposition after it, so the sentence
+  // stays one key and the mono span drops into the slot.
+  const [beforeCmd, afterCmd] = tParts("instead of {command}", "command");
 
   return (
     <div
@@ -200,7 +208,7 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
     >
       <div
         role="dialog"
-        aria-label="Moving from Git"
+        aria-label={t("Moving from Git")}
         onClick={(event) => event.stopPropagation()}
         className="u-scroll"
         style={{
@@ -215,10 +223,10 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Moving from Git</h2>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{t("Moving from Git")}</h2>
           <span style={{ flexGrow: 1 }} />
           <span className="sec" style={{ fontSize: 11.5 }}>
-            {done} of {MILESTONE_COUNT}
+            {t("{done} of {total}", { done, total: MILESTONE_COUNT })}
           </span>
           <button
             type="button"
@@ -230,8 +238,9 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
           </button>
         </div>
         <div className="sec" style={{ marginTop: 5, fontSize: 12, lineHeight: 1.5 }}>
-          Seven habits Git gave you, and where each one went. A row ticks when you have
-          actually done it once — not when you have read about it.
+          {t(
+            "Seven habits Git gave you, and where each one went. A row ticks when you have actually done it once — not when you have read about it.",
+          )}
         </div>
 
         <div style={{ margin: "12px 0 4px" }}>
@@ -269,18 +278,19 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
                     className={reached ? undefined : "sec"}
                     style={isNext ? { fontWeight: 500 } : undefined}
                   >
-                    {entry.label}
+                    {t(entry.label)}
                   </span>
                   <span className={reached || isNext ? "sec" : "ter"} style={{ fontSize: 11 }}>
-                    instead of{" "}
+                    {beforeCmd}
                     <span className="mono" style={{ fontSize: 11 }}>
                       {entry.replaces}
                     </span>
+                    {afterCmd}
                   </span>
                 </div>
                 {isNext && (
                   <span className="pill" data-kind="bookmark">
-                    next
+                    {t("next")}
                   </span>
                 )}
                 {!isNext && !reached && entry.shortcut && (
@@ -295,16 +305,16 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, flexGrow: 1, minWidth: 0 }}>
-            <span>Coach hints</span>
+            <span>{t("Coach hints")}</span>
             <span className="sec" style={{ fontSize: 11, lineHeight: 1.45 }}>
-              Retire on their own once all seven are behind you.
+              {t("Retire on their own once all seven are behind you.")}
             </span>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={!progress.hintsOff}
-            aria-label="Coach hints"
+            aria-label={t("Coach hints")}
             onClick={() => setHintsOff(!progress.hintsOff)}
             style={{
               display: "flex",
@@ -331,7 +341,9 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
         </div>
 
         <div className="sec" style={{ marginTop: 12, fontSize: 11.5, lineHeight: 1.5 }}>
-          <span className="key">⌘G</span> stays either way.
+          {shortcutStays[0]}
+          <span className="key">⌘G</span>
+          {shortcutStays[1]}
         </div>
       </div>
     </div>

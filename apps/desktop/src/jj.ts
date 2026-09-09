@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { t } from "./i18n/i18n.ts";
 import {
   GhCliAdapter,
   JjCliAdapter,
@@ -134,7 +135,11 @@ export function initialRepo(): Promise<string | undefined> {
 
 /** Native folder picker. Returns the chosen path, or `undefined` if cancelled. */
 export async function pickRepoFolder(): Promise<string | undefined> {
-  const chosen = await open({ directory: true, multiple: false, title: "Open repository" });
+  const chosen = await open({
+    directory: true,
+    multiple: false,
+    title: t("Open repository"),
+  });
   return typeof chosen === "string" ? chosen : undefined;
 }
 

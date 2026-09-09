@@ -38,6 +38,14 @@ loudly if a template's shape moves. That test is the version guard.
 
 Node 24 runs the TypeScript directly, so packages have no build step.
 
+## Languages
+
+English and Korean. The window follows the system language on first launch and
+remembers whatever you pick in the sidebar. Strings are keyed on their English
+source (`apps/desktop/src/i18n/`), so a missing translation shows the English
+sentence rather than a key — and `npm test` fails on a string that never got
+one.
+
 ## Optional: GitHub
 
 Stacked PRs use the `gh` CLI from your PATH, with your own login. Without it,

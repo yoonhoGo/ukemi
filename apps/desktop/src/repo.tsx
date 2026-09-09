@@ -39,6 +39,7 @@ import {
   type RebaseMode,
 } from "@ukemi/domain";
 import { githubSlug } from "@ukemi/jj-cli-adapter";
+import { t } from "./i18n/i18n.ts";
 import {
   commandLogSnapshot,
   forgeFor,
@@ -410,7 +411,7 @@ export function useForgeMutation<TArgs>(run: (forge: ForgePort, args: TArgs) => 
   const client = useQueryClient();
   return useMutation({
     mutationFn: (args: TArgs) => {
-      if (!forge) throw new Error("No GitHub remote, or gh is not available.");
+      if (!forge) throw new Error(t("No GitHub remote, or gh is not available."));
       return run(forge, args);
     },
     onSuccess: () => {

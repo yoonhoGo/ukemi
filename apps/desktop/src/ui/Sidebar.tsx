@@ -1,8 +1,10 @@
 import type { Bookmark } from "@ukemi/domain";
 import { bookmarkRevset, CONFLICTS_REVSET, DEFAULT_REVSET, UNPUSHED_REVSET } from "@ukemi/domain";
+import { t } from "../i18n/i18n.ts";
 import { useBookmarks, useRepo, useWorkspaces } from "../repo.tsx";
 import { TransitionStrip } from "./Coach.tsx";
 import { BookmarkIcon, CurrentWorkspaceIcon, RevsetIcon, WorkspaceIcon } from "./icons.tsx";
+import { LanguagePicker } from "./LanguagePicker.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
 
 /** Saved revsets, bound to ⌘1…⌘3. Handled in `App`'s key map too. */
@@ -51,10 +53,10 @@ export function Sidebar({
         borderRight: "1px solid var(--u-line)",
       }}
     >
-      <div className="side-head">Bookmarks</div>
+      <div className="side-head">{t("Bookmarks")}</div>
       {bookmarks.data?.length === 0 && (
         <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
-          None yet.
+          {t("None yet.")}
         </div>
       )}
       {bookmarks.data &&
@@ -92,7 +94,7 @@ export function Sidebar({
               )}
               {bookmark.ahead === undefined && (
                 <span className="ter" style={{ fontSize: 11 }}>
-                  local
+                  {t("local")}
                 </span>
               )}
             </button>
@@ -100,7 +102,7 @@ export function Sidebar({
         })}
 
       <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        Workspaces
+        {t("Workspaces")}
         <span style={{ flexGrow: 1 }} />
         <button
           type="button"
@@ -109,9 +111,9 @@ export function Sidebar({
           aria-pressed={view === "board"}
           {...(view === "board" ? { "data-variant": "primary" } : {})}
           onClick={onToggleBoard}
-          title="Workspace board (⌘⇧W)"
+          title={t("Workspace board (⌘⇧W)")}
         >
-          Board
+          {t("Board")}
         </button>
       </div>
       {workspaces.data?.map((workspace, index) => (
@@ -120,7 +122,7 @@ export function Sidebar({
           className="side-item"
           key={workspace.name}
           onClick={() => setRevset(workspace.changeId)}
-          title={`Working copy of ${workspace.name}`}
+          title={t("Working copy of {name}", { name: workspace.name })}
         >
           {index === 0 ? <CurrentWorkspaceIcon /> : <WorkspaceIcon />}
           <span style={{ flexGrow: 1 }}>{workspace.name}</span>
@@ -130,7 +132,7 @@ export function Sidebar({
         </button>
       ))}
 
-      <div className="side-head">Saved revsets</div>
+      <div className="side-head">{t("Saved revsets")}</div>
       {SAVED_REVSETS.map((saved) => (
         <button
           type="button"
@@ -140,7 +142,7 @@ export function Sidebar({
           onClick={() => setRevset(saved.revset)}
         >
           <RevsetIcon />
-          <span style={{ flexGrow: 1 }}>{saved.label}</span>
+          <span style={{ flexGrow: 1 }}>{t(saved.label)}</span>
           <span className="key">{saved.key}</span>
         </button>
       ))}
@@ -148,6 +150,7 @@ export function Sidebar({
       <span style={{ flexGrow: 1, minHeight: 12 }} />
       <TransitionStrip onOpen={onOpenProgress} />
       <ThemePicker />
+      <LanguagePicker />
     </nav>
   );
 }

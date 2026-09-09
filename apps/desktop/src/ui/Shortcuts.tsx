@@ -1,3 +1,5 @@
+import { t } from "../i18n/i18n.ts";
+
 /** The ⌘/ sheet. Mirrors the key map in `App`; both must move together. */
 const GROUPS = [
   {
@@ -77,7 +79,7 @@ export function Shortcuts({ onClose }: { onClose(): void }) {
     >
       <div
         role="dialog"
-        aria-label="Keyboard shortcuts"
+        aria-label={t("Keyboard shortcuts")}
         onClick={(event) => event.stopPropagation()}
         style={{
           width: 720,
@@ -90,13 +92,13 @@ export function Shortcuts({ onClose }: { onClose(): void }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Shortcuts</h2>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{t("Shortcuts")}</h2>
           <span className="sec" style={{ fontSize: 11.5 }}>
-            No command is typed. Every jj verb is a key or a drag.
+            {t("No command is typed. Every jj verb is a key or a drag.")}
           </span>
           <span style={{ flexGrow: 1 }} />
           <button type="button" className="tb-btn" onClick={onClose}>
-            Done <span className="key">Esc</span>
+            {t("Done")} <span className="key">Esc</span>
           </button>
         </div>
         <div
@@ -105,7 +107,7 @@ export function Shortcuts({ onClose }: { onClose(): void }) {
           {GROUPS.map((group) => (
             <section key={group.title}>
               <div className="side-head" style={{ padding: "0 0 6px" }}>
-                {group.title.toUpperCase()}
+                {t(group.title).toUpperCase()}
               </div>
               {group.items.map(([keys, label]) => (
                 <div
@@ -117,7 +119,7 @@ export function Shortcuts({ onClose }: { onClose(): void }) {
                     height: 26,
                   }}
                 >
-                  <span style={{ flexGrow: 1 }}>{label}</span>
+                  <span style={{ flexGrow: 1 }}>{t(label)}</span>
                   {keys.split(" ").map((key) => (
                     <span className="key" key={key}>
                       {key}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { t } from "../i18n/i18n.ts";
 import { useJjMutation, useRepo } from "../repo.tsx";
 import { FetchIcon, PlusIcon, PushIcon, RepoIcon, SearchIcon } from "./icons.tsx";
 
@@ -59,7 +60,7 @@ function RevsetField() {
           // Text entry owns its keys; the window's map must not see them.
           event.stopPropagation();
         }}
-        aria-label="Revset"
+        aria-label={t("Revset")}
         style={{
           flexGrow: 1,
           minWidth: 0,
@@ -112,7 +113,7 @@ export function Toolbar({
         className="tb-btn"
         style={{ background: "transparent", padding: "0 6px" }}
         onClick={onOpenRepo}
-        title="Open another repository (⌘O)"
+        title={t("Open another repository (⌘O)")}
       >
         <RepoIcon />
       </button>
@@ -144,7 +145,7 @@ export function Toolbar({
           disabled={fetch.isPending || isPinned}
         >
           <FetchIcon />
-          {fetch.isPending ? "Fetching…" : "Fetch"} <span className="key">⇧⌘F</span>
+          {fetch.isPending ? t("Fetching…") : t("Fetch")} <span className="key">⇧⌘F</span>
         </button>
         <button
           type="button"
@@ -153,7 +154,7 @@ export function Toolbar({
           disabled={push.isPending || isPinned}
         >
           <PushIcon />
-          {push.isPending ? "Pushing…" : "Push"} <span className="key">⇧⌘P</span>
+          {push.isPending ? t("Pushing…") : t("Push")} <span className="key">⇧⌘P</span>
         </button>
         <button
           type="button"
@@ -163,13 +164,13 @@ export function Toolbar({
           disabled={newChange.isPending || isPinned}
         >
           <PlusIcon />
-          New <span className="key">⌘N</span>
+          {t("New")} <span className="key">⌘N</span>
         </button>
         <button
           type="button"
           className="tb-btn"
           onClick={onShowShortcuts}
-          title="All shortcuts (⌘/)"
+          title={t("All shortcuts (⌘/)")}
         >
           <span className="key">⌘/</span>
         </button>

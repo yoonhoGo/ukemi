@@ -1,4 +1,5 @@
 import type { ChangeId, RebaseMode, Revision } from "@ukemi/domain";
+import { t, tParts } from "../i18n/i18n.ts";
 import { nodeColor } from "./change-color.ts";
 import type { DragState } from "./drag-rebase.tsx";
 
@@ -45,6 +46,10 @@ export function RebaseHud({
   const command = drag.onto
     ? `jj rebase ${FLAG[drag.mode]} ${short(drag.rev)} --onto ${short(drag.onto)}`
     : "jj rebase …";
+  // Split around the placeholder so the key chip keeps its styling and the
+  // translation decides which side of it the words land on.
+  const undoHint = tParts("always one {key}", "key");
+  const releaseHint = tParts("Release to rebase · {key} cancel", "key");
 
   return (
     <div
@@ -66,7 +71,7 @@ export function RebaseHud({
       }}
     >
       <div className="side-head" style={{ padding: "2px 4px 6px" }}>
-        WHAT MOVES · hold a key to switch
+        {t("WHAT MOVES · hold a key to switch")}
       </div>
       {MODES.map((option) => {
         const count = moved[option.mode]?.length;
@@ -100,12 +105,16 @@ export function RebaseHud({
             >
               {option.key}
             </span>
-            <span style={{ flexGrow: 1, fontWeight: active ? 500 : 400 }}>{option.label}</span>
+            <span style={{ flexGrow: 1, fontWeight: active ? 500 : 400 }}>{t(option.label)}</span>
             <span
               style={{ fontSize: 11, ...(active ? { opacity: 0.85 } : {}) }}
               className={active ? undefined : "sec"}
             >
-              {count === undefined ? "…" : `${count} change${count === 1 ? "" : "s"}`}
+              {count === undefined
+                ? "…"
+                : count === 1
+                  ? t("1 change")
+                  : t("{count} changes", { count })}
             </span>
           </div>
         );
@@ -124,7 +133,7 @@ export function RebaseHud({
       >
         <div style={{ display: "flex", gap: 8 }}>
           <span className="ter" style={{ width: 50, flexShrink: 0 }}>
-            Command
+            {t("Command")}
           </span>
           <span className="mono selectable" style={{ fontSize: 11 }}>
             {command}
@@ -132,12 +141,12 @@ export function RebaseHud({
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <span className="ter" style={{ width: 50, flexShrink: 0 }}>
-            Onto
+            {t("Onto")}
           </span>
           <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
             {blocked ? (
               <span style={{ color: "var(--u-conflict)" }}>
-                Cannot rebase onto its own descendant
+                {t("Cannot rebase onto its own descendant")}
               </span>
             ) : target ? (
               <>
@@ -147,26 +156,30 @@ export function RebaseHud({
                 >
                   {short(target.changeId)}
                 </span>{" "}
-                {target.description.split("\n")[0] || "(no description set)"}
+                {target.description.split("\n")[0] || t("(no description set)")}
               </>
             ) : (
-              <span className="sec">Drop on a revision</span>
+              <span className="sec">{t("Drop on a revision")}</span>
             )}
           </span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <span className="ter" style={{ width: 50, flexShrink: 0 }}>
-            Undo
+            {t("Undo")}
           </span>
           <span>
-            always one <span className="key">⌘Z</span>
+            {undoHint[0]}
+            <span className="key">⌘Z</span>
+            {undoHint[1]}
           </span>
         </div>
       </div>
 
       {dragged && (
         <div className="sec" style={{ padding: "2px 4px", fontSize: 11 }}>
-          Release to rebase · <span className="key">esc</span> cancel
+          {releaseHint[0]}
+          <span className="key">esc</span>
+          {releaseHint[1]}
         </div>
       )}
     </div>
@@ -202,7 +215,7 @@ export function DragGhost({ drag, revision }: { drag: DragState; revision: Revis
         <span className="ter">{revision.changeId.slice(2, 8)}</span>
       </span>
       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {revision.description.split("\n")[0] || "(no description set)"}
+        {revision.description.split("\n")[0] || t("(no description set)")}
       </span>
     </div>
   );

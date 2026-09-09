@@ -15,6 +15,7 @@ import {
 import { Welcome } from "./ui/Welcome.tsx";
 import { progressSnapshot, subscribeProgress } from "./ui/onboarding.ts";
 import { applyTheme, THEMES } from "./themes/themes.ts";
+import { applyLocale, currentLocale, initialLocale, subscribeLocale, t, tParts } from "./i18n/i18n.ts";
 import "./themes/contract.css";
 
 const client = new QueryClient({
@@ -99,6 +100,10 @@ function OpenRepo({
   onPick(): void;
   onColocate(): void;
 }) {
+  const [checkedOutBefore, checkedOutAfter] = tParts(
+    "A Git repository with no jj in it — {branch} is checked out.",
+    "branch",
+  );
   return (
     <div
       style={{
@@ -115,7 +120,7 @@ function OpenRepo({
         <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>Ukemi</div>
           <div className="sec" style={{ fontSize: 12 }}>
-            A desktop window on Jujutsu
+            {t("A desktop window on Jujutsu")}
           </div>
         </div>
 
@@ -124,7 +129,7 @@ function OpenRepo({
             className="sec"
             style={{ maxWidth: 420, alignSelf: "center", textAlign: "center", lineHeight: 1.55 }}
           >
-            Open a jj repository — or a Git one, and jj can go alongside it.
+            {t("Open a jj repository — or a Git one, and jj can go alongside it.")}
           </div>
         )}
 
@@ -149,7 +154,7 @@ function OpenRepo({
                   {offer.path}
                 </div>
               </div>
-              <span className="pill">git only</span>
+              <span className="pill">{t("git only")}</span>
             </div>
 
             <div style={{ height: 1, background: "var(--u-line-faint)" }} />
@@ -163,16 +168,18 @@ function OpenRepo({
               }}
             >
               <div style={{ lineHeight: 1.55 }}>
-                A Git repository with no jj in it
                 {offer.probe.branch ? (
                   <>
-                    {" — "}
-                    <span className="mono">{offer.probe.branch}</span> is checked out.
+                    {checkedOutBefore}
+                    <span className="mono">{offer.probe.branch}</span>
+                    {checkedOutAfter}
                   </>
                 ) : (
-                  " — on a detached HEAD."
+                  t("A Git repository with no jj in it — on a detached HEAD.")
                 )}{" "}
-                Anything you have not committed becomes the working-copy change; nothing is lost.
+                {t(
+                  "Anything you have not committed becomes the working-copy change; nothing is lost.",
+                )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
@@ -182,10 +189,11 @@ function OpenRepo({
                   onClick={onColocate}
                   disabled={busy}
                 >
-                  {busy ? "Adding jj…" : "Add jj alongside Git"} <span className="key">⏎</span>
+                  {busy ? t("Adding jj…") : t("Add jj alongside Git")}{" "}
+                  <span className="key">⏎</span>
                 </button>
                 <button type="button" className="tb-btn" onClick={onPick} disabled={busy}>
-                  Choose another folder… <span className="key">⌘O</span>
+                  {t("Choose another folder…")} <span className="key">⌘O</span>
                 </button>
               </div>
             </div>
@@ -195,19 +203,19 @@ function OpenRepo({
         {offer && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div className="side-head" style={{ padding: "0 0 2px" }}>
-              WHAT CHANGES, AND WHAT DOES NOT
+              {t("WHAT CHANGES, AND WHAT DOES NOT")}
             </div>
-            <Consequence verdict="new" tone="new" subject=".jj/">
-              The operation log and this window’s working copy live here.
+            <Consequence verdict={t("new")} tone="new" subject=".jj/">
+              {t("The operation log and this window’s working copy live here.")}
             </Consequence>
-            <Consequence verdict="untouched" tone="safe" subject=".git/">
-              No commit is rewritten. Branches, tags and remotes stay as they are.
+            <Consequence verdict={t("untouched")} tone="safe" subject=".git/">
+              {t("No commit is rewritten. Branches, tags and remotes stay as they are.")}
             </Consequence>
-            <Consequence verdict="untouched" tone="safe" subject="git, your IDE">
-              Both tools read the same commits. Keep a terminal open beside this window.
+            <Consequence verdict={t("untouched")} tone="safe" subject={t("git, your IDE")}>
+              {t("Both tools read the same commits. Keep a terminal open beside this window.")}
             </Consequence>
-            <Consequence verdict="reversible" tone="plain" subject="rm -rf .jj">
-              Deletes the jj side and leaves the Git repository you started with.
+            <Consequence verdict={t("reversible")} tone="plain" subject="rm -rf .jj">
+              {t("Deletes the jj side and leaves the Git repository you started with.")}
             </Consequence>
           </div>
         )}
@@ -227,7 +235,7 @@ function OpenRepo({
             }}
           >
             <span className="side-head" style={{ padding: 0, whiteSpace: "nowrap" }}>
-              RUNS
+              {t("RUNS")}
             </span>
             <span className="mono selectable" style={{ flexGrow: 1 }}>
               jj git init --colocate
@@ -259,7 +267,7 @@ function OpenRepo({
             onClick={onPick}
             disabled={busy}
           >
-            Choose folder… <span className="key">⌘O</span>
+            {t("Choose folder…")} <span className="key">⌘O</span>
           </button>
         )}
       </div>
@@ -293,6 +301,10 @@ function Root() {
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
   const progress = useSyncExternalStore(subscribeProgress, progressSnapshot);
+  // Re-rendering from here is what repaints every string below; the key on the
+  // window makes that unconditional rather than dependent on nothing being
+  // memoised between here and the leaf that reads the catalogue.
+  const locale = useSyncExternalStore(subscribeLocale, currentLocale);
 
   const open = (candidate: string) => {
     setProblem(undefined);
@@ -319,7 +331,7 @@ function Root() {
         setOffer({ path: candidate, probe });
       } else {
         setOffer(undefined);
-        setProblem(`${candidate} is not inside a jj or Git repository.`);
+        setProblem(t("{path} is not inside a jj or Git repository.", { path: candidate }));
       }
     } finally {
       setChecking(false);
@@ -364,6 +376,7 @@ function Root() {
 
   useEffect(() => {
     applyTheme(rememberedTheme());
+    applyLocale(initialLocale());
   }, []);
 
   // ⌘O works from the empty state too, before any repo is open. Return also
@@ -400,9 +413,10 @@ function Root() {
   }
   // The three cards come between opening a repo and seeing it, once ever: they
   // are what makes the first graph readable rather than alarming.
-  if (!progress.welcomed) return <Welcome root={root} />;
+  if (!progress.welcomed) return <Welcome key={locale} root={root} />;
   return (
     <App
+      key={locale}
       root={root}
       onOpenRepo={pick}
     />
