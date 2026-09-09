@@ -11,6 +11,8 @@ import "./themes/contract.css";
 import { StrictMode, useEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { App } from "./App.tsx";
 import {
   gitProbe,
@@ -406,6 +408,43 @@ function Root() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  // A folder dropped on the window asks the same question ⌘O does, so it takes
+  // the same route: `openRoot` is what decides between a jj repository, a Git
+  // one worth an offer, and neither. Listening from here rather than from `App`
+  // is what makes the picker, the Welcome cards and the open repo all accept a
+  // drop — there is one window, and it has one answer for a path.
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    let gone = false;
+    // `Promise.resolve` first so the browser's synchronous "there is no
+    // webview" throw lands in the same `catch` as a listen that fails.
+    void Promise.resolve()
+      .then(() =>
+        getCurrentWebview().onDragDropEvent((event) => {
+          if (event.payload.type !== "drop") return;
+          // ponytail: the first path wins. A window holds one repository, so a
+          // multi-folder drop has no second thing to mean; a file rather than a
+          // folder falls out as the same "not inside a jj or Git repository"
+          // a mistaken ⌘O would produce.
+          const [first] = event.payload.paths;
+          if (first) void openRoot(first);
+        }),
+      )
+      .then((off) => {
+        if (gone) off();
+        else unlisten = off;
+      })
+      .catch(() => {
+        // The same bundle runs under plain `vite`, where there is no webview to
+        // listen to. Degrade quietly, exactly as `installAppMenu` does — ⌘O is
+        // still the way in.
+      });
+    return () => {
+      gone = true;
+      unlisten?.();
+    };
+  }, []);
 
   if (checking && !offer) {
     return <div style={{ height: "100%", background: "var(--u-bg-sidebar)" }} />;
