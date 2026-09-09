@@ -74,6 +74,17 @@ export const editing: Record<string, string> = {
   "Binary file — no text diff to show.":
     "바이너리 파일 — 보여줄 텍스트 디프가 없습니다.",
   "No lines changed in this file.": "이 파일에서 바뀐 줄이 없습니다.",
+  "Side by side": "좌우 비교",
+  Unified: "한 열로",
+  "Show the old and new versions in two columns": "옛 버전과 새 버전을 두 열로 봅니다",
+  "Show jj's own one-column diff": "jj가 낸 그대로 한 열로 봅니다",
+  "Expand hidden lines": "숨은 줄 펼치기",
+  "Read the diff again with 25 lines of context": "앞뒤 25줄까지 붙여 디프를 다시 읽습니다",
+  "Show whole file": "파일 전체 보기",
+  "Read the diff again with the whole file as context":
+    "파일 전체를 붙여 디프를 다시 읽습니다",
+  "Collapse context": "다시 접기",
+  "Back to jj's three lines of context": "jj 기본값인 앞뒤 3줄로 돌아갑니다",
 
   // Conflicts — 충돌 패널
   "1 CONFLICTED FILE": "충돌 파일 1개",

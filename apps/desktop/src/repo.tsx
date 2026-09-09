@@ -284,11 +284,15 @@ export function useDiffSummary(rev: string | undefined): UseQueryResult<FileChan
 export function useFileDiff(
   rev: string | undefined,
   path: string | undefined,
+  /** Lines of unchanged code around each change; jj's default of 3 when unset. */
+  context?: number,
 ): UseQueryResult<string> {
   const { root, port, opId } = useRepo();
   return useQuery({
-    queryKey: ["repo", root, opId, "diff", rev, path],
-    queryFn: () => port.diff(rev!, path, { atOp: opId }),
+    // `context` is part of the key: a wider read is a different diff, and the
+    // narrow one stays cached for when the reader collapses it again.
+    queryKey: ["repo", root, opId, "diff", rev, path, context],
+    queryFn: () => port.diff(rev!, path, { atOp: opId, context }),
     enabled: opId !== undefined && rev !== undefined,
     staleTime: Infinity,
   });

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   allGroups,
   applySelectedGroups,
+  pairRows,
   parseGitDiff,
   verifyRoundTrip,
 } from "./diff.ts";
@@ -226,5 +227,45 @@ diff --git a/a.txt b/a.txt
   assert.equal(
     applySelectedGroups("keep\nx\ny\ntail\n", file!, new Set([groups[0]!.id])),
     "keep\nX\nY\ntail\n",
+  );
+});
+
+test("pairRows puts the two versions of a replaced line on one row", () => {
+  const [file] = parseGitDiff(
+    gitDiff(`
+diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1,5 +1,6 @@
+ keep
+-x
+-y
++X
++Y
++Z
+ tail
+`),
+  );
+  const rows = pairRows(file!.hunks[0]!.lines);
+  assert.deepEqual(
+    rows.map((row) => [row.left?.text, row.right?.text]),
+    [
+      ["keep", "keep"],
+      ["x", "X"],
+      ["y", "Y"],
+      // The longer side spills; nothing is dropped and nothing is invented.
+      [undefined, "Z"],
+      ["tail", "tail"],
+    ],
+  );
+  // Every changed line still appears exactly once, on the side that owns it.
+  const lines = file!.hunks[0]!.lines;
+  assert.equal(
+    rows.filter((row) => row.left?.kind === "del").length,
+    lines.filter((line) => line.kind === "del").length,
+  );
+  assert.equal(
+    rows.filter((row) => row.right?.kind === "add").length,
+    lines.filter((line) => line.kind === "add").length,
   );
 });

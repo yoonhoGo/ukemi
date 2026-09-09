@@ -3,6 +3,7 @@ import type {
   ChangeId,
   CommandRecord,
   ConflictedFile,
+  DiffOptions,
   FileChange,
   FileStatus,
   GitInfo,
@@ -201,8 +202,11 @@ export class JjCliAdapter implements JjPort {
       });
   }
 
-  async diff(rev: string, path?: string, opts?: ReadOptions): Promise<string> {
+  async diff(rev: string, path?: string, opts?: DiffOptions): Promise<string> {
     const args = [...this.readBase(opts), "diff", "-r", rev, "--git"];
+    // Left off entirely when unset, so jj's own default of three stays the
+    // default and the arg list of the common read does not change.
+    if (opts?.context !== undefined) args.push("--context", String(opts.context));
     // `--` keeps a path that looks like a flag from being read as one.
     if (path !== undefined) args.push("--", path);
     return this.run(args);

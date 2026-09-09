@@ -363,11 +363,56 @@ legible — shows the true ones. `FileChange.insertions`/`deletions` are declare
 but never populated (`jj diff --summary` prints no counts), so the header's
 `+n −m` is counted off those same parsed lines.
 
-Not side-by-side, and not pretending to be. jj emits a unified diff; the two
-gutters are the old and new line numbers, not two versions of the file. What
-the width buys is a real measure and no wrapping — the rows opt back into
+What the width buys is a real measure and no wrapping — the rows opt back into
 `white-space: pre` and the block sizes to `max-content`, so long lines scroll
 sideways inside the pane instead of folding.
+
+**The diff sheet reads side-by-side too, and can ask jj for the hidden lines.**
+This reverses the "not side-by-side, and not pretending to be" that stood here:
+unified is bad at exactly one thing, a rewritten line, where the old and the new
+text have to be compared word by word and unified puts them eight rows apart.
+Two columns are the answer to that and only that, so unified stays the default
+and the toggle is a button, not a setting.
+
+Nothing new is read for it. `parseGitDiff` already carries `oldLine`/`newLine`
+per line, so `pairRows` in the domain folds the same parsed lines into rows:
+git prints a replacement as every deletion then every addition, and pairing
+those by index within the run is what puts the two versions of a line on one
+row. The longer side spills onto rows with an empty half — nothing is dropped
+and no line is synthesised, which is the property that keeps this a *reading* of
+jj's diff rather than a second diff algorithm. It is a pure function with a test
+for the same reason.
+
+The layout is one grid for the whole file rather than one per row, because both
+halves of a row have to share a row box — otherwise a line that wraps on one
+side slides the other side's rows out of step. Each half is a `.diff-line`, the
+contract class a theme already paints per `data-kind`, so no colour is inlined
+here. The +/− marker is kept even though the column says which side it is —
+colour is the other thing saying it, and colour alone is not a label.
+
+The two columns split the pane evenly and long lines wrap, which is the exact
+opposite of what the sheet was built for and is still right here. Sizing the
+columns to their content — the first attempt, checked by rendering it — put the
+new side past the right edge of the 1100px sheet for any file with one long
+line, and a side-by-side view whose second side must be scrolled to is not one.
+Unified keeps `white-space: pre` and the true measure; that is what it is for,
+and it is the default.
+
+The hidden lines come from jj, not from this side. `jj diff` takes
+`--context <N>`, so `DiffOptions.context` rides along on the read and one button
+walks three widths: jj's default of three (the flag left off entirely, so the
+common read keeps the argument list *and* the cache entry it always had), 25,
+and the whole file as `--context 100000` — a count larger than any file, because
+jj has no "whole file" flag and a number needs no special case anywhere. The
+context is part of the query key, so collapsing again is a cache hit, and the
+footer prints the flag when it is set: what is on screen is still the command
+that produced it.
+
+Not GitHub's per-gap expander. That needs the whole blob fetched and spliced
+into the parsed diff on this side — code that can silently disagree with what
+the commit says, for a gap-at-a-time convenience. Three widths of the read jj
+already performs answer the same question. Per-gap comes back if the whole-file
+width proves too blunt in practice.
 
 **The toolbar moves the window itself, not through `data-tauri-drag-region`.**
 This window has no title bar (`titleBarStyle: "Overlay"` plus `hiddenTitle`), so

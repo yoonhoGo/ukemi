@@ -268,6 +268,51 @@ export function allGroups(file: FileDiff): DiffGroup[] {
 }
 
 /**
+ * One row of a side-by-side reading: the left file's line beside the right's.
+ *
+ * Either half can be absent — a row that only deletes has no right line, and
+ * one that only adds has no left. A context line fills both, because it *is*
+ * both.
+ */
+export interface DiffRow {
+  readonly left?: DiffLine | undefined;
+  readonly right?: DiffLine | undefined;
+}
+
+/**
+ * Fold a hunk's unified lines into side-by-side rows.
+ *
+ * A replacement arrives from git as every deletion followed by every addition;
+ * pairing them by index within that run puts the two versions of the same line
+ * on one row, which is the whole point of the two columns. The longer side
+ * spills onto rows whose other half is empty, so nothing is dropped and no
+ * line is invented — this only rearranges what `parseGitDiff` already read.
+ */
+export function pairRows(lines: readonly DiffLine[]): DiffRow[] {
+  const rows: DiffRow[] = [];
+  let dels: DiffLine[] = [];
+  let adds: DiffLine[] = [];
+
+  const flush = () => {
+    const height = Math.max(dels.length, adds.length);
+    for (let i = 0; i < height; i += 1) rows.push({ left: dels[i], right: adds[i] });
+    dels = [];
+    adds = [];
+  };
+
+  for (const line of lines) {
+    if (line.kind === "del") dels.push(line);
+    else if (line.kind === "add") adds.push(line);
+    else {
+      flush();
+      rows.push({ left: line, right: line });
+    }
+  }
+  flush();
+  return rows;
+}
+
+/**
  * Rebuild a file's content with only the selected groups applied.
  *
  * Walks the left content and swaps each hunk's span for a reconstruction:

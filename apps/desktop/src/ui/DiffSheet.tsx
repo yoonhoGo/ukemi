@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { FileDiff, Revision } from "@ukemi/domain";
-import { parseGitDiff } from "@ukemi/domain";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import type { DiffLine, FileDiff, Revision } from "@ukemi/domain";
+import { pairRows, parseGitDiff } from "@ukemi/domain";
 import { useFileDiff } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { nodeColor } from "./change-color.ts";
@@ -12,10 +12,15 @@ import { useModal } from "./modal.ts";
  *
  * The inspector is 372px wide, which is narrower than the code it was showing:
  * a unified diff wrapped on nearly every line, so reading one meant
- * reconstructing it. The diff is the same diff — jj's own, unified, one
- * column — it just needed a window wide enough to be read in. Nothing here
- * pretends it is side-by-side; the two gutters are the old and new line
- * numbers, not two versions of the file.
+ * reconstructing it. The diff is jj's own diff — it just needed a window wide
+ * enough to be read in.
+ *
+ * Two readings of that one diff are offered. Unified is jj's, verbatim, and
+ * stays the default: the two gutters are the old and new line numbers, not two
+ * versions of the file. Side-by-side rearranges the same parsed lines into two
+ * columns (`pairRows` in the domain) for the case unified is bad at — a
+ * rewritten line, where the old and new text have to be compared word by word
+ * rather than eight rows apart. Neither fetches anything the other did not.
  *
  * It is a sheet rather than a second OS window on purpose: a `WebviewWindow`
  * would mean a second React root, a second query client (or cache sync between
@@ -32,6 +37,16 @@ export function DiffSheet({
   onClose(): void;
 }) {
   /*
+   * How much unchanged code jj prints around each change. Undefined means
+   * jj's own default of three, which is what a diff is for; the wider reads are
+   * how the reader asks for the lines the diff hid. jj is asked again rather
+   * than the gaps being reconstructed here — it already has the file, and
+   * splicing a blob into a parsed diff on this side is the kind of code that
+   * silently disagrees with what the commit actually says.
+   */
+  const [context, setContext] = useState<number | undefined>(undefined);
+  const [split, setSplit] = useState(false);
+  /*
    * One read for the whole revision instead of one per file. The sheet's whole
    * point is walking the change file by file, so the second file must not cost
    * a jj call — and this is `jj diff -r <rev> --git`, the same read the hunk
@@ -44,7 +59,7 @@ export function DiffSheet({
    * line, so the wide view — where a wrong number is legible — shows the true
    * ones, and the parser is the one already trusted to rewrite commits.
    */
-  const diff = useFileDiff(revision.changeId, undefined);
+  const diff = useFileDiff(revision.changeId, undefined, context);
   const files = useMemo(() => parseGitDiff(diff.data ?? ""), [diff.data]);
   const [current, setCurrent] = useState(path);
   // Done is the only control besides the file list, so it is where focus lands
@@ -158,6 +173,31 @@ export function DiffSheet({
             </span>
           )}
           <span style={{ flexGrow: 1 }} />
+          <button
+            type="button"
+            className="tb-btn"
+            aria-pressed={split}
+            title={
+              split
+                ? t("Show jj's own one-column diff")
+                : t("Show the old and new versions in two columns")
+            }
+            onClick={() => setSplit(!split)}
+          >
+            {split ? t("Unified") : t("Side by side")}
+          </button>
+          {/* One button through three widths rather than a stepper: the states
+              are an order, not a value to dial in, and the label can say which
+              way the next press goes. */}
+          <button
+            type="button"
+            className="tb-btn"
+            disabled={diff.isPending}
+            title={offer(context).title()}
+            onClick={() => setContext(offer(context).context)}
+          >
+            {offer(context).label()}
+          </button>
           <span className="mono selectable" style={{ flexShrink: 0, fontSize: 12 }}>
             <span style={{ color: nodeColor(revision) }}>
               {revision.changeId.slice(0, 2)}
@@ -241,7 +281,7 @@ export function DiffSheet({
               border: "1px solid var(--u-line)",
             }}
           >
-            {file && <Body file={file} />}
+            {file && <Body file={file} split={split} />}
           </div>
         </div>
 
@@ -251,6 +291,7 @@ export function DiffSheet({
         <div className="sec" style={{ padding: "12px 20px 16px", fontSize: 12 }}>
           <span className="mono">
             jj diff -r {revision.changeId.slice(0, 8)} --git
+            {context === undefined ? "" : ` --context ${context}`}
           </span>
         </div>
       </div>
@@ -267,7 +308,7 @@ export function DiffSheet({
  * container above scrolls sideways for the long lines and the row backgrounds
  * still span the full width.
  */
-function Body({ file }: { file: FileDiff }) {
+function Body({ file, split }: { file: FileDiff; split: boolean }) {
   if (file.isBinary) {
     return (
       <div className="sec" style={{ padding: 12 }}>
@@ -284,6 +325,8 @@ function Body({ file }: { file: FileDiff }) {
       </div>
     );
   }
+
+  if (split) return <SplitBody file={file} />;
 
   return (
     <div
@@ -323,6 +366,123 @@ const ROW: React.CSSProperties = {
   whiteSpace: "pre",
   wordBreak: "normal",
 };
+
+/**
+ * The same file, in two columns.
+ *
+ * One grid for the whole file, not one per row: both halves of a row have to
+ * share a row box, or a line that wraps on one side slides the other side's
+ * rows out of step. Each half is a `.diff-line` — the contract class a theme
+ * already styles per `data-kind` — so the colours and the row floor come from
+ * the theme rather than from inline colour here.
+ *
+ * The two columns split the pane evenly and long lines *wrap*, which is the
+ * opposite of the unified reading and deliberate. Sizing the columns to their
+ * content instead pushed the new side off the right edge of a 1100px sheet for
+ * any file with one long line — a side-by-side view whose second side has to be
+ * scrolled to is not one. Unified is still there for a true measure.
+ */
+function SplitBody({ file }: { file: FileDiff }) {
+  return (
+    <div
+      className="mono selectable"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+        padding: "6px 0",
+      }}
+    >
+      {file.hunks.map((hunk, hunkIndex) => (
+        <Fragment key={hunkIndex}>
+          <div
+            className="diff-line"
+            data-kind="hunk"
+            style={{ ...SIDE, gridColumn: "1 / -1" }}
+          >
+            <span className="ln" />
+            <span>{hunk.header}</span>
+          </div>
+          {pairRows(hunk.lines).map((row, rowIndex) => (
+            <Fragment key={rowIndex}>
+              <Half line={row.left} side="old" />
+              <Half line={row.right} side="new" />
+            </Fragment>
+          ))}
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One side of one row. An absent half is still rendered: the row has to keep
+ * its height and the column its divider, or the two sides drift apart.
+ *
+ * The +/− marker is kept even though the column already says which side this
+ * is, because colour is the other thing saying it and colour alone is not a
+ * label.
+ */
+function Half({ line, side }: { line: DiffLine | undefined; side: "old" | "new" }) {
+  const kind = line === undefined || line.kind === "context" ? undefined : line.kind;
+  return (
+    <div
+      className="diff-line"
+      {...(kind === undefined ? {} : { "data-kind": kind })}
+      style={{
+        ...SIDE,
+        ...(side === "new" ? { borderLeft: "1px solid var(--u-line)" } : {}),
+      }}
+    >
+      <span className="ln">{(side === "old" ? line?.oldLine : line?.newLine) ?? ""}</span>
+      <span>
+        {line === undefined
+          ? ""
+          : `${line.kind === "add" ? "+" : line.kind === "del" ? "-" : " "}${line.text}`}
+      </span>
+    </div>
+  );
+}
+
+/* Only the gutter width, to match the unified rows. Wrapping is `.diff-line`'s
+   own default and is wanted here. */
+const SIDE: React.CSSProperties = { gridTemplateColumns: "44px minmax(0, 1fr)" };
+
+/**
+ * The widths the context button walks, in order. Each entry is what the *next*
+ * press does, which is why its label reads as an instruction.
+ *
+ * Three lines is jj's default and is left as an absent flag, so the common read
+ * keeps the argument list — and the cache entry — it always had. "Whole file"
+ * is a number rather than a flag because jj has no such flag; a count larger
+ * than any file is the same thing and needs no special case anywhere else.
+ * Labels are functions so a locale switch re-reads them.
+ */
+const STEP = [
+  {
+    context: 25,
+    label: () => t("Expand hidden lines"),
+    title: () => t("Read the diff again with 25 lines of context"),
+  },
+  {
+    context: 100_000,
+    label: () => t("Show whole file"),
+    title: () => t("Read the diff again with the whole file as context"),
+  },
+  {
+    context: undefined,
+    label: () => t("Collapse context"),
+    title: () => t("Back to jj's three lines of context"),
+  },
+] as const;
+
+/**
+ * What the button offers at the current width — the step after this one, so the
+ * last width wraps back to jj's default.
+ */
+function offer(context: number | undefined): (typeof STEP)[number] {
+  const index = STEP.findIndex((step) => step.context === context);
+  return STEP[(index + 1) % STEP.length] ?? STEP[0];
+}
 
 function countLines(file: FileDiff): { additions: number; deletions: number } {
   let additions = 0;

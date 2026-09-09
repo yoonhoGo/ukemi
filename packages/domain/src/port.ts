@@ -26,6 +26,18 @@ export interface ReadOptions {
   readonly atOp?: OperationId | undefined;
 }
 
+/**
+ * A diff read, plus how much unchanged code to print around each change.
+ *
+ * jj's default is three lines, which is what a diff is *for*; `context` is how
+ * the reader asks for the lines the diff hid. It belongs on the read rather
+ * than in the app because jj already knows the file — reconstructing the gaps
+ * on this side would mean fetching the whole blob and splicing it.
+ */
+export interface DiffOptions extends ReadOptions {
+  readonly context?: number | undefined;
+}
+
 /** Result of a write: the operation it created, so the UI can advance its pin. */
 export interface WriteResult {
   readonly opId: OperationId;
@@ -77,7 +89,7 @@ export interface JjPort {
   diffSummary(rev: string, opts?: ReadOptions): Promise<FileChange[]>;
 
   /** Unified diff text for one file, or the whole revision when `path` is omitted. */
-  diff(rev: string, path?: string, opts?: ReadOptions): Promise<string>;
+  diff(rev: string, path?: string, opts?: DiffOptions): Promise<string>;
 
   bookmarks(opts?: ReadOptions): Promise<Bookmark[]>;
 
