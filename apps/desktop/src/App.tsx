@@ -16,6 +16,7 @@ import {
 import { Board } from "./ui/Board.tsx";
 import { CoachBubble, ProgressPanel } from "./ui/Coach.tsx";
 import { CommandPanel } from "./ui/CommandPanel.tsx";
+import { DiffSheet } from "./ui/DiffSheet.tsx";
 import { isRead, shellLine } from "./ui/command-line.ts";
 import { Graph } from "./ui/Graph.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
@@ -55,6 +56,10 @@ function Window({
   const [selected, setSelected] = useState<ChangeId | undefined>(undefined);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sheet, setSheet] = useState<HunkSheetMode | undefined>(undefined);
+  // The path whose diff is open in the wide sheet, set by a click in the
+  // inspector's file list. The revision is the selected one, so this is the
+  // whole of the sheet's state that the window has to hold.
+  const [diffPath, setDiffPath] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   // The graph is the window; the board is the same data by workspace (§4.6).
   const [view, setView] = useState<"graph" | "board">("graph");
@@ -146,6 +151,11 @@ function Window({
         else if (showProgress) setShowProgress(false);
         else if (showShortcuts) setShowShortcuts(false);
         else if (showSettings) setShowSettings(false);
+        // After the four sheets that can be opened *over* the diff — ⌘/, ⌘G
+        // and the rest still work while a diff is up, so the thing on top
+        // closes first — and before the pin, which is the window's state
+        // rather than something covering it.
+        else if (diffPath) setDiffPath(undefined);
         else if (isPinned) pin(undefined);
         return;
       }
@@ -249,6 +259,7 @@ function Window({
     showRosetta,
     showProgress,
     showSettings,
+    diffPath,
     isPinned,
     pin,
     move,
@@ -401,6 +412,7 @@ function Window({
             reachMilestone("workspaces");
           }}
           onOpenProgress={() => setShowProgress(true)}
+          onOpenSettings={() => setShowSettings(true)}
         />
         <main
           style={{
@@ -517,7 +529,11 @@ function Window({
             )}
           </div>
         </main>
-        <Inspector revision={selectedRevision} onOpenSheet={setSheet} />
+        <Inspector
+          revision={selectedRevision}
+          onOpenSheet={setSheet}
+          onOpenDiff={setDiffPath}
+        />
       </div>
 
       <CoachBubble onOpenRosetta={() => setShowRosetta(true)} />
@@ -548,6 +564,17 @@ function Window({
           revision={selectedRevision}
           mode={sheet}
           onClose={() => setSheet(undefined)}
+        />
+      )}
+      {/* `!sheet` because the hunk sheet stops every key it does not use, in
+          capture: two sheets up at once would leave the diff's ↑/↓ fighting
+          the hunk list's. ⌘⇧S over an open diff therefore replaces it, and
+          Escape brings the diff back. */}
+      {diffPath !== undefined && !sheet && selectedRevision && (
+        <DiffSheet
+          revision={selectedRevision}
+          path={diffPath}
+          onClose={() => setDiffPath(undefined)}
         />
       )}
       {showShortcuts && <Shortcuts onClose={() => setShowShortcuts(false)} />}

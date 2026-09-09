@@ -79,3 +79,13 @@ export function PlusIcon({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
+
+/** The settings gear. Six teeth is the fewest that still reads as a cog. */
+export function SettingsIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} aria-hidden>
+      <circle cx="10" cy="10" r="2.6" />
+      <path d="M10 3v1.8M10 15.2V17M4.05 6.5l1.56.9M14.39 12.6l1.56.9M4.05 13.5l1.56-.9M14.39 7.4l1.56-.9" />
+    </svg>
+  );
+}

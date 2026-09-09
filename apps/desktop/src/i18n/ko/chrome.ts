@@ -161,6 +161,8 @@ export const chrome: Record<string, string> = {
   "Time travel": "시간 이동",
   "Move the operation playhead": "오퍼레이션 플레이헤드 옮기기",
   "Restore to the parked operation": "세워둔 오퍼레이션으로 복원",
+  "In the diff sheet": "디프 시트에서",
+  "Move between files": "파일 사이 이동",
   "In the hunk sheet": "헝크 시트에서",
   "Check or uncheck the focused hunk": "포커스된 헝크를 체크하거나 해제",
   "Move between hunks": "헝크 사이 이동",

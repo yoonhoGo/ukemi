@@ -1,4 +1,4 @@
-/** 헝크 편집기, 인스펙터, 충돌 패널의 문자열. */
+/** 헝크 편집기, 인스펙터, 디프 시트, 충돌 패널의 문자열. */
 export const editing: Record<string, string> = {
   // HunkSheet — 헝크 편집 시트
   "Split {change} into two changes": "{change}를 두 체인지로 분리",
@@ -67,6 +67,13 @@ export const editing: Record<string, string> = {
   "FILES CHANGED": "변경된 파일",
   "No file changes.": "바뀐 파일이 없습니다.",
   "Loading diff…": "디프 불러오는 중…",
+  "click for the diff": "클릭하면 디프",
+
+  // DiffSheet — 디프 시트
+  "File diff": "파일 디프",
+  "Binary file — no text diff to show.":
+    "바이너리 파일 — 보여줄 텍스트 디프가 없습니다.",
+  "No lines changed in this file.": "이 파일에서 바뀐 줄이 없습니다.",
 
   // Conflicts — 충돌 패널
   "1 CONFLICTED FILE": "충돌 파일 1개",

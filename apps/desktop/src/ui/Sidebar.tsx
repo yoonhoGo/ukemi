@@ -12,7 +12,13 @@ import {
 import { t } from "../i18n/i18n.ts";
 import { useBookmarks, useRepo, useWorkspaces } from "../repo.tsx";
 import { TransitionStrip } from "./Coach.tsx";
-import { BookmarkIcon, CurrentWorkspaceIcon, RevsetIcon, WorkspaceIcon } from "./icons.tsx";
+import {
+  BookmarkIcon,
+  CurrentWorkspaceIcon,
+  RevsetIcon,
+  SettingsIcon,
+  WorkspaceIcon,
+} from "./icons.tsx";
 
 /** Saved revsets, bound to ⌘1…⌘7 by position. Handled in `App`'s key map too. */
 export const SAVED_REVSETS = [
@@ -42,10 +48,12 @@ export function Sidebar({
   view,
   onToggleBoard,
   onOpenProgress,
+  onOpenSettings,
 }: {
   view: "graph" | "board";
   onToggleBoard(): void;
   onOpenProgress(): void;
+  onOpenSettings(): void;
 }) {
   const { revset, setRevset } = useRepo();
   const bookmarks = useBookmarks();
@@ -158,11 +166,24 @@ export function Sidebar({
         </button>
       ))}
 
-      {/* The theme and language pickers used to sit under this strip. They
-          are the user's settings, not this repository's, so they moved behind
-          ⌘, and the bottom of the navigation is the transition strip alone —
-          which is about the repository in front of you. */}
+      {/* The theme and language pickers used to sit under this strip. They are
+          the user's settings, not this repository's, so they moved behind ⌘,
+          where macOS keeps settings.
+
+          This one row is what they left behind, and it is not a hedge: eleven
+          rows of preferences in the primary navigation was the problem, a
+          pointer to them is not. Moving the pickers out with nothing in their
+          place made the themes unfindable — and a theme nobody can select is a
+          theme nobody has checked, which is the whole argument for the class
+          contract in `themes/contract.css`. It reads the way the strip below
+          it does, label plus its key, so the sidebar teaches the shortcut
+          rather than replacing it. */}
       <span style={{ flexGrow: 1, minHeight: 12 }} />
+      <button type="button" className="side-item" onClick={onOpenSettings}>
+        <SettingsIcon />
+        <span style={{ flexGrow: 1 }}>{t("Settings")}</span>
+        <span className="key">⌘,</span>
+      </button>
       <TransitionStrip onOpen={onOpenProgress} />
     </nav>
   );

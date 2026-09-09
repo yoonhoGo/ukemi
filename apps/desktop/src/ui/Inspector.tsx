@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FileChange, Revision } from "@ukemi/domain";
-import { useDiffSummary, useFileDiff, useJjMutation, useRepo } from "../repo.tsx";
+import { useDiffSummary, useJjMutation, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
@@ -8,7 +8,8 @@ import type { HunkSheetMode } from "./HunkSheet.tsx";
 import { Conflicts } from "./Conflicts.tsx";
 import { StackPanel } from "./Stack.tsx";
 
-const STATUS_MARK: Record<FileChange["status"], { mark: string; color: string }> = {
+/** Exported because the diff sheet lists the same files with the same marks. */
+export const STATUS_MARK: Record<FileChange["status"], { mark: string; color: string }> = {
   added: { mark: "A", color: "var(--u-added)" },
   modified: { mark: "M", color: "var(--u-modified)" },
   removed: { mark: "D", color: "var(--u-removed)" },
@@ -122,60 +123,22 @@ function Step({
   );
 }
 
-function Diff({ text }: { text: string }) {
-  const lines = text.split("\n");
-  return (
-    <div className="mono selectable" style={{ padding: "6px 0" }}>
-      {lines.map((line, index) => {
-        // Skip the git header noise; the file name is already in the list above.
-        if (
-          line.startsWith("diff --git") ||
-          line.startsWith("index ") ||
-          line.startsWith("--- ") ||
-          line.startsWith("+++ ")
-        ) {
-          return null;
-        }
-        const kind = line.startsWith("@@")
-          ? "hunk"
-          : line.startsWith("+")
-            ? "add"
-            : line.startsWith("-")
-              ? "del"
-              : undefined;
-        return (
-          <div
-            className="diff-line"
-            key={index}
-            {...(kind ? { "data-kind": kind } : {})}
-          >
-            <span className="ln">{kind === "hunk" ? "" : index + 1}</span>
-            <span>{line}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export function Inspector({
   revision,
   onOpenSheet,
+  onOpenDiff,
 }: {
   revision: Revision | undefined;
   onOpenSheet(mode: HunkSheetMode): void;
+  onOpenDiff(path: string): void;
 }) {
   const { isPinned } = useRepo();
-  const [openFile, setOpenFile] = useState<string | undefined>(undefined);
   const files = useDiffSummary(revision?.changeId);
-  const diff = useFileDiff(revision?.changeId, openFile);
 
   const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
   const abandon = useJjMutation((port, rev: string) => port.abandon([rev]));
   const absorb = useJjMutation((port, rev: string) => port.absorb(rev));
-
-  useEffect(() => setOpenFile(undefined), [revision?.changeId]);
 
   if (!revision) {
     return (
@@ -388,10 +351,15 @@ export function Inspector({
           borderTop: "1px solid var(--u-line-faint)",
         }}
       >
+        {/* The rows used to expand a diff in place, in 372px, where it wrapped
+            on nearly every line. They open the wide sheet now — one behaviour,
+            not "expands sometimes and opens a sheet other times" — and the
+            head says so, the way the hunk sheet teaches its own keys. */}
         <div className="side-head" style={{ padding: "0 0 4px" }}>
           {files.data
             ? t("{count} FILES CHANGED", { count: files.data.length })
             : t("FILES CHANGED")}
+          {(files.data?.length ?? 0) > 0 && ` · ${t("click for the diff")}`}
         </div>
         {files.data?.length === 0 && (
           <div className="sec" style={{ fontSize: 12 }}>
@@ -405,8 +373,8 @@ export function Inspector({
               type="button"
               className="file"
               key={file.path}
-              aria-selected={file.path === openFile}
-              onClick={() => setOpenFile(file.path === openFile ? undefined : file.path)}
+              onClick={() => onOpenDiff(file.path)}
+              title={file.path}
             >
               <span
                 className="mono"
@@ -431,24 +399,6 @@ export function Inspector({
         })}
       </div>
 
-      {openFile && (
-        <div
-          className="u-scroll"
-          style={{
-            margin: "6px 16px 14px",
-            borderRadius: 8,
-            background: "var(--u-bg-raised)",
-            border: "1px solid var(--u-line)",
-          }}
-        >
-          {diff.isPending && (
-            <div className="sec" style={{ padding: 10 }}>
-              {t("Loading diff…")}
-            </div>
-          )}
-          {diff.data && <Diff text={diff.data} />}
-        </div>
-      )}
     </aside>
   );
 }
