@@ -1,0 +1,17 @@
+{
+  "name": "ukemi",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"packages/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "dev": "npm run dev --workspace @ukemi/desktop"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "@types/node": "^24.0.0"
+  }
+}
