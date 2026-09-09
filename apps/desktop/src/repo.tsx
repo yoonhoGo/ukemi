@@ -4,6 +4,7 @@ import {
   useContext,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -15,11 +16,15 @@ import {
 import type {
   Bookmark,
   ChangeId,
+  CommandRecord,
   ConflictedFile,
   FileChange,
+  ForgePort,
+  GitInfo,
   JjPort,
   Operation,
   OperationId,
+  PullRequest,
   Revision,
   Workspace,
 } from "@ukemi/domain";
@@ -32,7 +37,14 @@ import {
   type GraphLayout,
   type RebaseMode,
 } from "@ukemi/domain";
-import { portFor, rememberRepo } from "./jj.ts";
+import { githubSlug } from "@ukemi/jj-cli-adapter";
+import {
+  commandLogSnapshot,
+  forgeFor,
+  portFor,
+  rememberRepo,
+  subscribeCommands,
+} from "./jj.ts";
 
 /**
  * Repo state and the query layer.
@@ -329,4 +341,79 @@ export function useConflicts(rev: ChangeId | undefined): UseQueryResult<Conflict
     enabled: opId !== undefined && rev !== undefined,
     staleTime: Infinity,
   });
+}
+
+/** Every CLI call this window made, oldest first. */
+export function useCommandLog(): readonly CommandRecord[] {
+  return useSyncExternalStore(subscribeCommands, commandLogSnapshot);
+}
+
+/** Git dir, colocation, remotes. About the repo, not a point in time, so unpinned. */
+export function useGitInfo(): UseQueryResult<GitInfo> {
+  const { root, port } = useRepo();
+  return useQuery({
+    queryKey: ["git-info", root],
+    queryFn: () => port.gitInfo(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * The forge behind the first GitHub remote, or `undefined` when there is none.
+ * `undefined` is a normal state (GitLab, no remote, no gh) and every PR feature
+ * degrades to "push only" on it rather than showing an error.
+ */
+export function useForge(): ForgePort | undefined {
+  const { root } = useRepo();
+  const info = useGitInfo();
+  const slug = info.data?.remotes.map((remote) => githubSlug(remote.url)).find(Boolean);
+  return useMemo(() => (slug ? forgeFor(root, slug) : undefined), [root, slug]);
+}
+
+/**
+ * Pull requests on the forge. Not keyed on opId — the forge is not part of the
+ * repo's history — and allowed to go stale for a minute, since a review
+ * decision changing under us is not the kind of staleness that misleads.
+ */
+export function usePullRequests(): UseQueryResult<PullRequest[]> {
+  const forge = useForge();
+  return useQuery({
+    queryKey: ["prs", forge?.slug],
+    queryFn: () => forge!.pullRequests(),
+    enabled: forge !== undefined,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+/**
+ * Runs a forge write and refreshes both the PR list and the repo head, since
+ * opening a PR is usually preceded by a push.
+ */
+export function useForgeMutation<TArgs>(run: (forge: ForgePort, args: TArgs) => Promise<unknown>) {
+  const forge = useForge();
+  const { root } = useRepo();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (args: TArgs) => {
+      if (!forge) throw new Error("No GitHub remote, or gh is not available.");
+      return run(forge, args);
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["prs"] });
+      void client.invalidateQueries({ queryKey: ["op-head", root] });
+    },
+  });
+}
+
+/**
+ * Revisions for the workspace board: every workspace's working copy plus the
+ * mutable ancestors it sits on, in one read.
+ */
+export function useBoardRevisions(
+  workspaces: readonly Workspace[] | undefined,
+): UseQueryResult<Revision[]> {
+  const ids = workspaces?.map((workspace) => workspace.changeId) ?? [];
+  const revset = ids.length > 0 ? `(${ids.join(" | ")}) | (::(${ids.join(" | ")}) & mutable())` : "none()";
+  return useRepoQuery(["board", revset], (port, opId) => port.log(revset, { atOp: opId }));
 }

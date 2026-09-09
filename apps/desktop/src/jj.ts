@@ -1,12 +1,39 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
+  GhCliAdapter,
   JjCliAdapter,
   PLAN_TOOL_SCRIPT,
   type ExecResult,
   type PlanPreparer,
 } from "@ukemi/jj-cli-adapter";
-import type { JjPort, PlanFile } from "@ukemi/domain";
+import type { CommandRecord, ForgePort, JjPort, PlanFile } from "@ukemi/domain";
+
+/**
+ * The command log behind the transparency panel (design §4.8).
+ *
+ * A bounded list of every `jj` and `gh` invocation this window made, fed by the
+ * adapters' observer. It is not app state — nothing is derived from it — which
+ * is why it is a module-level buffer read through `useSyncExternalStore` and
+ * not a store. ponytail: 300 entries, then the oldest fall off.
+ */
+const COMMAND_LOG_LIMIT = 300;
+let commandLog: readonly CommandRecord[] = [];
+const commandListeners = new Set<() => void>();
+
+function recordCommand(record: CommandRecord): void {
+  commandLog = [...commandLog.slice(-(COMMAND_LOG_LIMIT - 1)), record];
+  for (const listener of commandListeners) listener();
+}
+
+export function subscribeCommands(listener: () => void): () => void {
+  commandListeners.add(listener);
+  return () => commandListeners.delete(listener);
+}
+
+export function commandLogSnapshot(): readonly CommandRecord[] {
+  return commandLog;
+}
 
 /**
  * Wires the adapter to Tauri. The only place in the UI that knows an adapter
@@ -22,6 +49,16 @@ export function portFor(root: string): JjPort {
     root,
     (args) => invoke<ExecResult>("jj_exec", { root, args: [...args] }),
     tauriPlanPreparer,
+    recordCommand,
+  );
+}
+
+/** The forge for a GitHub `owner/repo`, sharing the same Rust exec seam. */
+export function forgeFor(root: string, slug: string): ForgePort {
+  return new GhCliAdapter(
+    slug,
+    (args) => invoke<ExecResult>("gh_exec", { root, args: [...args] }),
+    recordCommand,
   );
 }
 

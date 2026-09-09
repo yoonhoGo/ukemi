@@ -44,13 +44,32 @@ async fn jj_exec(
     root: String,
     args: Vec<String>,
 ) -> Result<ExecResult, String> {
-    let binary = jj_binary(&app);
+    run_captured(jj_binary(&app), root, args).await
+}
+
+/// Run the user's own `gh` (GitHub CLI) in `root`.
+///
+/// Not bundled, on purpose: `gh` holds the user's GitHub login, and the app
+/// should borrow it rather than own a second one. Same dumb seam as `jj_exec`;
+/// the TS forge adapter decides every argument. A missing `gh` surfaces as an
+/// error string, which the UI turns into "no forge", not a crash.
+#[tauri::command]
+async fn gh_exec(root: String, args: Vec<String>) -> Result<ExecResult, String> {
+    run_captured(PathBuf::from("gh"), root, args).await
+}
+
+async fn run_captured(
+    binary: PathBuf,
+    root: String,
+    args: Vec<String>,
+) -> Result<ExecResult, String> {
+    let name = binary.display().to_string();
     let output = tauri::async_runtime::spawn_blocking(move || {
         Command::new(&binary).args(&args).current_dir(&root).output()
     })
     .await
-    .map_err(|error| format!("failed to run jj: {error}"))?
-    .map_err(|error| format!("failed to run jj: {error}"))?;
+    .map_err(|error| format!("failed to run {name}: {error}"))?
+    .map_err(|error| format!("failed to run {name}: {error}"))?;
 
     Ok(ExecResult {
         stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -231,6 +250,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             jj_exec,
+            gh_exec,
             is_jj_repo,
             initial_repo,
             prepare_hunk_plan,
