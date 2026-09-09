@@ -215,8 +215,151 @@ operation timeline in the other. Rather than add a context-prefix convention
 for a single collision, both take 지금. Add the convention when a second
 collision is one where the two really cannot share a word.
 
+**SUIT is bundled for Hangul, and sits behind the system faces.**
+The window had no bundled face at all: Korean fell through to Apple SD Gothic
+Neo, which is drawn for print and reads noticeably looser than SF beside it.
+SUIT goes into `--u-font` *after* `"SF Pro Text"` rather than in front of it,
+because font matching runs per character down the list — a Latin letter is
+found in SF and never reaches SUIT, a Hangul syllable is in none of the system
+faces ahead of it and lands there. Verified in the running window, not
+reasoned: the served asset is `624,536` bytes of `font/woff2`, the Korean rows
+changed face, and `git add -p` in the onboarding cards is still SF Mono, so
+nothing leaked into Latin. Ink & Paper and Acid Terminal opt out — the first is
+a serif theme whose Korean must also be serif, the second is mono throughout
+and a proportional Hangul face is the texture it exists to avoid.
+
+The licence lives in `apps/desktop/public/`, not beside the woff2. OFL 1.1 §2
+requires the licence to travel with the font, and Vite emits only the assets a
+stylesheet references, so a text file next to the font would have stayed in the
+repository and never reached a build. `public/` is copied verbatim into `dist`,
+which is what Tauri embeds, so it ships from a plain `tauri build` and not only
+from `build:bundled` — checked: `dist/SUIT-OFL.txt` is 4.3 KB next to
+`dist/assets/SUIT-Variable-*.woff2`. While confirming that, `NOTICE` was found
+to have claimed an "About → Open-source licences" screen since v1 for the jj
+licence. No such screen was ever built, so the claim is withdrawn rather than
+duplicated for the font.
+
+**The default theme follows the system appearance.**
+`contract.css` had a full `@media (prefers-color-scheme: dark)` block gated on
+`:root[data-theme-follows-system]` — an attribute nothing in the app ever set,
+so a Mac in Dark Mode got the light palette and a white window. The block
+applies to bare `:root` now. That is safe for the four explicit themes because
+each sets its tokens on `:root[data-theme="…"]` (0,2,0) against `:root` (0,1,0)
+and a media query adds no specificity, so a chosen theme still wins in both
+appearances; only "System", which sets no attribute, is affected.
+
+Making it work exposed the real trap. Three contract *classes* painted
+`rgba(0, 0, 0, …)` directly rather than reading a token — the key cap's fill and
+hairline, and the `.u-scroll` thumb — and a black alpha on a `#1e1e1e` ground is
+not a faint chip, it is nothing at all. They are `--u-bg-key`, `--u-line-key`
+and `--u-scrollbar-thumb` now, which also collapsed a drift: `scrollbar-color`
+said 0.2 and the WebKit thumb said 0.18. The white alphas inside
+`.tb-btn[data-variant="primary"] .key` stayed literal on purpose — they are
+painted over `--u-accent`, which is a saturated fill in either appearance.
+
+**The accent is the one the user picked, not a hex we chose.**
+`--u-accent` was `#0a84ff`, which is the iOS *dark* blue and was wrong for a
+white window in the first place. The literals are now the light/dark system
+blues as a fallback, and an `@supports (color: AccentColor)` block replaces them
+with the accent from System Settings. It is two blocks, not one: `--u-accent-soft`
+is a wash, and 12% over white is a visible tint while 12% over `#1e1e1e` is
+nothing, so the dark appearance needs 20%. Lifting the percentage into a token
+of its own would have added a public contract surface to avoid two short blocks.
+
+**Motion: two durations, because selection and hover want different ones.**
+`--u-duration` and `--u-ease` had been declared since v1 and used in exactly
+zero places, which also made the `prefers-reduced-motion` block that zeroes them
+decorative. Six interactive classes transition now, on `background`/`color`/
+`box-shadow` and never on `all`. Selection got a second token,
+`--u-duration-fast: 90ms`: hold ↓ in the graph and rows arrive faster than
+180ms, so a selection animated at that length is still catching up with the
+caret and the list smears. Both tokens are zeroed under reduced motion.
+
+**The menu bar is built in TypeScript, and its items dispatch key events.**
+Tauri's default menu was untouched: `File` held only `Close Window`, `View` only
+full-screen, and not one of the app's ~25 commands appeared anywhere, which
+Apple's HIG is explicit about. Built through `@tauri-apps/api/menu` rather than
+`tauri::menu` in Rust, for two reasons: the labels then come from the same `t()`
+catalogue as the window — verified in the running app, whose menu bar now reads
+파일 / 편집 / 체인지 / 보기 / 오퍼레이션 / 창 / 도움말 — and `src-tauri/src/main.rs`
+stays the dumb three-command seam it was. `core:default` already grants
+`core:menu:default`, so no capability changed.
+
+No item re-implements a command. Each handler dispatches the equivalent
+synthetic `KeyboardEvent` on `window`, so the menu and the keyboard cannot
+drift and a command is defined once. That works because macOS hands a key-down
+to the main menu's `performKeyEquivalent:` before the key window, so an
+accelerator is consumed by the menu and the web view never sees a `keydown` —
+the chord runs once, from the handler.
+
+Checked rather than assumed, because a dispatch that fired twice would have
+been the obvious way for this to be wrong: `Help ▸ Shortcuts` opens the sheet,
+and the command behind it is a *toggle*, so a double fire would have opened and
+immediately closed it and looked like a dead menu item. The sheet stays open.
+The cost of the design is that an item cannot grey
+itself out without reading app state, which is exactly the coupling the
+synthetic dispatch buys off; the keyboard has always behaved this way, so
+nothing regressed.
+
+Which keys may carry an accelerator is not a free choice. Only commands whose
+handler sits on the *window* qualify: a key a focused field handles locally
+would be swallowed by the menu while the user types, and a synthetic event
+dispatched on `window` never reaches that field's own React handler. So ⌘↩,
+Escape, the arrows and the hunk sheet's space are absent from the menu.
+**⌘Z is the special case**: "undo the last operation" is in the Operations menu
+with *no accelerator*, and the predefined `Edit ▸ Undo` is left alone, because
+the description editor stops propagation and relies on ⌘Z being the native text
+undo. An app-level accelerator would take that away, and the reasoning is in the
+comment on `editMenu` so a later reader does not "fix" it back.
+
+**One hook for the four overlays, and Escape stays where it was.**
+`ui/modal.ts` does three things — initial focus, Tab containment, focus
+restoration — for the shortcut sheet, the progress panel, the hunk sheet, the
+Git lookup and now Settings. A hook rather than five copies because of the hunk
+sheet: its own window handler is in *capture* and stops propagation for every
+key it does not use, so a listener on the panel would never see Tab. The hook
+therefore listens on the window in capture too, which does not depend on which
+of the two registered first. Escape is deliberately not in it — the window's
+key map owns Escape and closes the sheets in a priority order, and a second path
+would race that one. Focusable stops are queried on each keypress rather than
+cached, because every one of these panels changes while it is open.
+
+**An operation label names the kind and shortens the hash.**
+The timeline read `8666c7c4ab9ca51da0944…`: jj writes an operation description
+for a terminal line, where `commit <40-hex>` is fine, and a 22-character tick
+turned the hash into the whole label. The hash is not resolved to the commit's
+own subject, because `Operation` carries id, description, time, user and args
+and nothing else, and the commit it names is usually outside the loaded revset
+— a subject would cost one `jj` read per tick, sixty of them per window. The
+kind is translated and the hash cut to the eight characters jj itself prints.
+The shapes matched are the ones this repo's own `jj op log` actually produces,
+checked against the binary rather than written from memory, and the function
+lives in `ui/operation-label.ts` rather than inside `Timeline.tsx` so it is
+testable without a window. That move matters twice: the labels are read as
+`t(key, …)` from a table, which `i18n.test.ts`'s literal scan cannot see, so the
+table is imported into the catalogue guard the way `ROSETTA` and `MILESTONES`
+already are.
+
 ## Still open
 
+- **A screen that shows the licences.** Both the jj and SUIT licence texts ship
+  inside the bundle; neither is reachable from inside the window. `NOTICE`
+  claimed such a screen from v1 and the claim is now withdrawn. Shipping the
+  text is what the licences require; showing it is a courtesy still owed.
+- **The menu bar before a repository is open.** `installAppMenu()` runs from the
+  exported `App`'s mount effect, so the repository picker and the welcome cards
+  still get Tauri's default menu — including on the one screen where `File ▸
+  Open` would help most. Installing it from `main.tsx` instead would fix that at
+  the cost of a menu whose change and operation items are inert until a repo is
+  open, and greying those out is the state coupling the synthetic dispatch
+  exists to avoid.
+- **⌘A in the hunk sheet is eaten by `Edit ▸ Select All`.** The accelerator
+  consumes the chord before the sheet's listener sees it, so "check or uncheck
+  everything" has never fired — this is not new, Tauri's default menu carried
+  Select All too, but the shortcut sheet documents a key that cannot work.
+  Dropping Select All is not the answer (the revset field and the description
+  editor need it); the options are a different binding inside the sheet, or
+  toggling that item's `enabled` while the sheet is up.
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
 - **Licence and pricing for Ukemi itself.**
 - **Whether the graph should read the metric tokens** instead of the JS
