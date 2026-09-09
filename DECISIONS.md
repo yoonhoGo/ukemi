@@ -195,13 +195,18 @@ the build rather than appearing in English next to Korean. It also fails on two
 files translating one key differently — which caught twelve, all of them a
 shortcut-table label and a Rosetta step being the same English sentence.
 
-**Two Korean registers, split on who is being addressed.**
-The onboarding copy — the three welcome cards, the coach hints, the progress
-panel — is `-습니다`; everything else in the window is plain `-다`. Onboarding
-speaks *to* someone arriving from Git, and the rest of the window is a tool
-writing down what is true. Noun-phrase labels ("스택 푸시") carry no register at
-all, which is what lets the same catalogue key serve the shortcut sheet and a
-milestone without either one sounding wrong.
+**One Korean register: `-습니다` throughout.**
+Onboarding went polite first and the rest of the window followed, because a
+window that addresses you on the welcome card and then states facts at you in
+the graph reads like two products. The English copy has one voice; so does the
+Korean. Instructions become `-세요` ("리브셋을 좁히세요"), not `-십시오`, which
+is stiffer than anything the English says.
+
+Noun-phrase labels ("스택 푸시", "마지막 오퍼레이션 되돌리기") carry no register
+at all. That is not a gap — it is what lets one catalogue key serve the shortcut
+sheet, a Rosetta step and a milestone label without sounding wrong in any of the
+three, and it is why the register change touched 81 values and left the other
+245 alone.
 
 **"now" means two things and gets one word.**
 The cost of keying on the source string, found immediately: `t("now")` is a
