@@ -1,7 +1,7 @@
 import type { ChangeId, Revision, Workspace } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import { useBoardRevisions, useWorkspaces } from "../repo.tsx";
-import { authorInitials, nodeColor } from "./change-color.ts";
+import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
 
 /**
@@ -184,7 +184,7 @@ function Card({
       <div className="sec" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
         <span
           className="avatar"
-          style={{ background: color, width: 16, height: 16, fontSize: 8 }}
+          style={{ background: authorColor(revision.committer.email), width: 16, height: 16, fontSize: 8 }}
         >
           {authorInitials(revision.committer.name, revision.committer.email)}
         </span>

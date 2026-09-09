@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { FileChange, Revision } from "@ukemi/domain";
 import { useDiffSummary, useJjMutation, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
-import { authorInitials, nodeColor } from "./change-color.ts";
+import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
 import type { HunkSheetMode } from "./HunkSheet.tsx";
 import { Conflicts } from "./Conflicts.tsx";
@@ -225,7 +225,7 @@ export function Inspector({
             <span
               className="avatar"
               style={{
-                background: color,
+                background: authorColor(revision.author.email),
                 display: "inline-flex",
                 width: 16,
                 height: 16,

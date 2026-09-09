@@ -3,7 +3,7 @@ import type { ChangeId, GraphLayout, GraphRow, PullRequest, Revision } from "@uk
 import { ELIDED_ROW } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import { PrLabel } from "./Stack.tsx";
-import { authorInitials, nodeColor } from "./change-color.ts";
+import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
 import {
   edgePath,
   elidedPath,
@@ -274,7 +274,7 @@ function Row({
       </div>
       <div
         className="avatar"
-        style={{ background: color }}
+        style={{ background: authorColor(revision.author.email) }}
         title={`${revision.author.name} <${revision.author.email}>`}
       >
         {authorInitials(revision.author.name, revision.author.email)}
