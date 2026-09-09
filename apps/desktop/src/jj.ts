@@ -3,6 +3,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   GhCliAdapter,
   JjCliAdapter,
+  JjError,
+  observed,
   PLAN_TOOL_SCRIPT,
   type ExecResult,
   type PlanPreparer,
@@ -85,6 +87,44 @@ const tauriPlanPreparer: PlanPreparer = async (files) => {
 /** Ask Rust whether a folder is inside a jj workspace. */
 export function isJjRepo(root: string): Promise<boolean> {
   return invoke<boolean>("is_jj_repo", { root });
+}
+
+/** What a folder looks like to Git. `undefined` when it is not a Git repo. */
+export interface GitProbe {
+  /** The checked-out branch, or absent on a detached HEAD. */
+  readonly branch?: string | undefined;
+}
+
+/**
+ * Ask Rust whether a folder Git knows about — even though jj does not.
+ *
+ * Only asked after `isJjRepo` says no: the answer decides whether the empty
+ * state is a dead end or an offer to colocate.
+ */
+export function gitProbe(root: string): Promise<GitProbe | undefined> {
+  return invoke<GitProbe | null>("git_probe", { root }).then((probe) => probe ?? undefined);
+}
+
+/**
+ * Put jj alongside an existing Git repository (`jj git init --colocate`).
+ *
+ * Goes through the same dumb exec seam every other jj call uses, and through
+ * `observed` so it lands in the command log like the rest — the first command
+ * the app ever runs on a repo is exactly the one a wary Git user wants to see
+ * written down (design §4.8).
+ *
+ * Not a `JjPort` method: the port's `root` promises a jj workspace, and this
+ * runs where there is not one yet.
+ */
+export async function initColocate(root: string): Promise<void> {
+  const exec = observed(
+    "jj",
+    (args) => invoke<ExecResult>("jj_exec", { root, args: [...args] }),
+    recordCommand,
+  );
+  const args = ["git", "init", "--colocate"];
+  const result = await exec(args);
+  if (result.code !== 0) throw new JjError(args, result.code, result.stderr);
 }
 
 /** The repository named on the command line, if the app was launched with one. */

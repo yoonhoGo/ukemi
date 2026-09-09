@@ -109,6 +109,52 @@ async fn is_jj_repo(app: tauri::AppHandle, root: String) -> bool {
     .unwrap_or(false)
 }
 
+/// What a folder looks like to Git, when it is a Git repository at all.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GitProbe {
+    /// The checked-out branch, or `None` on a detached HEAD.
+    branch: Option<String>,
+}
+
+/// Probe `root` for Git, so the empty state can tell "not a jj repo" apart
+/// from "a Git repo with no jj in it yet".
+///
+/// That distinction is the whole onboarding path: a Git user's first action is
+/// to open their Git repository, and refusing it outright is the one moment
+/// that decides whether they ever see the app. `git` is borrowed from PATH the
+/// way `gh` is, not bundled.
+///
+/// Two invocations, one round trip. `rev-parse --git-dir` is the existence
+/// test because it answers inside a repo with no commits and on a detached
+/// HEAD alike; `symbolic-ref` is asked separately precisely because it fails
+/// in both of those cases, and neither means "not a Git repository".
+#[tauri::command]
+async fn git_probe(root: String) -> Option<GitProbe> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let inside = Command::new("git")
+            .args(["rev-parse", "--git-dir"])
+            .current_dir(&root)
+            .output()
+            .map(|output| output.status.success())
+            .unwrap_or(false);
+        if !inside {
+            return None;
+        }
+        let branch = Command::new("git")
+            .args(["symbolic-ref", "--short", "HEAD"])
+            .current_dir(&root)
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+            .filter(|branch| !branch.is_empty());
+        Some(GitProbe { branch })
+    })
+    .await
+    .unwrap_or(None)
+}
+
 /// One file's desired content on the kept side of a hunk-level operation.
 ///
 /// Mirrors `PlanFile` in `packages/domain/src/port.ts`.
@@ -252,6 +298,7 @@ fn main() {
             jj_exec,
             gh_exec,
             is_jj_repo,
+            git_probe,
             initial_repo,
             prepare_hunk_plan,
             discard_hunk_plan

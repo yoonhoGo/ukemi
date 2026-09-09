@@ -1,14 +1,19 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App.tsx";
 import {
+  gitProbe,
+  initColocate,
   initialRepo,
   isJjRepo,
   pickRepoFolder,
   rememberedRepo,
   rememberRepo,
+  type GitProbe,
 } from "./jj.ts";
+import { Welcome } from "./ui/Welcome.tsx";
+import { progressSnapshot, subscribeProgress } from "./ui/onboarding.ts";
 import { applyTheme, THEMES } from "./themes/themes.ts";
 import "./themes/contract.css";
 
@@ -24,74 +29,316 @@ const client = new QueryClient({
   },
 });
 
-/** Repository picker, shown before a repo is open and when one is invalid. */
-function OpenRepo({
-  onOpen,
-  problem,
+/** A Git repository the user picked that has no jj in it yet. */
+interface ColocateOffer {
+  readonly path: string;
+  readonly probe: GitProbe;
+}
+
+const folderName = (path: string) => path.split("/").filter(Boolean).pop() ?? path;
+
+/** One row of the "what changes" table: a verdict, a path, and what it means. */
+function Consequence({
+  verdict,
+  tone,
+  subject,
+  children,
 }: {
-  onOpen(root: string): void;
-  problem?: string;
+  verdict: string;
+  tone: "new" | "safe" | "plain";
+  subject: string;
+  children: string;
 }) {
-  const [busy, setBusy] = useState(false);
+  const pillStyle =
+    tone === "new"
+      ? { background: "var(--u-accent-soft)", color: "var(--u-accent)" }
+      : tone === "safe"
+        ? { background: "var(--u-added-soft)", color: "var(--u-added)" }
+        : {};
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "88px 132px minmax(0, 1fr)",
+        alignItems: "center",
+        gap: 10,
+        minHeight: 30,
+        padding: "4px 4px",
+        borderRadius: "var(--u-radius)",
+        ...(tone === "new" ? { background: "var(--u-bg-sunken)" } : {}),
+      }}
+    >
+      <span className="pill" style={pillStyle}>
+        {verdict}
+      </span>
+      <span className="mono">{subject}</span>
+      <span className="sec">{children}</span>
+    </div>
+  );
+}
 
-  const pick = async () => {
-    setBusy(true);
-    try {
-      const chosen = await pickRepoFolder();
-      if (chosen) onOpen(chosen);
-    } finally {
-      setBusy(false);
-    }
-  };
-
+/**
+ * Repository picker — and, for a Git repo with no jj, the way in.
+ *
+ * This screen used to be a dead end: a Git user's first move is to open their
+ * Git repository, and "not inside a jj repository" is where they left. The
+ * offer below is the whole onboarding path, so it spends its space on the one
+ * question that decides whether they take it — what happens to `.git` —
+ * and shows the command it will run, unedited.
+ */
+function OpenRepo({
+  offer,
+  problem,
+  busy,
+  onPick,
+  onColocate,
+}: {
+  offer?: ColocateOffer | undefined;
+  problem?: string | undefined;
+  busy: boolean;
+  onPick(): void;
+  onColocate(): void;
+}) {
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 14,
         height: "100%",
+        padding: "0 40px",
         background: "var(--u-bg-sidebar)",
       }}
       data-tauri-drag-region
     >
-      <div style={{ fontSize: 22, fontWeight: 600 }}>Ukemi</div>
-      <div className="sec" style={{ maxWidth: 380, textAlign: "center", lineHeight: 1.5 }}>
-        Open a jj repository. In a colocated repo, jj and git share the same
-        data, so a terminal can stay open alongside this window.
-      </div>
-      {problem && (
-        <div className="mono" style={{ color: "var(--u-conflict)", fontSize: 12 }}>
-          {problem}
+      <div style={{ display: "flex", flexDirection: "column", gap: 20, width: 640 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+          <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>Ukemi</div>
+          <div className="sec" style={{ fontSize: 12 }}>
+            A desktop window on Jujutsu
+          </div>
         </div>
-      )}
-      <button type="button" className="tb-btn" data-variant="primary" onClick={pick} disabled={busy}>
-        Choose folder… <span className="key">⌘O</span>
-      </button>
+
+        {!offer && (
+          <div
+            className="sec"
+            style={{ maxWidth: 420, alignSelf: "center", textAlign: "center", lineHeight: 1.55 }}
+          >
+            Open a jj repository — or a Git one, and jj can go alongside it.
+          </div>
+        )}
+
+        {offer && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--u-bg-raised)",
+              border: "1px solid var(--u-line-strong)",
+              borderRadius: "var(--u-radius-lg)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "14px 16px" }}>
+              <RepoGlyph />
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flexGrow: 1 }}
+              >
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{folderName(offer.path)}</div>
+                <div className="sec mono" style={{ fontSize: 11 }}>
+                  {offer.path}
+                </div>
+              </div>
+              <span className="pill">git only</span>
+            </div>
+
+            <div style={{ height: 1, background: "var(--u-line-faint)" }} />
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                padding: "14px 16px 16px",
+              }}
+            >
+              <div style={{ lineHeight: 1.55 }}>
+                A Git repository with no jj in it
+                {offer.probe.branch ? (
+                  <>
+                    {" — "}
+                    <span className="mono">{offer.probe.branch}</span> is checked out.
+                  </>
+                ) : (
+                  " — on a detached HEAD."
+                )}{" "}
+                Anything you have not committed becomes the working-copy change; nothing is lost.
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className="tb-btn"
+                  data-variant="primary"
+                  onClick={onColocate}
+                  disabled={busy}
+                >
+                  {busy ? "Adding jj…" : "Add jj alongside Git"} <span className="key">⏎</span>
+                </button>
+                <button type="button" className="tb-btn" onClick={onPick} disabled={busy}>
+                  Choose another folder… <span className="key">⌘O</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {offer && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="side-head" style={{ padding: "0 0 2px" }}>
+              WHAT CHANGES, AND WHAT DOES NOT
+            </div>
+            <Consequence verdict="new" tone="new" subject=".jj/">
+              The operation log and this window’s working copy live here.
+            </Consequence>
+            <Consequence verdict="untouched" tone="safe" subject=".git/">
+              No commit is rewritten. Branches, tags and remotes stay as they are.
+            </Consequence>
+            <Consequence verdict="untouched" tone="safe" subject="git, your IDE">
+              Both tools read the same commits. Keep a terminal open beside this window.
+            </Consequence>
+            <Consequence verdict="reversible" tone="plain" subject="rm -rf .jj">
+              Deletes the jj side and leaves the Git repository you started with.
+            </Consequence>
+          </div>
+        )}
+
+        {offer && (
+          // Transparency is the app's standing promise (design §4.8), and the
+          // first command it ever runs on a repo is the one most worth showing.
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 12px",
+              borderRadius: "var(--u-radius)",
+              border: "1px solid var(--u-line-faint)",
+              background: "var(--u-bg-raised)",
+            }}
+          >
+            <span className="side-head" style={{ padding: 0, whiteSpace: "nowrap" }}>
+              RUNS
+            </span>
+            <span className="mono selectable" style={{ flexGrow: 1 }}>
+              jj git init --colocate
+            </span>
+          </div>
+        )}
+
+        {problem && (
+          <div
+            role="alert"
+            className="mono selectable"
+            style={{
+              color: "var(--u-conflict)",
+              fontSize: 12,
+              textAlign: "center",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {problem}
+          </div>
+        )}
+
+        {!offer && (
+          <button
+            type="button"
+            className="tb-btn"
+            data-variant="primary"
+            style={{ alignSelf: "center" }}
+            onClick={onPick}
+            disabled={busy}
+          >
+            Choose folder… <span className="key">⌘O</span>
+          </button>
+        )}
+      </div>
     </div>
+  );
+}
+
+function RepoGlyph() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width={20}
+      height={20}
+      fill="none"
+      stroke="var(--u-text-secondary)"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="2.5" y="4" width="15" height="12" rx="2.5" />
+      <path d="M7.5 4v12" />
+    </svg>
   );
 }
 
 function Root() {
   const [root, setRoot] = useState<string | undefined>(undefined);
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const [offer, setOffer] = useState<ColocateOffer | undefined>(undefined);
   const [checking, setChecking] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const progress = useSyncExternalStore(subscribeProgress, progressSnapshot);
 
-  const openRoot = (candidate: string) => {
+  const open = (candidate: string) => {
+    setProblem(undefined);
+    setOffer(undefined);
+    setRoot(candidate);
+    rememberRepo(candidate);
+  };
+
+  /**
+   * Verify a candidate, and decide which of the three answers it is: a jj
+   * repository, a Git repository we can offer to colocate, or neither.
+   */
+  const openRoot = async (candidate: string) => {
     setChecking(true);
-    void isJjRepo(candidate).then((valid) => {
-      setChecking(false);
-      if (valid) {
-        setProblem(undefined);
-        setRoot(candidate);
-        rememberRepo(candidate);
-      } else {
-        setProblem(`${candidate} is not inside a jj repository.`);
-        setRoot(undefined);
+    try {
+      if (await isJjRepo(candidate)) {
+        open(candidate);
+        return;
       }
-    });
+      const probe = await gitProbe(candidate);
+      setRoot(undefined);
+      if (probe) {
+        setProblem(undefined);
+        setOffer({ path: candidate, probe });
+      } else {
+        setOffer(undefined);
+        setProblem(`${candidate} is not inside a jj or Git repository.`);
+      }
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const pick = () => {
+    void pickRepoFolder().then((chosen) => chosen && void openRoot(chosen));
+  };
+
+  const colocate = () => {
+    if (!offer) return;
+    setBusy(true);
+    initColocate(offer.path)
+      .then(() => open(offer.path))
+      // jj's own stderr, verbatim: it is written for humans, and this is
+      // exactly the moment a wary user needs the real reason.
+      .catch((error: unknown) => setProblem(messageFor(error)))
+      .finally(() => setBusy(false));
   };
 
   // A repo on the command line wins over the remembered one; either way it is
@@ -103,15 +350,15 @@ function Root() {
         setChecking(false);
         return;
       }
-      const valid = await isJjRepo(candidate);
-      setChecking(false);
-      if (valid) {
-        setRoot(candidate);
-        rememberRepo(candidate);
-      } else if (fromArgv) {
-        // An explicit argument that is wrong deserves to be said out loud.
-        setProblem(`${fromArgv} is not inside a jj repository.`);
+      if (await isJjRepo(candidate)) {
+        setChecking(false);
+        open(candidate);
+        return;
       }
+      // An explicit argument deserves the full answer — including the offer, so
+      // `ukemi ~/some-git-repo` is a way in and not an error.
+      if (fromArgv) await openRoot(fromArgv);
+      else setChecking(false);
     });
   }, []);
 
@@ -119,28 +366,51 @@ function Root() {
     applyTheme(rememberedTheme());
   }, []);
 
-  // ⌘O works from the empty state too, before any repo is open.
+  // ⌘O works from the empty state too, before any repo is open. Return also
+  // takes the offer, since it is the one primary action on screen.
   useEffect(() => {
+    if (root) return;
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "o" && !root) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "o") {
         event.preventDefault();
-        void pickRepoFolder().then((chosen) => chosen && openRoot(chosen));
+        pick();
+      }
+      if (event.key === "Enter" && offer && !busy) {
+        event.preventDefault();
+        colocate();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [root]);
+  });
 
-  if (checking) return <div style={{ height: "100%", background: "var(--u-bg-sidebar)" }} />;
-  if (!root) {
-    return <OpenRepo onOpen={openRoot} {...(problem ? { problem } : {})} />;
+  if (checking && !offer) {
+    return <div style={{ height: "100%", background: "var(--u-bg-sidebar)" }} />;
   }
+  if (!root) {
+    return (
+      <OpenRepo
+        busy={busy}
+        onPick={pick}
+        onColocate={colocate}
+        {...(offer ? { offer } : {})}
+        {...(problem ? { problem } : {})}
+      />
+    );
+  }
+  // The three cards come between opening a repo and seeing it, once ever: they
+  // are what makes the first graph readable rather than alarming.
+  if (!progress.welcomed) return <Welcome root={root} />;
   return (
     <App
       root={root}
-      onOpenRepo={() => void pickRepoFolder().then((chosen) => chosen && openRoot(chosen))}
+      onOpenRepo={pick}
     />
   );
+}
+
+function messageFor(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** The theme to load at launch. Falls back to the first built-in. */
