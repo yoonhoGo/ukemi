@@ -340,6 +340,76 @@ testable without a window. That move matters twice: the labels are read as
 table is imported into the catalogue guard the way `ROSETTA` and `MILESTONES`
 already are.
 
+**The diff is read in a wide sheet, and the inspector no longer shows one.**
+The inline diff opened inside a 372px panel, so a unified diff wrapped on
+nearly every line and reading one meant reassembling it. The fix is width, and
+width is the seventh sheet (1100×720) rather than a second OS window: a
+`WebviewWindow` costs a second React root, a second query client or a cache
+sync between them, its own menu and its own window-state persistence — for a
+pane that shows a string this window has already read.
+
+Two things were deleted rather than kept alongside it. The inline diff is gone
+entirely: a file row that expanded in place *and* a sheet would be two ways to
+read the same diff, and a row that did one sometimes and the other the rest of
+the time is worse than either. And the sheet reads
+`jj diff -r <rev> --git` **once** for the whole revision instead of once per
+file, so walking the change with ↑/↓ costs no jj calls — that is the same read
+the hunk sheet already makes, and it is what let the line numbers be fixed:
+the inline gutter had been printing `index + 1` of the rendered array, which is
+the file's line number only for a single-hunk diff starting at line 1. The
+sheet renders the domain's `parseGitDiff`, which counts from the `@@` headers
+and carries both sides per line, so the wide view — where a wrong number is
+legible — shows the true ones. `FileChange.insertions`/`deletions` are declared
+but never populated (`jj diff --summary` prints no counts), so the header's
+`+n −m` is counted off those same parsed lines.
+
+Not side-by-side, and not pretending to be. jj emits a unified diff; the two
+gutters are the old and new line numbers, not two versions of the file. What
+the width buys is a real measure and no wrapping — the rows opt back into
+`white-space: pre` and the block sizes to `max-content`, so long lines scroll
+sideways inside the pane instead of folding.
+
+**The toolbar moves the window itself, not through `data-tauri-drag-region`.**
+This window has no title bar (`titleBarStyle: "Overlay"` plus `hiddenTitle`), so
+the toolbar is one, and the attribute Tauri ships for that is what we used
+first. It could not be made reliable, and the reason is in the script Tauri
+injects — read out of the built binary rather than guessed at:
+
+    e.button === 0 && (e.detail === 1 || e.detail === 2) && isDragRegion(…)
+
+`e.detail` is the click count. A *failed* drag leaves the pointer exactly where
+it started, so the next attempt in the same spot is click 2 and the one after
+that is click 3 — from there the script refuses until the double-click interval
+expires. One miss ratchets into a run of misses, which is what "it works
+sometimes, but more often it doesn't" actually was. The geometry was a red
+herring: the user marked the spots they grab and they were the right spots.
+
+Two things were learned on the way and are worth keeping written down. A bare
+`data-tauri-drag-region` means "only a direct click on *this* element", not
+"this subtree" (`return el === composedPath[0]`), so the attribute on a flex
+container whose children cover it drags from nowhere at all; `deep` is the
+value that means the subtree. And `core:window`'s default permission set does
+**not** include `allow-start-dragging` — it grants `allow-internal-toggle-maximize`,
+which is the command the injected script uses — so calling the API needs two
+lines in `capabilities/default.json` and a rebuild, and a capability that is
+merely written down is silently denied at runtime.
+
+So `ui/window-drag.ts` asks for the drag on mousedown: the same two gestures a
+system title bar has, drag to move and double-click to zoom, with no click-count
+gate. Controls are excluded by a `closest()` selector rather than Tauri's fuller
+`isClickableElement` walk, and the revset field keeps
+`data-tauri-drag-region="false"` as the opt-out even though nothing reads the
+attribute for us any more — it is still the vocabulary a reader will look for.
+
+**Settings keeps its key and gets one row back.**
+Moving the theme and language pickers behind ⌘, was right and the sidebar was
+right to lose eleven rows of preferences from the middle of its navigation. It
+was wrong to leave nothing in their place: the pickers became unfindable, and
+`themes/contract.css` exists on the argument that a theme nobody can select is a
+theme nobody has checked. One `side-item` row — label, gear, `⌘,` — is the
+smallest thing that teaches the shortcut instead of replacing it, and it reads
+the way the transition strip below it already does.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
