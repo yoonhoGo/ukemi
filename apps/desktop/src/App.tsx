@@ -14,11 +14,14 @@ import {
   useRepo,
 } from "./repo.tsx";
 import { Board } from "./ui/Board.tsx";
+import { CoachBubble, ProgressPanel } from "./ui/Coach.tsx";
 import { CommandPanel } from "./ui/CommandPanel.tsx";
 import { isRead, shellLine } from "./ui/command-line.ts";
 import { Graph } from "./ui/Graph.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
 import { HunkSheet, type HunkSheetMode } from "./ui/HunkSheet.tsx";
+import { milestoneForCommand, reachMilestone } from "./ui/onboarding.ts";
+import { Rosetta } from "./ui/Rosetta.tsx";
 import { SAVED_REVSETS, Sidebar } from "./ui/Sidebar.tsx";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
@@ -47,6 +50,8 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
   // The graph is the window; the board is the same data by workspace (§4.6).
   const [view, setView] = useState<"graph" | "board">("graph");
   const [showCommands, setShowCommands] = useState(false);
+  const [showRosetta, setShowRosetta] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const commandLog = useCommandLog();
   const pullRequests = usePullRequests();
   const prsByBranch = useMemo(
@@ -125,8 +130,18 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       const meta = event.metaKey || event.ctrlKey;
 
       if (event.key === "Escape") {
-        if (showShortcuts) setShowShortcuts(false);
+        if (showRosetta) setShowRosetta(false);
+        else if (showProgress) setShowProgress(false);
+        else if (showShortcuts) setShowShortcuts(false);
         else if (isPinned) pin(undefined);
+        return;
+      }
+      // The Git-to-jj lookup. Available from the first launch to long after the
+      // welcome cards are gone — it is the part of the onboarding that keeps
+      // earning its key.
+      if (meta && key === "g") {
+        event.preventDefault();
+        setShowRosetta((open) => !open);
         return;
       }
       if (meta && key === "/") {
@@ -142,6 +157,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       if (meta && event.shiftKey && key === "w") {
         event.preventDefault();
         setView((current) => (current === "graph" ? "board" : "graph"));
+        reachMilestone("workspaces");
         return;
       }
       if (!meta) {
@@ -210,6 +226,8 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [
     showShortcuts,
+    showRosetta,
+    showProgress,
     isPinned,
     pin,
     move,
@@ -235,8 +253,39 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
     (mutation) => mutation.error,
   )?.error;
 
+  /**
+   * Tick off the transition from Git.
+   *
+   * Five of the seven milestones are read off the command log, so every route
+   * to a jj verb counts — the inspector's steps, the hunk sheet, the stack
+   * panel, a drag in the graph. `reachMilestone` is idempotent, so rescanning
+   * the whole (bounded) log on each new command is cheaper than tracking a
+   * cursor, and cannot double-count.
+   */
+  useEffect(() => {
+    for (const record of commandLog) {
+      const reached = milestoneForCommand(record);
+      if (reached) reachMilestone(reached);
+    }
+  }, [commandLog]);
+
+  // The sixth has no command behind it: meeting a conflict and finding the app
+  // still working *is* the lesson, so seeing one is what reaches it.
+  useEffect(() => {
+    if (selectedRevision?.hasConflict) reachMilestone("conflicts");
+  }, [selectedRevision?.hasConflict]);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    // `position: relative` is what the coach bubble anchors against: it points
+    // at the toolbar, the inspector or the timeline, so the window is its frame.
+    <div
+      style={{
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+      }}
+    >
       <Toolbar
         root={root}
         onOpenRepo={onOpenRepo}
@@ -296,7 +345,11 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       <div style={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
         <Sidebar
           view={view}
-          onToggleBoard={() => setView((current) => (current === "graph" ? "board" : "graph"))}
+          onToggleBoard={() => {
+            setView((current) => (current === "graph" ? "board" : "graph"));
+            reachMilestone("workspaces");
+          }}
+          onOpenProgress={() => setShowProgress(true)}
         />
         <main
           style={{
@@ -412,7 +465,11 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
         <Inspector revision={selectedRevision} onOpenSheet={setSheet} />
       </div>
 
+      <CoachBubble onOpenRosetta={() => setShowRosetta(true)} />
+
       {showCommands && <CommandPanel onClose={() => setShowCommands(false)} />}
+      {showRosetta && <Rosetta onClose={() => setShowRosetta(false)} />}
+      {showProgress && <ProgressPanel onClose={() => setShowProgress(false)} />}
       <Timeline />
       {drag && (
         <>

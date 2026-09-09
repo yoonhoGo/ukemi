@@ -1,6 +1,7 @@
 import type { Bookmark } from "@ukemi/domain";
 import { bookmarkRevset, CONFLICTS_REVSET, DEFAULT_REVSET, UNPUSHED_REVSET } from "@ukemi/domain";
 import { useBookmarks, useRepo, useWorkspaces } from "../repo.tsx";
+import { TransitionStrip } from "./Coach.tsx";
 import { BookmarkIcon, CurrentWorkspaceIcon, RevsetIcon, WorkspaceIcon } from "./icons.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
 
@@ -27,9 +28,11 @@ function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
 export function Sidebar({
   view,
   onToggleBoard,
+  onOpenProgress,
 }: {
   view: "graph" | "board";
   onToggleBoard(): void;
+  onOpenProgress(): void;
 }) {
   const { revset, setRevset } = useRepo();
   const bookmarks = useBookmarks();
@@ -142,6 +145,8 @@ export function Sidebar({
         </button>
       ))}
 
+      <span style={{ flexGrow: 1, minHeight: 12 }} />
+      <TransitionStrip onOpen={onOpenProgress} />
       <ThemePicker />
     </nav>
   );

@@ -8,6 +8,7 @@ const GROUPS = [
       ["⌘1 ⌘2 ⌘3", "Saved revsets"],
       ["⌘R", "Reload from disk"],
       ["⌘⇧W", "Workspace board"],
+      ["⌘G", "Look up a git command"],
       ["⌘J", "Commands this window ran"],
       ["⌘O", "Open another repository"],
     ],
