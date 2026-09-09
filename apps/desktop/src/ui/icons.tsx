@@ -43,20 +43,15 @@ export function RevsetIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-export function RepoIcon({ size = 18 }: { size?: number }) {
+/**
+ * The revset field's glyph. A funnel, not a magnifier: the field decides which
+ * revisions the graph shows and never searches their text, and the magnifier
+ * that used to sit there had people reading it as a commit search.
+ */
+export function FilterIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg {...base} width={size} height={size} strokeWidth={1.5} aria-hidden>
-      <rect x="2.5" y="4" width="15" height="12" rx="2.5" />
-      <path d="M7.5 4v12" />
-    </svg>
-  );
-}
-
-export function SearchIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg {...base} width={size} height={size} strokeWidth={1.8} aria-hidden>
-      <circle cx="9" cy="9" r="5.5" />
-      <path d="M13.5 13.5l3.5 3.5" />
+    <svg {...base} width={size} height={size} aria-hidden>
+      <path d="M3 4.5h14l-5.5 6v5l-3 1.5v-6.5z" />
     </svg>
   );
 }

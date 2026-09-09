@@ -2,7 +2,8 @@
 export const chrome: Record<string, string> = {
   // ── Toolbar ────────────────────────────────────────────────────────────
   Revset: "리브셋",
-  "Open another repository (⌘O)": "다른 저장소 열기 (⌘O)",
+  "Switch repository (⌘O opens the picker)": "저장소 바꾸기 (⌘O로 폴더 고르기)",
+  Recent: "최근",
   "All shortcuts (⌘/)": "단축키 전체 (⌘/)",
   Fetch: "페치",
   "Fetching…": "페치 중…",

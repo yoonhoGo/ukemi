@@ -8,6 +8,7 @@ import {
   initialRepo,
   isJjRepo,
   pickRepoFolder,
+  recentRepos,
   rememberedRepo,
   rememberRepo,
   type GitProbe,
@@ -418,7 +419,8 @@ function Root() {
     <App
       key={locale}
       root={root}
-      onOpenRepo={pick}
+      recents={recentRepos()}
+      onOpenRepo={(path) => (path ? void openRoot(path) : pick())}
     />
   );
 }

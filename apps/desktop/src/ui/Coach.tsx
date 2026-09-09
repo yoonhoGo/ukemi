@@ -175,7 +175,7 @@ function Meter({ done }: { done: number }) {
             flexGrow: 1,
             height: 3,
             borderRadius: 2,
-            background: index < done ? "var(--u-accent)" : "rgba(0,0,0,0.12)",
+            background: index < done ? "var(--u-accent)" : "var(--u-bg-selected)",
           }}
         />
       ))}
@@ -324,7 +324,7 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
               padding: 2,
               flexShrink: 0,
               borderRadius: 11,
-              background: progress.hintsOff ? "rgba(0,0,0,0.16)" : "var(--u-accent)",
+              background: progress.hintsOff ? "var(--u-bg-selected)" : "var(--u-accent)",
             }}
           >
             <span

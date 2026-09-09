@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n/i18n.ts";
 import { useJjMutation, useRepo } from "../repo.tsx";
-import { FetchIcon, PlusIcon, PushIcon, RepoIcon, SearchIcon } from "./icons.tsx";
+import { FetchIcon, FilterIcon, PlusIcon, PushIcon } from "./icons.tsx";
 
 /**
  * The revset field.
@@ -44,7 +44,7 @@ function RevsetField() {
         boxShadow: "inset 0 1px 1px rgba(0,0,0,0.04)",
       }}
     >
-      <SearchIcon />
+      <FilterIcon />
       <input
         ref={input}
         className="mono selectable"
@@ -73,20 +73,155 @@ function RevsetField() {
   );
 }
 
+/**
+ * The repository switcher.
+ *
+ * The name of the open repo *is* the control: a lone glyph here read as a
+ * sidebar toggle — a rounded rect with a divider is exactly that icon — and a
+ * folder picker was the only way between projects, which made switching cost a
+ * dialog every time. The recents come from the same list that decides which
+ * repo the app reopens at launch, so the menu can only offer repos that were
+ * actually opened.
+ */
+function RepoSwitcher({
+  root,
+  recents,
+  onOpenRepo,
+}: {
+  root: string;
+  recents: readonly string[];
+  onOpenRepo(path?: string): void;
+}) {
+  const [open, setOpen] = useState(false);
+  const name = root.split("/").filter(Boolean).pop() ?? root;
+  const others = recents.filter((path) => path !== root);
+
+  return (
+    <div
+      style={{ position: "relative", minWidth: 0 }}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !open) return;
+        setOpen(false);
+        // The window's map would read this Escape as "back to now".
+        event.stopPropagation();
+      }}
+    >
+      <button
+        type="button"
+        className="tb-btn"
+        style={{ height: "auto", minWidth: 0, padding: "3px 8px" }}
+        onClick={() => setOpen((shown) => !shown)}
+        aria-expanded={open}
+        title={t("Switch repository (⌘O opens the picker)")}
+      >
+        <span
+          style={{ display: "flex", flexDirection: "column", minWidth: 0, textAlign: "left" }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{name}</span>
+          <span
+            className="sec"
+            style={{
+              fontSize: 11,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              direction: "rtl",
+              textAlign: "left",
+            }}
+          >
+            {root}
+          </span>
+        </span>
+        <span className="key">⌘O</span>
+      </button>
+
+      {open && (
+        <>
+          {/* An invisible sheet is what closes the menu on an outside click,
+              which costs less than a document listener and cannot outlive it. */}
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 40 }}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            role="menu"
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              zIndex: 41,
+              minWidth: 260,
+              maxWidth: 420,
+              padding: 4,
+              borderRadius: "var(--u-radius-lg)",
+              background: "var(--u-bg-raised)",
+              border: "1px solid var(--u-line-strong)",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+            }}
+          >
+            {others.length > 0 && <div className="side-head">{t("Recent")}</div>}
+            {others.map((path) => (
+              <button
+                type="button"
+                role="menuitem"
+                className="side-item"
+                key={path}
+                onClick={() => {
+                  setOpen(false);
+                  onOpenRepo(path);
+                }}
+              >
+                <span style={{ flexShrink: 0 }}>{path.split("/").filter(Boolean).pop()}</span>
+                <span
+                  className="ter"
+                  style={{
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    direction: "rtl",
+                    textAlign: "left",
+                    fontSize: "var(--u-font-size-small)",
+                  }}
+                >
+                  {path}
+                </span>
+              </button>
+            ))}
+            <button
+              type="button"
+              role="menuitem"
+              className="side-item"
+              onClick={() => {
+                setOpen(false);
+                onOpenRepo();
+              }}
+            >
+              <span style={{ flexGrow: 1 }}>{t("Choose another folder…")}</span>
+              <span className="key">⌘O</span>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function Toolbar({
   root,
+  recents,
   onOpenRepo,
   onShowShortcuts,
 }: {
   root: string;
-  onOpenRepo(): void;
+  recents: readonly string[];
+  onOpenRepo(path?: string): void;
   onShowShortcuts(): void;
 }) {
   const { port, isPinned } = useRepo();
   const fetch = useJjMutation((p) => p.fetch());
   const push = useJjMutation((p) => p.push());
   const newChange = useJjMutation((p) => p.newChange(["@"]));
-  const name = root.split("/").filter(Boolean).pop() ?? root;
   // The bundled binary is the one the templates were written against, so the
   // repo path is the only ambiguity worth showing here.
   void port;
@@ -108,32 +243,7 @@ export function Toolbar({
     >
       {/* Room for the traffic lights, which the overlay title bar draws over us. */}
       <div style={{ width: 68, flexShrink: 0 }} />
-      <button
-        type="button"
-        className="tb-btn"
-        style={{ background: "transparent", padding: "0 6px" }}
-        onClick={onOpenRepo}
-        title={t("Open another repository (⌘O)")}
-      >
-        <RepoIcon />
-      </button>
-      <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
-        <div
-          className="sec"
-          style={{
-            fontSize: 11,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            direction: "rtl",
-            textAlign: "left",
-          }}
-          title={root}
-        >
-          {root}
-        </div>
-      </div>
+      <RepoSwitcher root={root} recents={recents} onOpenRepo={onOpenRepo} />
       <div style={{ flexGrow: 1, display: "flex", justifyContent: "center" }}>
         <RevsetField />
       </div>

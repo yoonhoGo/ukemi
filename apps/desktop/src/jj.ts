@@ -143,21 +143,42 @@ export async function pickRepoFolder(): Promise<string | undefined> {
   return typeof chosen === "string" ? chosen : undefined;
 }
 
-const LAST_REPO_KEY = "ukemi:last-repo";
+const RECENT_REPOS_KEY = "ukemi:recent-repos";
+
+/**
+ * The repositories opened before, newest first.
+ *
+ * A list rather than the single last path, because one window on one repo made
+ * every project switch a trip through the folder picker. Rows are not verified
+ * here: a folder that has moved or lost its `.jj` is checked on open like any
+ * other candidate, and lands on the same empty state.
+ *
+ * ponytail: five entries in one localStorage key. A repo the user actually
+ * wants pinned would need real per-repo state, and there is none yet.
+ */
+const RECENT_LIMIT = 5;
+
+export function recentRepos(): readonly string[] {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(RECENT_REPOS_KEY) ?? "[]");
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((entry): entry is string => typeof entry === "string");
+  } catch {
+    // Blocked storage, or a value from before this key held a list: launch to
+    // the empty state instead.
+    return [];
+  }
+}
 
 /** The repo to reopen on launch. Convenience only — absence is not an error. */
 export function rememberedRepo(): string | undefined {
-  try {
-    return localStorage.getItem(LAST_REPO_KEY) ?? undefined;
-  } catch {
-    // Private window or blocked storage: launch to the empty state instead.
-    return undefined;
-  }
+  return recentRepos()[0];
 }
 
 export function rememberRepo(root: string): void {
   try {
-    localStorage.setItem(LAST_REPO_KEY, root);
+    const next = [root, ...recentRepos().filter((entry) => entry !== root)];
+    localStorage.setItem(RECENT_REPOS_KEY, JSON.stringify(next.slice(0, RECENT_LIMIT)));
   } catch {
     // Not being able to remember is not worth interrupting the user over.
   }

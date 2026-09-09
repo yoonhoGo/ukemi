@@ -39,7 +39,13 @@ import { t, tParts } from "./i18n/i18n.ts";
  * than a hidden panel — time travel is the app's premise, so it is always
  * on screen.
  */
-function Window({ onOpenRepo }: { onOpenRepo(): void }) {
+function Window({
+  recents,
+  onOpenRepo,
+}: {
+  recents: readonly string[];
+  onOpenRepo(path?: string): void;
+}) {
   const { root, revset, setRevset, isPinned, pin, opId } = useRepo();
   const { layout, query } = useGraph();
   const operations = useOperations(60);
@@ -291,6 +297,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
     >
       <Toolbar
         root={root}
+        recents={recents}
         onOpenRepo={onOpenRepo}
         onShowShortcuts={() => setShowShortcuts(true)}
       />
@@ -515,14 +522,16 @@ function messageFor(error: unknown): string {
 
 export function App({
   root,
+  recents,
   onOpenRepo,
 }: {
   root: string;
-  onOpenRepo(): void;
+  recents: readonly string[];
+  onOpenRepo(path?: string): void;
 }) {
   return (
     <RepoProvider root={root} initialRevset={DEFAULT_REVSET}>
-      <Window onOpenRepo={onOpenRepo} />
+      <Window recents={recents} onOpenRepo={onOpenRepo} />
     </RepoProvider>
   );
 }
