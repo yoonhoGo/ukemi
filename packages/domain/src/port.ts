@@ -7,6 +7,7 @@ import type {
   Revision,
   Workspace,
 } from "./types.ts";
+import type { RebaseMode } from "./revset.ts";
 
 /**
  * Pins a read to one point in time.
@@ -24,6 +25,26 @@ export interface ReadOptions {
 /** Result of a write: the operation it created, so the UI can advance its pin. */
 export interface WriteResult {
   readonly opId: OperationId;
+}
+
+/**
+ * One file's desired content on the "kept" side of a hunk-level operation.
+ *
+ * `revert` restores the file from the pre-change side without shipping its
+ * bytes, which is how a binary file or a wholly deselected file is expressed.
+ */
+export type PlanFile =
+  | { readonly path: string; readonly op: "write"; readonly content: string }
+  | { readonly path: string; readonly op: "delete" }
+  | { readonly path: string; readonly op: "revert" };
+
+/** A conflicted file, as `jj resolve --list` reports it. */
+export interface ConflictedFile {
+  readonly path: string;
+  /** jj's own wording, e.g. "2-sided conflict". */
+  readonly description: string;
+  /** Number of sides, parsed from the description when it says. */
+  readonly sides?: number | undefined;
 }
 
 /**
@@ -88,6 +109,78 @@ export interface JjPort {
     readonly bookmarks?: readonly string[] | undefined;
     readonly changes?: readonly ChangeId[] | undefined;
   }): Promise<WriteResult>;
+
+  /**
+   * Move revisions onto a new parent.
+   *
+   * `mode` selects between jj's `-r` (this revision alone), `-s` (it and its
+   * descendants) and `-b` (its whole branch). Use `rebaseSetRevset` to show
+   * which revisions each mode would move before running it.
+   */
+  rebase(mode: RebaseMode, rev: string, onto: string): Promise<WriteResult>;
+
+  /**
+   * Move whole files from one revision into another (`jj squash`).
+   *
+   * With no `paths`, the entire revision is squashed.
+   */
+  squash(args: {
+    readonly from: string;
+    readonly into: string;
+    readonly paths?: readonly string[] | undefined;
+    readonly message?: string | undefined;
+  }): Promise<WriteResult>;
+
+  /**
+   * Split a revision in two by whole files (`jj split`).
+   *
+   * `paths` land in the *first* (lower) revision with `message`; everything
+   * else stays in the upper one, keeping the original description.
+   */
+  split(args: {
+    readonly rev: string;
+    readonly paths: readonly string[];
+    readonly message?: string | undefined;
+  }): Promise<WriteResult>;
+
+  /**
+   * Split a revision by individual hunks.
+   *
+   * `keep` describes the exact content each affected file should have in the
+   * first revision; build it with `applySelectedGroups` and check it with
+   * `verifyRoundTrip` first. Rejected when the port has no way to run jj's
+   * diff-editor protocol.
+   */
+  splitHunks(args: {
+    readonly rev: string;
+    readonly keep: readonly PlanFile[];
+    readonly message?: string | undefined;
+  }): Promise<WriteResult>;
+
+  /** Move individual hunks from one revision into another. */
+  squashHunks(args: {
+    readonly from: string;
+    readonly into: string;
+    readonly keep: readonly PlanFile[];
+  }): Promise<WriteResult>;
+
+  /** Raw content of one file at one revision, for computing partial trees. */
+  fileContent(rev: string, path: string, opts?: ReadOptions): Promise<string>;
+
+  /** Files with unresolved conflicts in `rev`. */
+  conflicts(rev: string, opts?: ReadOptions): Promise<ConflictedFile[]>;
+
+  /**
+   * Resolve a conflicted file by taking one side wholesale.
+   *
+   * Uses jj's built-in `:ours` / `:theirs` merge tools, so no editor is
+   * involved. Anything finer than "take a side" is a hunk-level edit.
+   */
+  resolveTakingSide(
+    rev: string,
+    path: string,
+    side: "ours" | "theirs",
+  ): Promise<WriteResult>;
 
   /** Undo one operation (`jj undo`). */
   undo(): Promise<WriteResult>;

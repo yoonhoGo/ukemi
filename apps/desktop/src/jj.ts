@@ -1,7 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { JjCliAdapter, type ExecResult } from "@ukemi/jj-cli-adapter";
-import type { JjPort } from "@ukemi/domain";
+import {
+  JjCliAdapter,
+  PLAN_TOOL_SCRIPT,
+  type ExecResult,
+  type PlanPreparer,
+} from "@ukemi/jj-cli-adapter";
+import type { JjPort, PlanFile } from "@ukemi/domain";
 
 /**
  * Wires the adapter to Tauri. The only place in the UI that knows an adapter
@@ -13,10 +18,32 @@ import type { JjPort } from "@ukemi/domain";
  * a window.
  */
 export function portFor(root: string): JjPort {
-  return new JjCliAdapter(root, (args) =>
-    invoke<ExecResult>("jj_exec", { root, args: [...args] }),
+  return new JjCliAdapter(
+    root,
+    (args) => invoke<ExecResult>("jj_exec", { root, args: [...args] }),
+    tauriPlanPreparer,
   );
 }
+
+/**
+ * `PlanPreparer` backed by Tauri, since a webview cannot write files.
+ *
+ * The Rust side creates its own temp directory and returns the path — the
+ * webview never names a location on disk, so this is not a general file-write
+ * capability. The script it writes is `PLAN_TOOL_SCRIPT`, the same constant the
+ * Node implementation uses, so jj's diff-editor protocol is described in one
+ * place.
+ */
+const tauriPlanPreparer: PlanPreparer = async (files) => {
+  const prepared = await invoke<{ planDir: string; scriptPath: string }>(
+    "prepare_hunk_plan",
+    { script: PLAN_TOOL_SCRIPT, files: files as PlanFile[] },
+  );
+  return {
+    ...prepared,
+    dispose: () => invoke<void>("discard_hunk_plan", { planDir: prepared.planDir }),
+  };
+};
 
 /** Ask Rust whether a folder is inside a jj workspace. */
 export function isJjRepo(root: string): Promise<boolean> {

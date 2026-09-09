@@ -45,3 +45,26 @@ export function withLimit(revset: string, limit: number): string {
 export function bookmarkRevset(name: string): string {
   return `bookmarks(exact:${quote(name)})`;
 }
+
+/** Which revisions a rebase moves. Mirrors `jj rebase`'s `-r` / `-s` / `-b`. */
+export type RebaseMode = "revision" | "source" | "branch";
+
+/**
+ * The revisions a rebase in `mode` would move.
+ *
+ * Used to count and ghost the affected rows before anything runs, so the drag
+ * preview states a fact rather than a guess. The `branch` formula is jj's own
+ * documented equivalence — `-b X` behaves as `-s roots(onto..X)` — and
+ * `contract.test.ts` re-checks it by running the real rebase, because a wrong
+ * set here would mislabel how much history is about to move.
+ */
+export function rebaseSetRevset(mode: RebaseMode, rev: string, onto: string): string {
+  switch (mode) {
+    case "revision":
+      return rev;
+    case "source":
+      return `${rev}::`;
+    case "branch":
+      return `roots(${onto}..${rev})::`;
+  }
+}

@@ -1,17 +1,21 @@
 import type {
   Bookmark,
   ChangeId,
+  ConflictedFile,
   FileChange,
   FileStatus,
   JjPort,
   Operation,
   OperationId,
+  PlanFile,
   ReadOptions,
+  RebaseMode,
   Revision,
   Workspace,
   WriteResult,
 } from "@ukemi/domain";
 import { JjError, type JjExec } from "./exec.ts";
+import { planToolArgs, type PlanPreparer } from "./hunk-plan.ts";
 import {
   BOOKMARK_TEMPLATE,
   OPERATION_TEMPLATE,
@@ -73,10 +77,18 @@ const STATUS_CODES: Record<string, FileStatus> = {
 export class JjCliAdapter implements JjPort {
   readonly root: string;
   private readonly exec: JjExec;
+  private readonly preparePlan: PlanPreparer | undefined;
 
-  constructor(root: string, exec: JjExec) {
+  /**
+   * `preparePlan` enables the hunk-level operations. It is optional because a
+   * caller that only reads (a script, a test of the log) has no reason to be
+   * able to write files, and leaving it out makes that impossible rather than
+   * merely unused.
+   */
+  constructor(root: string, exec: JjExec, preparePlan?: PlanPreparer) {
     this.root = root;
     this.exec = exec;
+    this.preparePlan = preparePlan;
   }
 
   /** Flags on every invocation: no colour codes, no pager, no chatter. */
@@ -267,6 +279,130 @@ export class JjCliAdapter implements JjPort {
     for (const bookmark of args?.bookmarks ?? []) argv.push("--bookmark", bookmark);
     for (const change of args?.changes ?? []) argv.push("--change", change);
     return this.write(argv);
+  }
+
+  rebase(mode: RebaseMode, rev: string, onto: string): Promise<WriteResult> {
+    const flag = mode === "revision" ? "-r" : mode === "source" ? "-s" : "-b";
+    // `--onto` is the current spelling; `-d` remains as an alias in jj 0.43 but
+    // is not what the transparency panel should teach.
+    return this.write(["rebase", flag, rev, "--onto", onto]);
+  }
+
+  squash(args: {
+    readonly from: string;
+    readonly into: string;
+    readonly paths?: readonly string[] | undefined;
+    readonly message?: string | undefined;
+  }): Promise<WriteResult> {
+    const argv = ["squash", "--from", args.from, "--into", args.into];
+    // Without a message jj opens an editor; keeping the destination's own
+    // description is the right default for moving work into an existing change.
+    if (args.message === undefined) argv.push("--use-destination-message");
+    else argv.push("-m", args.message);
+    if (args.paths && args.paths.length > 0) argv.push("--", ...args.paths);
+    return this.write(argv);
+  }
+
+  split(args: {
+    readonly rev: string;
+    readonly paths: readonly string[];
+    readonly message?: string | undefined;
+  }): Promise<WriteResult> {
+    const argv = ["split", "-r", args.rev];
+    // `-m` is what keeps `jj split` from opening $EDITOR; the upper revision
+    // keeps the original description either way.
+    argv.push("-m", args.message ?? "");
+    if (args.paths.length > 0) argv.push("--", ...args.paths);
+    return this.write(argv);
+  }
+
+  splitHunks(args: {
+    readonly rev: string;
+    readonly keep: readonly PlanFile[];
+    readonly message?: string | undefined;
+  }): Promise<WriteResult> {
+    return this.withPlan(args.keep, (toolArgs) =>
+      this.write(["split", "-r", args.rev, "-m", args.message ?? "", ...toolArgs]),
+    );
+  }
+
+  squashHunks(args: {
+    readonly from: string;
+    readonly into: string;
+    readonly keep: readonly PlanFile[];
+  }): Promise<WriteResult> {
+    return this.withPlan(args.keep, (toolArgs) =>
+      this.write([
+        "squash",
+        "--from",
+        args.from,
+        "--into",
+        args.into,
+        "--use-destination-message",
+        ...toolArgs,
+      ]),
+    );
+  }
+
+  async fileContent(rev: string, path: string, opts?: ReadOptions): Promise<string> {
+    // `--` so a path that looks like a flag is still a path.
+    return this.run([...this.readBase(opts), "file", "show", "-r", rev, "--", path]);
+  }
+
+  async conflicts(rev: string, opts?: ReadOptions): Promise<ConflictedFile[]> {
+    // `jj resolve --list` exits non-zero when there is nothing to resolve, but
+    // "this revision has no conflicts" is an answer to the question, not a
+    // failure. Checked via the revision's own conflict flag rather than by
+    // matching jj's error text, which is not a stable interface.
+    const revision = await this.show(rev, opts);
+    if (!revision?.hasConflict) return [];
+
+    const out = await this.run([...this.readBase(opts), "resolve", "--list", "-r", rev]);
+    return out
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => {
+        // `<path><spaces><description>`; a path may contain single spaces, so
+        // the split is on the run of two or more.
+        const match = /^(.*?)\s{2,}(.*)$/.exec(line);
+        const path = match ? match[1]! : line.trim();
+        const description = match ? match[2]!.trim() : "";
+        const sides = /^(\d+)-sided/.exec(description);
+        return {
+          path,
+          description,
+          ...(sides ? { sides: Number(sides[1]) } : {}),
+        };
+      });
+  }
+
+  resolveTakingSide(
+    rev: string,
+    path: string,
+    side: "ours" | "theirs",
+  ): Promise<WriteResult> {
+    // `:ours` / `:theirs` are jj's built-in merge tools, so this needs no editor.
+    return this.write(["resolve", "-r", rev, "--tool", `:${side}`, "--", path]);
+  }
+
+  /**
+   * Run one command with a materialised hunk plan registered as jj's diff
+   * editor, and always clean the plan up afterwards — a cancelled or failed
+   * split must not leave the user's file contents sitting in a temp directory.
+   */
+  private async withPlan(
+    keep: readonly PlanFile[],
+    run: (toolArgs: string[]) => Promise<WriteResult>,
+  ): Promise<WriteResult> {
+    if (!this.preparePlan) {
+      throw new Error("hunk-level operations need a PlanPreparer");
+    }
+    const plan = await this.preparePlan(keep);
+    try {
+      return await run(planToolArgs(plan));
+    } finally {
+      await plan.dispose();
+    }
   }
 
   undo(): Promise<WriteResult> {
