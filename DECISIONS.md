@@ -432,6 +432,51 @@ complaint, so `isAliasName` narrows it to a plain symbol and the adapter
 re-checks before the argv. A hand-written function alias (`mine-but(x)`) is
 skipped by the reader rather than shown as a row nothing can safely click.
 
+**Right-click and drag, with no command defined twice.**
+The row menu is `changeMenu().items` handed to `Menu.new` — the same array the
+menu bar builds, not a copy of it — so a chord still lives in exactly one place
+and `App`'s window map is still the only thing that runs it. It does not grey
+items out either: `isPinned`, immutable, parent count and emptiness already
+decide twice (the map, the inspector), and a third copy would couple `menu.ts`
+to repository state, which is the coupling the synthetic dispatch exists to
+avoid. A refused command does nothing, silently, and none of the six is
+destructive.
+
+The graph now has two drags and they stayed two hooks. `useDragBookmark` sits
+beside `useDragRebase` in the same file and shares one function, `rowUnder`;
+generalising the older hook would have meant touching its mode keys, its ghost
+and its coordinates for a caller that wants none of them. The bookmark drag
+asks for no modifier — ⌥ exists to tell a rebase drag apart from a click that
+starts anywhere on the row, and a pill has to be aimed at, so grabbing it is
+already the intent. Both hooks were also arming on *any* button until the row
+menu arrived: a right-click's `pointerdown` started a drag whose `pointerup`
+never came back from under the native popup, so the guard is `event.button === 0`
+at both call sites.
+
+What this closes: `JjPort.bookmarkSet` shipped in P0 and no screen called it,
+so the window could not move a bookmark at all. The pill is the handle.
+
+**A dropped folder is `openRoot`, not a fourth way in.**
+`Root` already answers "what is this path" in three branches — jj repo, git repo
+worth offering colocation, neither — so the drop listener hands it the path and
+stops. One listener for the whole window rather than one per screen (picker,
+welcome, graph): the window holds one repository, which is also why a multi-path
+drop takes the first and ignores the rest. No hover highlight; the OS cursor is
+already saying it. `getCurrentWebview()` throws *synchronously* without Tauri,
+so the call is wrapped rather than only `.catch()`-ed, and degrades the way
+`installAppMenu()` does.
+
+**Hunks are painted, not toggled.**
+Pointer-down fixes the value to paint (`!checked`) and every item the drag
+crosses is *set* to it. Toggling item by item makes a row flicker when the
+pointer comes back over it, which is the bug that pattern always has. The item
+under the pointer is found with `elementFromPoint`, for the same reason
+`drag-rebase.tsx` does it — implicit pointer capture means `pointerenter` never
+fires on the others — but the code is local to the sheet rather than shared: two
+call sites are not yet a helper. The click that follows a drag is dropped by
+`event.detail !== 0`, which keeps the keyboard's synthetic click (`detail === 0`)
+working; a suppression flag would have had to be cleared correctly instead.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
@@ -451,7 +496,9 @@ skipped by the reader rather than shown as a row nothing can safely click.
   Select All too, but the shortcut sheet documents a key that cannot work.
   Dropping Select All is not the answer (the revset field and the description
   editor need it); the options are a different binding inside the sheet, or
-  toggling that item's `enabled` while the sheet is up.
+  toggling that item's `enabled` while the sheet is up. Dragging across the
+  checkboxes now covers what the key was for, so this is a documentation bug
+  before it is a functional one — the shortcut sheet still promises ⌘A.
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
 - **Licence and pricing for Ukemi itself.**
 - **Whether the graph should read the metric tokens** instead of the JS
