@@ -1,9 +1,11 @@
 import type {
   Bookmark,
   ChangeId,
+  CommandRecord,
   ConflictedFile,
   FileChange,
   FileStatus,
+  GitInfo,
   JjPort,
   Operation,
   OperationId,
@@ -14,7 +16,7 @@ import type {
   Workspace,
   WriteResult,
 } from "@ukemi/domain";
-import { JjError, type JjExec } from "./exec.ts";
+import { JjError, observed, type CommandObserver, type JjExec } from "./exec.ts";
 import { planToolArgs, type PlanPreparer } from "./hunk-plan.ts";
 import {
   BOOKMARK_TEMPLATE,
@@ -85,39 +87,58 @@ export class JjCliAdapter implements JjPort {
    * able to write files, and leaving it out makes that impossible rather than
    * merely unused.
    */
-  constructor(root: string, exec: JjExec, preparePlan?: PlanPreparer) {
+  constructor(
+    root: string,
+    exec: JjExec,
+    preparePlan?: PlanPreparer,
+    observe?: CommandObserver,
+  ) {
     this.root = root;
-    this.exec = exec;
+    // Every invocation is reported, so the transparency panel is a fact about
+    // what ran rather than a reconstruction from the op log.
+    this.exec = observe ? observed("jj", exec, observe) : exec;
     this.preparePlan = preparePlan;
   }
 
-  /** Flags on every invocation: no colour codes, no pager, no chatter. */
+  /** Flags on every invocation: no colour codes, no pager. */
   private base(): string[] {
-    return ["--color=never", "--no-pager", "--quiet", "-R", this.root];
+    return ["--color=never", "--no-pager", "-R", this.root];
   }
 
-  /** Base flags plus the read-only guarantees. */
+  /**
+   * Base flags plus the read-only guarantees. Reads are also `--quiet`: their
+   * output is parsed, so jj's hints are noise. Writes are not, because what jj
+   * says after a write ("Absorbed changes into…", "Working copy now at…") is
+   * the message the user gets to see.
+   */
   private readBase(opts?: ReadOptions): string[] {
-    const args = [...this.base(), "--ignore-working-copy"];
+    const args = [...this.base(), "--quiet", "--ignore-working-copy"];
     if (opts?.atOp) args.push(`--at-operation=${opts.atOp}`);
     return args;
   }
 
   private async run(args: string[]): Promise<string> {
+    return (await this.runFull(args)).stdout;
+  }
+
+  private async runFull(args: string[]): Promise<{ stdout: string; stderr: string }> {
     const result = await this.exec(args);
     if (result.code !== 0) throw new JjError(args, result.code, result.stderr);
-    return result.stdout;
+    return result;
   }
 
   private async write(args: string[]): Promise<WriteResult> {
-    await this.run([...this.base(), ...args]);
-    // The op the write produced. Read it back rather than parsing jj's prose.
-    return { opId: await this.currentOperation() };
+    const { stderr } = await this.runFull([...this.base(), ...args]);
+    // The op the write produced. Read it back rather than parsing jj's prose;
+    // the prose itself is kept only as a message for the user.
+    const message = stderr.trim();
+    return { opId: await this.currentOperation(), ...(message ? { message } : {}) };
   }
 
   async currentOperation(): Promise<OperationId> {
     const out = await this.run([
       ...this.base(),
+      "--quiet",
       "--ignore-working-copy",
       "op",
       "log",
@@ -231,6 +252,31 @@ export class JjCliAdapter implements JjPort {
       if (args.length > 0) operation.args = args;
       return operation;
     });
+  }
+
+  async gitInfo(): Promise<GitInfo> {
+    const gitRoot = (await this.run([...this.readBase(), "git", "root"])).trim();
+    const remotesOut = await this.run([
+      ...this.readBase(),
+      "git",
+      "remote",
+      "list",
+    ]);
+    const remotes = remotesOut
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => {
+        // `<name> <url>`; a URL has no spaces, a remote name may not either.
+        const space = line.indexOf(" ");
+        return { name: line.slice(0, space), url: line.slice(space + 1).trim() };
+      });
+    // Colocated means the Git dir is a `.git` outside `.jj/`; a non-colocated
+    // repo keeps it at `.jj/repo/store/git`. Judged by shape rather than by
+    // comparing with `root`, which may differ by a symlink (macOS `/var`).
+    // ponytail: an external `--git-repo` dir reads as colocated; fine until
+    // someone has one.
+    const colocated = /[\/\\]\.git$/.test(gitRoot) && !/[\/\\]\.jj[\/\\]/.test(gitRoot);
+    return { gitRoot, colocated, remotes };
   }
 
   // ---- writes -------------------------------------------------------------
@@ -403,6 +449,12 @@ export class JjCliAdapter implements JjPort {
     } finally {
       await plan.dispose();
     }
+  }
+
+  absorb(from: string, into?: string): Promise<WriteResult> {
+    const args = ["absorb", "--from", from];
+    if (into !== undefined) args.push("--into", into);
+    return this.write(args);
   }
 
   undo(): Promise<WriteResult> {

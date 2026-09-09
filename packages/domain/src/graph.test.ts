@@ -10,6 +10,7 @@ function rev(changeId: string, parents: string[] = []): Revision {
     commitId: changeId.repeat(2),
     description: changeId,
     author: { name: "T", email: "t@e", timestamp: "2026-01-01T00:00:00+09:00" },
+    committer: { name: "T", email: "t@e", timestamp: "2026-01-01T00:00:00+09:00" },
     parents,
     bookmarks: [],
     tags: [],

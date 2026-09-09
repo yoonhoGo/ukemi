@@ -15,6 +15,7 @@ export const REVISION_TEMPLATE = [
   '",\\"commitId\\":" ++ json(commit_id)',
   '",\\"description\\":" ++ json(description)',
   '",\\"author\\":" ++ json(author)',
+  '",\\"committer\\":" ++ json(committer)',
   // Parent *change* IDs: topology that survives a rebase.
   '",\\"parents\\":" ++ json(parents.map(|c| c.change_id()))',
   '",\\"bookmarks\\":" ++ json(bookmarks.map(|b| b.name()))',

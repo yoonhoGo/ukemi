@@ -2,7 +2,9 @@ import type {
   Bookmark,
   ChangeId,
   FileChange,
+  GitInfo,
   Operation,
+  PullRequest,
   OperationId,
   Revision,
   Workspace,
@@ -25,6 +27,8 @@ export interface ReadOptions {
 /** Result of a write: the operation it created, so the UI can advance its pin. */
 export interface WriteResult {
   readonly opId: OperationId;
+  /** jj's own stderr summary of what it did, when it printed one. */
+  readonly message?: string | undefined;
 }
 
 /**
@@ -79,6 +83,9 @@ export interface JjPort {
 
   /** Most recent operations first. */
   operations(limit: number, opts?: ReadOptions): Promise<Operation[]>;
+
+  /** Git directory, colocation and remotes. Not pinned: this is about the repo, not a point in it. */
+  gitInfo(): Promise<GitInfo>;
 
   // ---- writes -------------------------------------------------------------
 
@@ -182,9 +189,38 @@ export interface JjPort {
     side: "ours" | "theirs",
   ): Promise<WriteResult>;
 
+  /**
+   * Move each change in `from` into the closest mutable ancestor that last
+   * touched those lines (`jj absorb`). jj has no dry run, so the preview is the
+   * result itself: `message` says what moved where, and one undo takes it back.
+   */
+  absorb(from: string, into?: string): Promise<WriteResult>;
+
   /** Undo one operation (`jj undo`). */
   undo(): Promise<WriteResult>;
 
   /** Restore the repo to the state at `opId` (`jj op restore`). */
   restoreOperation(opId: OperationId): Promise<WriteResult>;
+}
+
+/**
+ * The code forge behind the Git remote — GitHub via `gh` today.
+ *
+ * Kept apart from `JjPort` because it is a different process with a different
+ * failure mode: a repo with no GitHub remote or no `gh` login simply has no
+ * forge, and the stack panel must degrade to "push only" rather than error.
+ */
+export interface ForgePort {
+  /** `owner/repo`, for display. */
+  readonly slug: string;
+  pullRequests(): Promise<PullRequest[]>;
+  /** Returns the new PR's URL. */
+  createPullRequest(args: {
+    readonly head: string;
+    readonly base: string;
+    readonly title: string;
+    readonly body: string;
+  }): Promise<string>;
+  /** Open the PR in the system browser. */
+  openInBrowser(number: number): Promise<void>;
 }

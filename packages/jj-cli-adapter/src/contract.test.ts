@@ -21,6 +21,11 @@ import { JjError } from "./exec.ts";
 let repo: string;
 let jj: JjCliAdapter;
 
+// The adapter's own exec inherits this; without it jj warns about an empty
+// identity on every write, which would drown the messages the tests read.
+process.env.JJ_USER = "Ukemi Test";
+process.env.JJ_EMAIL = "test@ukemi.dev";
+
 /** Run jj directly to arrange fixtures — deliberately not through the adapter. */
 function raw(...args: string[]): string {
   return execFileSync("jj", ["--color=never", "--no-pager", "-R", repo, ...args], {
@@ -222,4 +227,38 @@ test("the default revset shows every mutable head, not just bookmarked ones", as
     shown.some((description) => description === "second head"),
     `unbookmarked head missing from default revset: ${JSON.stringify(shown)}`,
   );
+});
+
+test("gitInfo sees the colocated .git and the committer field parses", async () => {
+  const info = await jj.gitInfo();
+  assert.equal(info.colocated, true, info.gitRoot);
+  assert.ok(Array.isArray(info.remotes));
+  const [head] = await jj.log("@");
+  assert.ok(head!.committer.timestamp.length > 0);
+});
+
+test("absorb moves a line edit into the ancestor that last touched it", async () => {
+  // A fresh stack on top of trunk: base edits a.txt; the child tweaks that line.
+  raw("new", "trunk", "-m", "absorb-base");
+  writeFileSync(join(repo, "z.txt"), "one\ntwo\n");
+  raw("new", "-m", "absorb-child");
+  writeFileSync(join(repo, "z.txt"), "ONE\ntwo\n");
+  raw("status");
+  const child = (await jj.log("all()")).find((r) => r.description === "absorb-child")!;
+  const result = await jj.absorb(child.changeId);
+  assert.ok(result.message && /absorb/i.test(result.message), result.message);
+  const base = (await jj.log("all()")).find((r) => r.description === "absorb-base")!;
+  assert.equal(await jj.fileContent(base.changeId, "z.txt"), "ONE\ntwo\n");
+});
+
+test("the observer sees each invocation with its argv and exit code", async () => {
+  const seen: string[][] = [];
+  const spy = new JjCliAdapter(repo, nodeExec("jj", repo), undefined, (record) => {
+    seen.push([record.program, ...record.args]);
+    assert.equal(record.code, 0);
+  });
+  await spy.currentOperation();
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0]![0], "jj");
+  assert.ok(seen[0]!.includes("op"));
 });

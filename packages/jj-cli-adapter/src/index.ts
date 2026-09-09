@@ -5,3 +5,4 @@ export * from "./templates.ts";
 // node:child_process, and this entry is loaded by the webview, which has no
 // Node built-ins. Tests and scripts import it from "@ukemi/jj-cli-adapter/node".
 export * from "./hunk-plan.ts";
+export * from "./gh.ts";

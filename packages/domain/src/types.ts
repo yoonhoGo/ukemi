@@ -26,6 +26,8 @@ export interface Revision {
   /** Full description including trailing newline stripped. */
   readonly description: string;
   readonly author: Signature;
+  /** Committer; its timestamp moves on every snapshot, so it is "last touched". */
+  readonly committer: Signature;
   /** Parent *change* IDs, so topology survives rebases. */
   readonly parents: readonly ChangeId[];
   /** Local bookmark names pointing here. */
@@ -98,4 +100,46 @@ export interface GraphEdge {
   readonly toRow: number;
   /** True when the parent is not in the current revset (elided `~` in jj log). */
   readonly elided: boolean;
+}
+
+export interface GitRemote {
+  readonly name: string;
+  readonly url: string;
+}
+
+/** What the transparency panel says about the Git side of the repo. */
+export interface GitInfo {
+  /** The Git directory jj's backend uses. */
+  readonly gitRoot: string;
+  /** True when `.git` sits beside `.jj`, so bookmarks are exported as branches. */
+  readonly colocated: boolean;
+  readonly remotes: readonly GitRemote[];
+}
+
+export type PullRequestState = "open" | "merged" | "closed";
+
+/** A pull request on the forge, matched to a revision through its head branch. */
+export interface PullRequest {
+  readonly number: number;
+  readonly title: string;
+  readonly state: PullRequestState;
+  readonly url: string;
+  /** Git branch name, which in jj is the bookmark name. */
+  readonly headBranch: string;
+  readonly baseBranch: string;
+  readonly isDraft: boolean;
+  /** `APPROVED`, `CHANGES_REQUESTED`, `REVIEW_REQUIRED` or empty. */
+  readonly reviewDecision: string;
+}
+
+/** One CLI invocation the app made, for the transparency panel. */
+export interface CommandRecord {
+  /** `jj` or `gh`. */
+  readonly program: string;
+  readonly args: readonly string[];
+  readonly code: number;
+  readonly stderr: string;
+  /** ISO-8601. */
+  readonly startedAt: string;
+  readonly durationMs: number;
 }

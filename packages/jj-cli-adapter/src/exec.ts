@@ -1,3 +1,5 @@
+import type { CommandRecord } from "@ukemi/domain";
+
 /** Result of one `jj` invocation. */
 export interface ExecResult {
   readonly stdout: string;
@@ -14,6 +16,26 @@ export interface ExecResult {
  * real jj without a window.
  */
 export type JjExec = (args: readonly string[]) => Promise<ExecResult>;
+
+/** Receives every invocation an adapter makes. See `CommandRecord`. */
+export type CommandObserver = (record: CommandRecord) => void;
+
+/** Wrap an exec so each call is reported — success and failure alike. */
+export function observed(program: string, exec: JjExec, observe: CommandObserver): JjExec {
+  return async (args) => {
+    const startedAt = new Date();
+    const result = await exec(args);
+    observe({
+      program,
+      args,
+      code: result.code,
+      stderr: result.stderr,
+      startedAt: startedAt.toISOString(),
+      durationMs: Date.now() - startedAt.getTime(),
+    });
+    return result;
+  };
+}
 
 /** Thrown when jj exits non-zero; `stderr` is jj's own message, shown verbatim. */
 export class JjError extends Error {
