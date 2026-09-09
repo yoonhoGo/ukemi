@@ -167,11 +167,15 @@ function Window({
    * — there is nothing to pick here and nothing to type twice. A blank name
    * just closes the strip: `jj bookmark set` with no name is not a command
    * worth sending to find that out.
+   *
+   * `isPinned` is checked here and not only where ⌘B opens the strip, because
+   * the timeline can park the window in the past while the field is still up —
+   * every other write in this window guards at the mutate, and so does this.
    */
   const commitBookmarkName = () => {
     const name = (naming ?? "").trim();
     setNaming(undefined);
-    if (!name || !effectiveSelection) return;
+    if (isPinned || !name || !effectiveSelection) return;
     bookmarkSet.mutate({ name, rev: effectiveSelection });
   };
 
