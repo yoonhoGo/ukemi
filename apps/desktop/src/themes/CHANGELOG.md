@@ -4,6 +4,116 @@ The classes and custom properties in `contract.css` are a public API. A theme
 written against version *n* must keep working until this file records a
 breaking change and the version is bumped.
 
+## v1.3 — 2026-09-09
+
+Additive. Found the same way v1.2 was, one appearance further along: v1.2 stood
+a *theme* on a black ground, and this one stands the **default** theme there.
+Nothing is renamed or removed, so a v1 theme keeps working; four tokens are new
+and one long-standing lie is retired.
+
+**The default theme has a dark appearance.** `:root { color-scheme: light }`
+plus a full light palette was the whole story, because the
+`@media (prefers-color-scheme: dark)` block was gated on
+`:root[data-theme-follows-system]` — an attribute nothing in the app has ever
+set, and whose only occurrence in the repository was that selector. A Mac in
+Dark Mode on the "System" theme got a white window. The block now applies to
+bare `:root` and redefines every token, `color-scheme` included.
+
+This does not touch a chosen theme. Each of the four sets its tokens on
+`:root[data-theme="…"]`, which is (0,2,0) against the contract's (0,1,0), and a
+media query contributes nothing to specificity — so `ink`, `acid`, `aurora` and
+`candy` win in both appearances exactly as before, and only "System" moves.
+Ink & Paper and Candy Bento stay paper-white in Dark Mode on purpose: a chosen
+theme is the user's answer, not the system's.
+
+**New — four tokens, and the three literals v1.2 argued for are gone.** v1.2
+recorded `.key`'s `background`/`border-color`, `.u-scroll`'s `scrollbar-color`
+and its `::-webkit-scrollbar-thumb` as deliberately literal, on the reasoning
+that a token there is "six more names for a value only a dark theme reads".
+That reasoning does not survive the default theme having a dark appearance —
+the values are now read by the contract itself, twice. Added:
+
+- `--u-bg-key` — a key cap's fill.
+- `--u-line-key` — its hairline.
+- `--u-scrollbar-thumb` — the overlay thumb, in both the standard
+  `scrollbar-color` and the WebKit pseudo-element. v1 had 0.2 in one and 0.18
+  in the other; one token, one value.
+- `--u-duration-fast` — see motion below.
+
+`.tb-btn[data-variant="primary"]:disabled .key` reads the key pair too, since a
+disabled primary has lost its fill and its badge is back on ordinary chrome.
+`.tb-btn[data-variant="primary"] .key` stays literal, and this time the reason
+holds in both appearances: those alphas are painted on `--u-accent`, which is a
+saturated fill either way. A theme with a *light* accent still restates them —
+Acid Terminal does.
+
+**`--u-text-disabled` is optional, and stays undefined.** It has been
+referenced as `var(--u-text-disabled, var(--u-text-tertiary))` since v1 and
+defined nowhere, which read as an oversight. It is a hook: defining it in the
+contract would put a fourth ink token in every theme with a default value
+identical to `--u-text-tertiary` and one reader. Left undefined, the fallback
+answers; a theme that wants its disabled ink to differ from its tertiary ink
+declares the name and the contract picks it up. Recorded here so it is a hook
+rather than an accident.
+
+**The system accent, where WebKit knows it.** `--u-accent` was the literal
+`#0a84ff` — which is also the *dark* system blue, so the light appearance was
+wearing the wrong one; light is `#007aff`. Both hexes stay as the fallback, and
+an `@supports (color: AccentColor)` block replaces the trio with `AccentColor`,
+`AccentColorText` and a `color-mix()` of the accent down to `transparent`.
+`--u-accent-soft` stays a mix rather than a flat colour because it is painted
+over the window, the inspector and a raised sheet alike and has to take the
+tint of whichever it lands on; the dark appearance mixes at 20% where light
+mixes at 12%, since 12% of anything over `#1e1e1e` is nothing. A theme that
+sets its own `--u-accent` is unaffected — `:root[data-theme="…"]` outranks the
+`@supports` block's `:root` just as it outranks the palette.
+
+**Motion tokens have call sites now.** `--u-duration` and `--u-ease` were
+declared in v1 and read by nothing, which made the `prefers-reduced-motion`
+block decorative. `.tb-btn`, `.step`, `.side-item`, `.row`, `.file` and `.pill`
+transition the properties that actually change — `background`, `color`,
+`box-shadow`, never `all`, and never a position or a size.
+
+The second duration is there because the two kinds of motion here disagree.
+Pointer-driven changes want `--u-duration`; selection does not. Selection moves
+with the arrow keys, and a held ↓ walks a list faster than 180ms, so at that
+length the accent edge is still arriving on a row the caret has left and the
+list smears. `--u-duration-fast: 90ms` serves `.row`, `.file`, `.side-item` and
+`.pill`. The reduced-motion block zeroes both — a theme that adds a duration
+token of its own owes it the same.
+
+**New — a bundled face.** `contract.css` declares `@font-face` for `SUIT`
+(variable, `font-weight: 100 900`, `font-display: swap`) from
+`./fonts/SUIT-Variable.woff2`, and `--u-font` names it after `"SF Pro Text"`.
+Font matching runs per character down the family list, so Latin is found in SF
+and never reaches SUIT while Hangul falls through to it — the same mechanism
+`ink.css` and `acid.css` already use to name a Korean face, with a face the
+repo now ships. The url is relative because the window's CSP is
+`font-src 'self' data:` and a remote one would be blocked silently.
+
+Candy Bento and Aurora Glass name `SUIT` ahead of their `"Apple SD Gothic Neo"`
+entry. Ink & Paper does not: it is a serif theme and wants a Korean *serif*, so
+`"Noto Serif KR"` stays. Acid Terminal does not either: it is mono throughout,
+and a proportional Hangul face inside a monospaced row is the texture that
+theme exists to avoid.
+
+**`body` has a `line-height`.** It had none, so Korean body text ran at the UA
+default of about 1.2 — a Hangul syllable fills its em box where a lowercase
+Latin letter uses half of it, so Korean paragraphs had almost no gap between
+lines, and components had begun patching it with inline `lineHeight: 1.5`.
+`1.45` on `body`. It cannot disturb a contract row: `.tb-btn`, `.side-item`,
+`.row`, `.pill`, `.key`, `.step`, `.file` and `.avatar` all set a fixed
+`height` and centre their content, so the line box grows inside a box that does
+not depend on it. `.diff-line` is the one row with a *minimum* height, and
+11.5px × 1.45 is 16.7px against its 18px floor, so single-line diff rows do not
+move either; a wrapped one gains leading. `.side-head`, the one unfixed box,
+grows about 3px once per sidebar section.
+
+**Gap recorded.** OFL 1.1 §2 wants the licence to travel with the font. Vite
+emits only the woff2 the stylesheet references, so `fonts/SUIT-OFL.txt` is in
+the repository but not in the built app. `NOTICE` records it; closing it is a
+build-side job, next to what `stage-jj.mjs` already does for `LICENSE-jj`.
+
 ## v1.2 — 2026-09-09
 
 Found the only way it could be: by standing a theme on a black ground. v1 was

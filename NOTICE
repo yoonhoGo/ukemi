@@ -5,8 +5,13 @@ Ukemi bundles the Jujutsu (`jj`) command-line binary as a sidecar.
   Licensed under the Apache License, Version 2.0
 
 A copy of the Apache 2.0 licence text ships beside the binary in the
-application bundle, at `Contents/Resources/LICENSE-jj`, and is reachable in
-the app from About → Open-source licences.
+application bundle, at `Contents/Resources/LICENSE-jj`.
+
+Open: both licences ship, and neither is reachable from inside the window. This
+file claimed an About → Open-source licences screen from v1 onwards; no such
+screen was ever built, so the claim is withdrawn here rather than left standing.
+Shipping the text is what the two licences require; showing it is a courtesy
+this app still owes.
 
 Ukemi does not modify the `jj` binary. It invokes it as a subprocess and
 parses its `--template` output; see `packages/jj-cli-adapter`.
@@ -16,3 +21,22 @@ are written against a specific jj version. Shipping that version removes the
 class of bug where the app parses output from whatever jj happens to be on the
 user's PATH. A colocated repository is safe to use with a different jj CLI at
 the same time — jj reconciles concurrent operations by merging op heads.
+
+Ukemi also bundles the SUIT typeface, used for Hangul.
+
+  SUIT — https://github.com/sun-typeface/SUIT
+  Copyright (c) 2022 SUNN (http://sun.fo/suit), with Reserved Font Name SUIT
+  Licensed under the SIL Open Font License, Version 1.1
+
+A copy of the OFL 1.1 licence text ships inside the application bundle at the
+web root, as `SUIT-OFL.txt`. It lives in `apps/desktop/public/` rather than
+beside the woff2, because OFL 1.1 §2 requires the licence to travel with the
+font and Vite emits only the assets a stylesheet actually references: a text
+file next to the font would stay in the repository and never reach a build.
+`public/` is copied verbatim into `dist`, which is what Tauri embeds, so the
+licence ships from a plain `tauri build` and not only from `build:bundled`.
+
+Ukemi does not modify the font. The unmodified variable woff2 is referenced by
+`@font-face` in `apps/desktop/src/themes/contract.css` and reaches the bundle
+as a Vite asset. The OFL's Reserved Font Name clause is why the family is
+declared as plain `SUIT` rather than under a renamed family.

@@ -92,10 +92,13 @@
    * little narrower and warmer than drawn; lifting it means dropping the two
    * woff2 faces next to this file and adding `@font-face`, which is also what
    * an external theme would have to do. Avenir Next has no Hangul, so the
-   * Korean face is named explicitly or a Korean row changes texture. */
+   * Korean face is named explicitly or a Korean row changes texture — SUIT
+   * first, which the contract now bundles and which is the closer match to
+   * Outfit's even, geometric syllable, with the system faces kept behind it in
+   * case the bundled file does not load. */
   --u-font:
-    "Avenir Next", Avenir, system-ui, "Apple SD Gothic Neo", "Noto Sans KR",
-    sans-serif;
+    "Avenir Next", Avenir, system-ui, SUIT, "Apple SD Gothic Neo",
+    "Noto Sans KR", sans-serif;
   --u-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
 }
 

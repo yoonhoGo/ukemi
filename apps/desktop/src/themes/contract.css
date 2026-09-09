@@ -38,9 +38,29 @@
   --u-line-strong: rgba(0, 0, 0, 0.14);
   --u-line-faint: rgba(0, 0, 0, 0.07);
 
+  /* ---- two component fills that are not any of the above ---- */
+  /* A key cap and a scrollbar thumb are the only places the contract paints a
+   * value that belongs to neither a surface nor a rule: the cap is a chip
+   * lifted off whatever is behind it, the thumb is furniture floating over
+   * scrolled content. v1.2 left all three literal on the argument that a token
+   * here is names only a dark theme reads. That argument dies the moment the
+   * *default* theme has a dark appearance — a black alpha on a #1e1e1e ground
+   * is not a faint chip, it is nothing at all — so they are tokens now and the
+   * dark block below is their second reader. */
+  --u-bg-key: rgba(0, 0, 0, 0.05);
+  --u-line-key: rgba(0, 0, 0, 0.09);
+  /* One value where v1 had two: `scrollbar-color` said 0.2 and the WebKit
+   * thumb said 0.18, which was drift, not intent. */
+  --u-scrollbar-thumb: rgba(0, 0, 0, 0.2);
+
   /* ---- accent and semantics ---- */
-  --u-accent: #0a84ff;
-  --u-accent-soft: rgba(10, 132, 255, 0.12);
+  /* `#007aff` is the *light* system blue. v1 shipped `#0a84ff`, which is the
+   * dark one and reads a shade too bright against a white window. The
+   * `@supports` block below replaces both with the accent the user actually
+   * picked in System Settings; these hexes are the fallback for a WebKit
+   * without the system-colour keywords. */
+  --u-accent: #007aff;
+  --u-accent-soft: rgba(0, 122, 255, 0.12);
   --u-accent-ink: #ffffff;
   --u-conflict: #c0281c;
   --u-conflict-soft: rgba(255, 59, 48, 0.13);
@@ -58,8 +78,20 @@
   --u-radius-pill: 9px;
 
   /* ---- type ---- */
-  --u-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
-    system-ui, sans-serif;
+  /* SUIT sits after the system faces rather than in front of them, because font
+   * matching runs per character down the list: a Latin letter is found in SF
+   * and never reaches SUIT, a Hangul syllable is in none of the system faces
+   * ahead of it and lands there. So the chrome keeps the macOS voice and only
+   * Korean text changes — which is the whole point, since the fallback it
+   * replaces is Apple SD Gothic Neo, a face drawn for print and noticeably
+   * looser than SF beside it. `ink.css` and `acid.css` name their Korean face
+   * by the same mechanism; this is that trick with a face we ship.
+   *
+   * The ceiling: if a future WebKit resolves `-apple-system` to the *whole*
+   * system cascade including Hangul, SUIT is never consulted and Korean text
+   * simply looks as it does today. That is a quiet no-op, not a break. */
+  --u-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", SUIT,
+    "Helvetica Neue", system-ui, sans-serif;
   --u-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
   --u-font-size: 13px;
   --u-font-size-small: 11px;
@@ -74,22 +106,160 @@
   --u-node-radius: 6px;
 
   /* ---- motion ---- */
+  /* Two durations, because the two kinds of motion in this app have opposite
+   * requirements. `--u-duration` is for a change the pointer asked for — a
+   * hover, a button taking its fill — where 180ms reads as the surface
+   * responding. `--u-duration-fast` is for selection, which is driven by the
+   * arrow keys: hold ↓ and rows arrive faster than 180ms, so a selection
+   * animated at that length is still catching up with the caret and the list
+   * smears. 90ms is short enough to keep the highlight under the key. */
   --u-duration: 180ms;
+  --u-duration-fast: 90ms;
   --u-ease: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Themes that want a dark default still define the full palette on :root; this
- * block only follows the system when a theme has opted into both. */
+/**
+ * The dark appearance of the default theme.
+ *
+ * This block used to be gated on `:root[data-theme-follows-system]`, an
+ * attribute nothing in the app ever set — so a Mac in Dark Mode got the full
+ * light palette and a white window. It applies to bare `:root` now.
+ *
+ * That is safe for the four explicit themes because each sets its tokens on
+ * `:root[data-theme="…"]` (0,2,0) while everything here is `:root` (0,1,0), and
+ * a media query adds nothing to specificity. A chosen theme therefore wins in
+ * both appearances, exactly as it did before; only "System" — which sets no
+ * attribute at all — is affected. Acid Terminal and Aurora Glass are already
+ * dark and Ink & Paper and Candy Bento are deliberately paper-white in any
+ * appearance, which is the user's choice and not the system's to override.
+ *
+ * The roles are identical to the light block above; only the values move.
+ */
 @media (prefers-color-scheme: dark) {
-  :root[data-theme-follows-system] {
+  :root {
     color-scheme: dark;
+
+    /* ---- surfaces ---- */
+    --u-bg-window: #1e1e1e;
+    --u-bg-toolbar: linear-gradient(#333335, #2a2a2c);
+    --u-bg-sidebar: #262628;
+    --u-bg-inspector: #202022;
+    --u-bg-timeline: #262628;
+    --u-bg-raised: #2c2c2e;
+    /* Sunken is a black wash here as it is on paper: darker than its ground is
+     * what "a well" means in both appearances. Deeper than the light 0.035
+     * because a wash over #1e1e1e has far less room to travel than one over
+     * white before it stops being visible. */
+    --u-bg-sunken: rgba(0, 0, 0, 0.22);
+    --u-bg-hover: rgba(255, 255, 255, 0.06);
+    --u-bg-selected: rgba(255, 255, 255, 0.1);
+
+    /* ---- ink ---- */
+    --u-text: #f5f5f7;
+    --u-text-secondary: rgba(235, 235, 245, 0.6);
+    --u-text-tertiary: rgba(235, 235, 245, 0.3);
+
+    /* ---- lines ---- */
+    --u-line: rgba(255, 255, 255, 0.12);
+    --u-line-strong: rgba(255, 255, 255, 0.18);
+    --u-line-faint: rgba(255, 255, 255, 0.07);
+
+    /* ---- two component fills that are not any of the above ---- */
+    --u-bg-key: rgba(255, 255, 255, 0.08);
+    --u-line-key: rgba(255, 255, 255, 0.16);
+    --u-scrollbar-thumb: rgba(255, 255, 255, 0.22);
+
+    /* ---- accent and semantics ---- */
+    /* The system dark variants. Every semantic here is a colour a diff or a
+     * conflict badge is read *by*, so they are the brighter dark-appearance
+     * pairs rather than the light ones dimmed — a #c0281c conflict on #1e1e1e
+     * is a dark red on a dark grey and stops being a warning. */
+    --u-accent: #0a84ff;
+    --u-accent-soft: rgba(10, 132, 255, 0.2);
+    --u-accent-ink: #ffffff;
+    --u-conflict: #ff453a;
+    --u-conflict-soft: rgba(255, 69, 58, 0.16);
+    --u-added: #30d158;
+    --u-added-soft: rgba(48, 209, 88, 0.14);
+    --u-removed: #ff453a;
+    --u-removed-soft: rgba(255, 69, 58, 0.1);
+    --u-modified: #ff9f0a;
+    --u-immutable: #98989d;
+  }
+
+  /* The same substitution as the light block, with a heavier wash: 12% of the
+   * accent over white is a visible tint, 12% over #1e1e1e is almost nothing. */
+  @supports (color: AccentColor) {
+    :root {
+      --u-accent: AccentColor;
+      --u-accent-ink: AccentColorText;
+      --u-accent-soft: color-mix(in srgb, AccentColor 20%, transparent);
+    }
   }
 }
 
+/**
+ * The accent the user chose in System Settings, where WebKit knows it.
+ *
+ * `AccentColor` is appearance-aware on its own — macOS returns the light or
+ * dark variant of the chosen accent to match — so this only has to replace the
+ * hex, not decide which hex. `--u-accent-soft` stays a `color-mix()` down to
+ * `transparent` rather than a flat colour, because it is painted over the
+ * window, the inspector and a raised sheet alike and has to take the tint of
+ * whichever it lands on.
+ *
+ * It sits after both palettes deliberately: every rule involved is `:root`, so
+ * source order is the whole cascade here, and a copy placed before the dark
+ * block would be overwritten by that block's literal hex.
+ */
+@supports (color: AccentColor) {
+  :root {
+    --u-accent: AccentColor;
+    --u-accent-ink: AccentColorText;
+    --u-accent-soft: color-mix(in srgb, AccentColor 12%, transparent);
+  }
+}
+
+/* Both duration tokens go to zero, or the reduced-motion promise is only kept
+ * for hover and selection still slides. */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --u-duration: 0ms;
+    --u-duration-fast: 0ms;
   }
+}
+
+/**
+ * SUIT, for Hangul. See `--u-font` above for why it sits behind the system
+ * faces rather than in front of them.
+ *
+ * The url is relative because it has to be: Vite copies the file into the
+ * bundle and rewrites this reference, and the window's CSP is
+ * `font-src 'self' data:` (`src-tauri/tauri.conf.json`), so a remote url()
+ * would be blocked with nothing in the UI to say why. This is also the answer
+ * to the `ponytail:` notes in `acid.css`, `candy.css` and `aurora.css` that
+ * say the repo bundles no faces — it bundles one now.
+ *
+ * `woff2-variations` first for the browsers that want the axis-aware format
+ * name and plain `woff2` after it, since WebKit accepts either and one file
+ * serves both entries. `swap`, because 610 KB is enough to see: text renders
+ * in the system Korean face and is replaced when SUIT arrives, rather than
+ * leaving a Korean row blank on first paint.
+ *
+ * The OFL licence text is *not* beside the file here. Vite emits only what a
+ * stylesheet references, so a text file in this folder would never leave the
+ * repository, and OFL 1.1 §2 wants the licence to travel with the font — it is
+ * at `apps/desktop/public/SUIT-OFL.txt`, which Vite copies verbatim. See
+ * `NOTICE`.
+ */
+@font-face {
+  font-family: "SUIT";
+  src:
+    url("./fonts/SUIT-Variable.woff2") format("woff2-variations"),
+    url("./fonts/SUIT-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* ===================================================================
@@ -114,6 +284,20 @@ body {
   font-size: var(--u-font-size);
   color: var(--u-text);
   background: var(--u-bg-window);
+  /* The UA default is about 1.2, which is tight for Latin and wrong for Hangul:
+   * a syllable block fills its em box where a lowercase Latin letter uses half
+   * of it, so Korean paragraphs at 1.2 have almost no gap between lines. 1.45
+   * is the usual Korean UI figure and still comfortable for English.
+   *
+   * It cannot disturb the contract's rows, because every one of them —
+   * `.tb-btn`, `.side-item`, `.row`, `.pill`, `.key`, `.step`, `.file`,
+   * `.avatar` — sets a fixed `height` and centres its content, so the line box
+   * grows inside a box whose size does not depend on it. The one row with a
+   * *minimum* height is `.diff-line`, and 11.5px × 1.45 is 16.7px against its
+   * 18px floor, so a single-line diff row does not move either; only a wrapped
+   * one gains leading, which is what wrapping wanted. `.side-head` is the one
+   * unfixed box and grows about 3px, once per sidebar section. */
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   /* A desktop window is not a document: nothing at the root may scroll or
    * rubber-band, or the whole chrome slides under the title bar. */
@@ -133,6 +317,14 @@ button {
 
 /* ===================================================================
    Contract classes. A theme may restyle any of these freely.
+
+   The interactive ones below animate, and each names the properties that
+   actually change rather than `all` — `all` would put the grid template, the
+   radius and the box model on the compositor's list for every hover, and it
+   also catches whatever a theme adds later, which is a promise this file has
+   no business making on a theme's behalf. Nothing here transitions position or
+   size: a row that grows on hover moves the rows under it, and this is a tool
+   that is read while it is pointed at.
    =================================================================== */
 
 /** Monospace run: change IDs, commit IDs, diff text. */
@@ -164,8 +356,8 @@ button {
   height: 18px;
   padding: 0 5px;
   border-radius: var(--u-radius-sm);
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.09);
+  background: var(--u-bg-key);
+  border: 1px solid var(--u-line-key);
   font-family: var(--u-font);
   font-size: var(--u-font-size-small);
   color: var(--u-text-secondary);
@@ -183,6 +375,11 @@ button {
   background: var(--u-bg-hover);
   font-size: var(--u-font-size);
   white-space: nowrap;
+  /* Pointer-driven, so the full duration. `color` is in the list because the
+   * disabled state fades the label as well as the fill. */
+  transition:
+    background var(--u-duration) var(--u-ease),
+    color var(--u-duration) var(--u-ease);
 }
 .tb-btn:hover:not(:disabled) {
   background: var(--u-bg-selected);
@@ -195,16 +392,33 @@ button {
   color: var(--u-accent-ink);
 }
 /* A primary button keeps its accent fill through `:disabled` unless this says
- * otherwise, which makes an unavailable action look available. */
+ * otherwise, which makes an unavailable action look available.
+ *
+ * `--u-text-disabled` is deliberately left undefined. It is the file's only
+ * `var()` with a fallback, and that is the point: defining it would add a
+ * fourth ink token whose default value is character-for-character
+ * `--u-text-tertiary` and whose only reader is this one line, so every theme
+ * would carry it and none would need it. Undefined, the fallback answers, and
+ * a theme that does want its disabled ink to differ from its tertiary ink
+ * declares the name and this rule picks it up. Documented as optional in
+ * `CHANGELOG.md` so it is a hook rather than an accident. */
 .tb-btn[data-variant="primary"]:disabled {
   background: var(--u-bg-selected);
   color: var(--u-text-disabled, var(--u-text-tertiary));
 }
+/* A disabled primary button has lost its accent fill and is back on ordinary
+ * chrome, so its badge is back to the ordinary badge — the same two tokens
+ * `.key` itself reads. This rule exists only to out-rank the white-alpha one
+ * below it, not to say anything different. */
 .tb-btn[data-variant="primary"]:disabled .key {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.09);
+  background: var(--u-bg-key);
+  border-color: var(--u-line-key);
   color: var(--u-text-tertiary);
 }
+/* These two stay literal where the pair above became tokens, and the reason is
+ * the ground: they are painted on `--u-accent`, a saturated fill in either
+ * appearance, not on a surface that flips from white to near-black. A theme
+ * whose accent is *light* still has to restate them — Acid Terminal does. */
 .tb-btn[data-variant="primary"] .key {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.25);
@@ -222,6 +436,8 @@ button {
   border-radius: var(--u-radius);
   font-size: var(--u-font-size);
   text-align: left;
+  /* The fast token: `aria-current` moves with the arrow keys here too. */
+  transition: background var(--u-duration-fast) var(--u-ease);
 }
 .side-item:hover {
   background: var(--u-bg-hover);
@@ -253,6 +469,13 @@ button {
   padding: 0 12px 0 0;
   border-radius: var(--u-radius);
   text-align: left;
+  /* The one place the short duration was chosen for: `box-shadow` is the
+   * selected row's accent edge, and holding ↓ down walks the list faster than
+   * the 180ms token, so at that length the edge would still be arriving on the
+   * row the caret has already left. */
+  transition:
+    background var(--u-duration-fast) var(--u-ease),
+    box-shadow var(--u-duration-fast) var(--u-ease);
 }
 .row:hover {
   background: var(--u-bg-hover);
@@ -274,6 +497,14 @@ button {
   font-weight: 600;
   color: var(--u-text-secondary);
   white-space: nowrap;
+  /* A pill has no hover; the only thing that ever changes under it is
+   * `data-state` on a PR chip flipping to merged after a refetch. That is a
+   * data change rather than an interaction, so it gets the fast token — long
+   * enough not to be a flash, short enough that a page of chips settling after
+   * a refresh does not read as an animation. */
+  transition:
+    background var(--u-duration-fast) var(--u-ease),
+    color var(--u-duration-fast) var(--u-ease);
 }
 .pill[data-kind="conflict"] {
   background: var(--u-conflict-soft);
@@ -322,6 +553,11 @@ button {
   border-radius: var(--u-radius-lg);
   background: var(--u-bg-sunken);
   text-align: left;
+  /* Pointer-driven like `.tb-btn`, and `color` for the same reason: the primary
+   * variant carries the accent in its text, not only in its fill. */
+  transition:
+    background var(--u-duration) var(--u-ease),
+    color var(--u-duration) var(--u-ease);
 }
 .step:hover:not(:disabled) {
   background: var(--u-bg-hover);
@@ -351,6 +587,8 @@ button {
   border-radius: var(--u-radius-sm);
   font-size: 12px;
   text-align: left;
+  /* Selectable with the arrow keys, so the fast token, same as `.row`. */
+  transition: background var(--u-duration-fast) var(--u-ease);
 }
 .file:hover {
   background: var(--u-bg-hover);
@@ -391,14 +629,14 @@ button {
 .u-scroll {
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-color: var(--u-scrollbar-thumb) transparent;
 }
 .u-scroll::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 .u-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--u-scrollbar-thumb);
   border-radius: 4px;
 }
 .u-scroll::-webkit-scrollbar-track {

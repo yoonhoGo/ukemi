@@ -60,10 +60,14 @@
    * remote `url()` and the repo bundles no faces, so these are the nearest
    * system stacks: Avenir Next carries the geometric warmth, and the Korean
    * face is named explicitly because Avenir Next has no Hangul and would
-   * otherwise hand it to whatever `sans-serif` resolves to mid-sentence.
-   * ponytail: system stacks only, which costs the artboard's exact
-   * letterforms; bundling the two faces as woff2 beside this file is the fix. */
-  --u-font: "Avenir Next", "Apple SD Gothic Neo", system-ui, sans-serif;
+   * otherwise hand it to whatever `sans-serif` resolves to mid-sentence. SUIT
+   * goes in front of it: the contract bundles that face now, and its rounder,
+   * more even syllable blocks sit closer to Avenir Next's geometry than Apple
+   * SD Gothic Neo's print-drawn ones do. The system face stays behind it as the
+   * fallback if the bundled file ever fails to load.
+   * ponytail: the two *Latin* faces are still system stacks, which costs the
+   * artboard's exact letterforms; bundling Sora as woff2 is the fix. */
+  --u-font: "Avenir Next", SUIT, "Apple SD Gothic Neo", system-ui, sans-serif;
   --u-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
   --u-font-size-small: 10.5px;
 
