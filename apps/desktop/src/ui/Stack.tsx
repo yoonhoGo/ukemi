@@ -109,7 +109,10 @@ export function StackPanel({ revision }: { revision: Revision }) {
               background: r.changeId === revision.changeId ? "var(--u-bg-selected)" : undefined,
             }}
           >
-            <span className="mono" style={{ color: nodeColor(r), fontWeight: 700 }}>
+            <span
+              className="mono"
+              style={{ color: nodeColor(r), fontWeight: 700, flexShrink: 0 }}
+            >
               {r.changeId.slice(0, 2)}
               <span className="ter" style={{ fontWeight: 400 }}>
                 {r.changeId.slice(2, 6)}
@@ -127,13 +130,23 @@ export function StackPanel({ revision }: { revision: Revision }) {
             >
               {r.description.split("\n")[0] || <span className="sec">{t("(no description)")}</span>}
             </span>
-            {reason && <span className="pill">{t(reason)}</span>}
+            {/* Everything after the description is fixed content: the row is
+                26px tall and the description span above is the one that is
+                supposed to absorb the slack. Without this the chips shrink
+                below their own text and the Korean "푸시가 먼저" wrapped to a
+                second line and spilled out of the row. */}
+            {reason && (
+              <span className="pill" style={{ flexShrink: 0 }}>
+                {t(reason)}
+              </span>
+            )}
             {pr ? (
               <button
                 type="button"
                 className="pill"
                 data-kind="pr"
                 data-state={pr.state}
+                style={{ flexShrink: 0 }}
                 title={`${pr.title}\n${pr.url}`}
                 onClick={() => view.mutate(pr.number)}
               >
@@ -143,7 +156,7 @@ export function StackPanel({ revision }: { revision: Revision }) {
               <button
                 type="button"
                 className="tb-btn"
-                style={{ height: 20, fontSize: 11 }}
+                style={{ height: 20, fontSize: 11, flexShrink: 0 }}
                 disabled={openPr.isPending}
                 title={`gh pr create --head ${head} --base ${base}`}
                 onClick={() => {
@@ -157,7 +170,10 @@ export function StackPanel({ revision }: { revision: Revision }) {
               !reason &&
               forge &&
               head === undefined && (
-                <span className="ter" style={{ fontSize: 11 }}>
+                <span
+                  className="ter"
+                  style={{ fontSize: 11, flexShrink: 0, whiteSpace: "nowrap" }}
+                >
                   {t("push first")}
                 </span>
               )

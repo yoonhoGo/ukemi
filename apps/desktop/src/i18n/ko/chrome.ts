@@ -54,6 +54,17 @@ export const chrome: Record<string, string> = {
   "Operation timeline": "오퍼레이션 타임라인",
   "No operations yet.": "아직 오퍼레이션이 없습니다.",
   now: "지금",
+  // `OPERATION_LABELS` — a tick's label, one per operation shape jj writes.
+  // Read as `t(key, …)` off that table, so the scan in `i18n.test.ts` cannot
+  // see these keys; they have to be kept in step with Timeline.tsx by hand.
+  Snapshot: "스냅샷",
+  "New change": "새 체인지",
+  "Commit {id}": "커밋 {id}",
+  "Describe {id}": "설명 수정 {id}",
+  "Split {id}": "분리 {id}",
+  "Squash into {id}": "{id}에 스쿼시",
+  "Point {name} to {id}": "북마크 {name} → {id}",
+  "Push {name}": "{name} 푸시",
 
   // ── Command panel ──────────────────────────────────────────────────────
   COMMANDS: "명령",

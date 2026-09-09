@@ -178,9 +178,7 @@ function Card({
         }}
       >
         {revision.description.split("\n")[0] || (
-          <span className="sec" style={{ fontStyle: "italic" }}>
-            {t("(no description set)")}
-          </span>
+          <span className="sec">{t("(no description set)")}</span>
         )}
       </div>
       <div className="sec" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>

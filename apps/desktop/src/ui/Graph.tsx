@@ -202,9 +202,11 @@ function Row({
             {revision.description.split("\n")[0]}
           </span>
         ) : (
-          <span className="sec" style={{ fontStyle: "italic" }}>
-            {t("(no description set)")}
-          </span>
+          /* No italic: Hangul has no true italic face, so a browser shears
+             the glyphs and the row reads as broken. The parentheses and the
+             secondary ink are how the inspector and the rebase HUD already
+             mark this same placeholder. */
+          <span className="sec">{t("(no description set)")}</span>
         )}
         {revision.isWorkingCopy && <span className="pill">{t("working copy")}</span>}
         {revision.hasConflict && (

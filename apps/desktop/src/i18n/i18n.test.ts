@@ -6,6 +6,7 @@ import { ko } from "./ko/index.ts";
 import { t } from "./i18n.ts";
 import { MILESTONES } from "../ui/onboarding.ts";
 import { ROSETTA } from "../ui/rosetta.ts";
+import { LABELS as OPERATION_LABELS } from "../ui/operation-label.ts";
 
 const SRC = join(import.meta.dirname, "..");
 
@@ -45,10 +46,11 @@ test("every string the source asks for is in the Korean catalogue", () => {
 
 test("the prose in the data tables is translated too", () => {
   // These are read as `t(entry.why)` at render, so nothing else would notice
-  // a new Rosetta row or milestone shipping in English only.
+  // a new Rosetta row, milestone or operation label shipping in English only.
   const fromData = [
     ...ROSETTA.flatMap((entry) => [entry.why, ...entry.steps.map((step) => step.label)]),
     ...MILESTONES.flatMap((milestone) => [milestone.label, milestone.title, milestone.body]),
+    ...OPERATION_LABELS.map(([, key]) => key),
   ];
   assert.deepEqual(
     fromData.filter((line) => !(line in ko)),

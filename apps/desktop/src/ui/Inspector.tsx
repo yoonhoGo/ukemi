@@ -223,12 +223,21 @@ export function Inspector({
         </div>
 
         {readOnly ? (
+          /* A commit message is not one line: its own breaks have to survive
+             (`pre-wrap`), a trailer's URL has no break opportunity in it and
+             ran off the right edge of a 372px panel (`anywhere`), and a long
+             body would otherwise push the steps below it off the panel. It
+             opts into selection because a message one cannot edit is a
+             message one copies. */
           <div
-            className="sec"
+            className="sec selectable u-scroll"
             style={{
               padding: "8px 10px",
               borderRadius: 7,
               background: "var(--u-bg-sunken)",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+              maxHeight: 180,
             }}
           >
             {revision.description || t("(no description set)")}
@@ -276,6 +285,14 @@ export function Inspector({
         <div className="side-head" style={{ padding: 0 }}>
           {t("NEXT STEPS")}
         </div>
+        {/* Every step below greys out together, and a `title` on each is a
+            tooltip the user has to go looking for. The reason is already
+            computed, so it is said once, in the open. */}
+        {readOnlyReason && (
+          <div className="sec" style={{ fontSize: 11.5 }}>
+            {readOnlyReason}
+          </div>
+        )}
         <Step
           label={t("Start new change on top")}
           shortcut="⌘N"

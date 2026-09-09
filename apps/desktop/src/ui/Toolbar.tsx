@@ -35,7 +35,13 @@ function RevsetField() {
         display: "flex",
         alignItems: "center",
         gap: 8,
-        width: 460,
+        // Grows into whatever the toolbar's centre has left rather than
+        // truncating the default revset at a fixed 460px. The floor is what
+        // still fits beside the repo switcher and the action cluster at the
+        // 900px minimum window width declared in tauri.conf.json.
+        flexGrow: 1,
+        minWidth: 200,
+        maxWidth: 520,
         height: 28,
         padding: "0 10px",
         borderRadius: 7,
@@ -71,6 +77,21 @@ function RevsetField() {
       <span className="key">⌘L</span>
     </div>
   );
+}
+
+/**
+ * The last two segments of a path, the way a Mac app's title bar abbreviates
+ * one.
+ *
+ * The left-truncating `direction: "rtl"` this replaces put the leading `/` at
+ * the visual *end* — a slash is bidi-neutral, so it takes the direction of the
+ * run around it — and `/Users/me/ukemi` rendered as `Users/me/ukemi/`. Showing
+ * the tail outright needs no bidi trick at all; the absolute path stays one
+ * hover away in `title`.
+ */
+function abbreviatePath(path: string): string {
+  const segments = path.split("/").filter(Boolean);
+  return segments.length > 2 ? `…/${segments.slice(-2).join("/")}` : path;
 }
 
 /**
@@ -120,16 +141,15 @@ function RepoSwitcher({
           <span style={{ fontSize: 13, fontWeight: 600 }}>{name}</span>
           <span
             className="sec"
+            title={root}
             style={{
               fontSize: 11,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              direction: "rtl",
-              textAlign: "left",
             }}
           >
-            {root}
+            {abbreviatePath(root)}
           </span>
         </span>
         <span className="key">⌘O</span>
@@ -166,6 +186,7 @@ function RepoSwitcher({
                 role="menuitem"
                 className="side-item"
                 key={path}
+                title={path}
                 onClick={() => {
                   setOpen(false);
                   onOpenRepo(path);
@@ -179,12 +200,10 @@ function RepoSwitcher({
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    direction: "rtl",
-                    textAlign: "left",
                     fontSize: "var(--u-font-size-small)",
                   }}
                 >
-                  {path}
+                  {abbreviatePath(path)}
                 </span>
               </button>
             ))}
@@ -244,7 +263,7 @@ export function Toolbar({
       {/* Room for the traffic lights, which the overlay title bar draws over us. */}
       <div style={{ width: 68, flexShrink: 0 }} />
       <RepoSwitcher root={root} recents={recents} onOpenRepo={onOpenRepo} />
-      <div style={{ flexGrow: 1, display: "flex", justifyContent: "center" }}>
+      <div style={{ flexGrow: 1, minWidth: 0, display: "flex", justifyContent: "center" }}>
         <RevsetField />
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -281,6 +300,9 @@ export function Toolbar({
           className="tb-btn"
           onClick={onShowShortcuts}
           title={t("All shortcuts (⌘/)")}
+          // The label is a key badge, so without this the button has no
+          // accessible name at all.
+          aria-label={t("All shortcuts (⌘/)")}
         >
           <span className="key">⌘/</span>
         </button>

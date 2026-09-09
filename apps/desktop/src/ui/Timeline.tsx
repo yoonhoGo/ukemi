@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Operation } from "@ukemi/domain";
 import { useJjMutation, useOperations, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { clockTime, relativeTime } from "./time.ts";
+import { operationLabel } from "./operation-label.ts";
 
 /**
  * The operation timeline — differentiator #1 (design §4.1).
@@ -113,7 +114,9 @@ export function Timeline() {
         aria-valuemin={0}
         aria-valuemax={Math.max(0, ordered.length - 1)}
         aria-valuenow={Math.max(0, activeIndex)}
-        aria-valuetext={ordered[activeIndex]?.description ?? t("now")}
+        aria-valuetext={
+          ordered[activeIndex] ? operationLabel(ordered[activeIndex]!.description) : t("now")
+        }
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") {
             event.preventDefault();
@@ -144,6 +147,11 @@ function Track({
   onPick(opId: string | undefined): void;
   isPinned: boolean;
 }) {
+  // The window keeps the macOS arrow cursor everywhere (a pointing hand reads
+  // as a web page), so a hover tint is the only thing left that can say a tick
+  // is clickable at all.
+  const [hovered, setHovered] = useState<number | undefined>(undefined);
+
   if (operations.length === 0) {
     return (
       <div className="sec" style={{ fontSize: "var(--u-font-size-small)" }}>
@@ -164,20 +172,25 @@ function Track({
       {operations.map((operation, index) => {
         const active = index === activeIndex;
         const isNewest = index === newest;
-        const label = operation.description.replace(/^(commit|snapshot) /, "");
+        const label = operationLabel(operation.description);
         return (
           <g
             key={operation.id}
             onClick={() => onPick(isNewest ? undefined : operation.id)}
+            onMouseEnter={() => setHovered(index)}
+            onMouseLeave={() => setHovered((current) => (current === index ? undefined : current))}
             style={{ cursor: "default" }}
           >
-            {/* A generous invisible hit area — the dots are 4px. */}
+            {/* A generous hit area — the dots are 4px — which doubles as the
+                hover surface. */}
             <rect
               x={x(index) - TICK_PITCH / 2}
               y={0}
               width={TICK_PITCH}
               height={50}
-              fill="transparent"
+              rx={6}
+              fill={hovered === index && !active ? "var(--u-accent-soft)" : "transparent"}
+              style={{ transition: "fill var(--u-duration) var(--u-ease)" }}
             />
             <text
               x={x(index)}
@@ -212,7 +225,7 @@ function Track({
       })}
       <title>
         {operations[activeIndex]
-          ? `${operations[activeIndex]!.description} · ${relativeTime(operations[activeIndex]!.time)}`
+          ? `${operationLabel(operations[activeIndex]!.description)} · ${relativeTime(operations[activeIndex]!.time)}`
           : ""}
       </title>
     </svg>
