@@ -1,0 +1,225 @@
+/**
+ * Aurora Glass — built-in theme.
+ *
+ * An indigo ground with a plum and cyan aurora bled through the chrome, neon
+ * ink, and generous radii. It exists to be the demo-reel theme, and to push the
+ * contract in the opposite direction from Ink & Paper: dark instead of light,
+ * gradients instead of flat fills, glow instead of rules. Where Ink found that
+ * a theme must restate the states of a class it overrides, this one is here to
+ * find what a *dark* theme trips over — the contract's own hardcoded black
+ * alphas, and the handful of tokens the app reads as SVG paint.
+ *
+ * The design note that came with it named its own risk: glass is expensive at
+ * 60fps on a big repo, and low-contrast frost is miserable to read a diff
+ * through. Both are answered below by refusing `backdrop-filter` outright and
+ * keeping every reading surface flat.
+ *
+ * Contract version: 1
+ */
+
+:root[data-theme="aurora"] {
+  /* Without this the window gets light scrollbars and a white rubber-band
+   * behind a black page. */
+  color-scheme: dark;
+
+  /* The window ground is a flat colour, not the artboard's radial aurora,
+   * because the graph doubles this token as an SVG paint — a node's stroke, and
+   * an empty node's fill. A `linear-gradient()` is not a paint, so it would be
+   * dropped from the `stroke` attribute and the node halos would silently go
+   * missing. It reads as a deliberate choice anyway: a dark, even ring is
+   * exactly how the artboard separates a glowing node from its lane. The aurora
+   * is reassembled instead out of the translucent gradients below, which are
+   * only ever used as `background` and composite over this ground. */
+  --u-bg-window: #12102b;
+  --u-bg-toolbar: linear-gradient(
+    104deg,
+    rgba(124, 92, 255, 0.34),
+    rgba(96, 74, 210, 0.12) 52%,
+    rgba(255, 92, 168, 0.16)
+  );
+  --u-bg-sidebar: linear-gradient(
+    196deg,
+    rgba(107, 92, 255, 0.26),
+    rgba(107, 92, 255, 0.06) 62%,
+    rgba(107, 92, 255, 0.02)
+  );
+  --u-bg-inspector: linear-gradient(
+    200deg,
+    rgba(139, 124, 255, 0.12),
+    rgba(255, 92, 168, 0.07) 48%,
+    rgba(255, 92, 168, 0.18)
+  );
+  /* Flat for the same reason as the window: the timeline strokes its current
+   * operation with this token. */
+  --u-bg-timeline: #171137;
+  /* Popovers and sheets cover live content, so this one stays opaque. */
+  --u-bg-raised: #1d1846;
+  --u-bg-sunken: rgba(0, 0, 0, 0.3);
+  --u-bg-hover: rgba(255, 255, 255, 0.07);
+  --u-bg-selected: rgba(255, 255, 255, 0.12);
+
+  --u-text: #eef0ff;
+  --u-text-secondary: rgba(238, 240, 255, 0.62);
+  --u-text-tertiary: rgba(238, 240, 255, 0.38);
+
+  --u-line: rgba(255, 255, 255, 0.1);
+  --u-line-strong: rgba(255, 255, 255, 0.17);
+  --u-line-faint: rgba(255, 255, 255, 0.06);
+
+  --u-accent: #9ef0ff;
+  --u-accent-soft: rgba(158, 240, 255, 0.16);
+  /* Inverted from the contract's white: this accent is a pale cyan, so the ink
+   * that sits on it has to be the ground, not paper. */
+  --u-accent-ink: #0f0d26;
+  --u-conflict: #ffb0aa;
+  --u-conflict-soft: rgba(255, 69, 58, 0.22);
+  --u-added: #9dffb8;
+  --u-added-soft: rgba(48, 209, 88, 0.16);
+  --u-removed: #ffb0aa;
+  --u-removed-soft: rgba(255, 69, 58, 0.14);
+  --u-modified: #ffc070;
+  --u-immutable: #7b7fae;
+
+  --u-radius-sm: 6px;
+  --u-radius: 9px;
+  --u-radius-lg: 12px;
+  --u-radius-pill: 9px;
+
+  /* ponytail: the design is set in Outfit and IBM Plex Mono. The window's CSP
+   * blocks remote `url()` and this repo bundles no font files, so these are the
+   * nearest faces already on the machine — Avenir Next for Outfit's geometric
+   * round, the system mono for Plex. The ceiling is that the type reads a
+   * little narrower and warmer than drawn; lifting it means dropping the two
+   * woff2 faces next to this file and adding `@font-face`, which is also what
+   * an external theme would have to do. Avenir Next has no Hangul, so the
+   * Korean face is named explicitly or a Korean row changes texture. */
+  --u-font:
+    "Avenir Next", Avenir, system-ui, "Apple SD Gothic Neo", "Noto Sans KR",
+    sans-serif;
+  --u-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+}
+
+/*
+ * Layer 2: component shapes. Only contract classes appear below.
+ *
+ * There is no `backdrop-filter` in this file. The three surfaces worth frosting
+ * — toolbar, sidebar, inspector — are unclassed elements styled inline, so a
+ * theme reaches their *colour* through the `--u-bg-*` tokens but has nowhere to
+ * hang a property. The one contract class that does land on a large chrome
+ * surface is `.u-scroll`, and it is also on the revision list and the diff
+ * pane; frosting it would blur behind precisely the two views that scroll
+ * hundreds of rows, which is the cost the design note warned about. So the
+ * aurora is carried by gradients that composite once, and every surface anyone
+ * reads for an hour — `.row`, `.file`, `.diff-line` — is left flat with
+ * full-contrast ink.
+ *
+ * Three of the contract's hardcoded colours needed a decision on a dark ground.
+ * `.key` and `.u-scroll` are black washes that turn into holes, and are
+ * overridden below. `.avatar`'s `#fff` survives untouched: it sits on a colour
+ * from the change-ID palette in `change-color.ts`, which is not a theme surface
+ * at all.
+ */
+
+/* A black wash on this ground is a hole rather than a chip. */
+:root[data-theme="aurora"] .key {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Both of the contract's primary-button badge rules assume a *dark* accent
+ * fill. Ours is a pale cyan, so the white wash disappears into the button and
+ * the disabled pair's black wash disappears into `--u-bg-selected`. Each rule
+ * also outranks the base override above, so each has to be said again. */
+:root[data-theme="aurora"] .tb-btn[data-variant="primary"] .key {
+  background: rgba(0, 0, 0, 0.16);
+  border-color: transparent;
+  color: var(--u-accent-ink);
+}
+:root[data-theme="aurora"] .tb-btn[data-variant="primary"]:disabled .key {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--u-text-tertiary);
+}
+
+:root[data-theme="aurora"] .tb-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--u-line);
+}
+:root[data-theme="aurora"] .tb-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+/* Restated per the changelog's obligation: the rule above outranks the
+ * contract's variant rules, so the primary fill, its hover and its disabled
+ * state all have to be repeated or the button loses them. */
+:root[data-theme="aurora"] .tb-btn[data-variant="primary"] {
+  background: linear-gradient(135deg, #7cf5ff, #8b7cff);
+  border-color: transparent;
+  color: var(--u-accent-ink);
+}
+:root[data-theme="aurora"]
+  .tb-btn[data-variant="primary"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #9ef8ff, #a08fff);
+}
+:root[data-theme="aurora"] .tb-btn[data-variant="primary"]:disabled {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--u-line-faint);
+  color: var(--u-text-tertiary);
+}
+
+:root[data-theme="aurora"] .step {
+  background: rgba(255, 255, 255, 0.07);
+}
+/* The same obligation as `.tb-btn`, for the same reason. */
+:root[data-theme="aurora"] .step[data-variant="primary"] {
+  background: linear-gradient(
+    135deg,
+    rgba(124, 245, 255, 0.3),
+    rgba(139, 124, 255, 0.3)
+  );
+  box-shadow: inset 0 0 0 1px rgba(158, 240, 255, 0.45);
+  color: var(--u-text);
+  font-weight: 500;
+}
+:root[data-theme="aurora"] .step[data-variant="primary"]:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    rgba(124, 245, 255, 0.42),
+    rgba(139, 124, 255, 0.42)
+  );
+}
+:root[data-theme="aurora"] .step[data-variant="primary"]:disabled {
+  background: var(--u-bg-sunken);
+  box-shadow: none;
+  color: var(--u-text-tertiary);
+  font-weight: 400;
+}
+
+/* The gap the changelog records at v1.2: the contract gives a primary *button*
+ * a `.key` rule but not a primary step, because on the default theme that step
+ * is only a tint. Here it is a lit fill, so the badge needs lifting off it. */
+:root[data-theme="aurora"] .step[data-variant="primary"] .key {
+  background: rgba(15, 13, 38, 0.3);
+  border-color: rgba(158, 240, 255, 0.35);
+  color: var(--u-text);
+}
+
+/* The selected row is ringed rather than barred: a 2px inset bar on the left
+ * lands right where the lane strokes are and reads as one of them. */
+:root[data-theme="aurora"] .row[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(158, 240, 255, 0.5);
+}
+
+/* The contract's thumb is black on a black ground. */
+:root[data-theme="aurora"] .u-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+:root[data-theme="aurora"] .u-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+:root[data-theme="aurora"] .side-head {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

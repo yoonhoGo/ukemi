@@ -1,0 +1,217 @@
+/**
+ * Acid Terminal — built-in theme.
+ *
+ * Near-black ground, one acid lime, hard 1px rules, mono everywhere and
+ * uppercase micro-labels. It reads as an instrument rather than a document,
+ * which is the point: the same graph, for someone who would rather it looked
+ * like a serious tool.
+ *
+ * It is also the app's first *dark* theme, and that is the other half of why it
+ * ships. The contract was written on a white page, so the only way to find the
+ * black alphas baked into `contract.css` was to stand a theme on a black ground
+ * and look (design §8 principle ③). Three of them turned up; each is overridden
+ * below with the reason attached.
+ *
+ * Contract version: 1
+ */
+
+:root[data-theme="acid"] {
+  /* A dark palette under a light `color-scheme` gets platform furniture a theme
+   * cannot reach: light scrollbars and a white rubber-band at the window edge. */
+  color-scheme: dark;
+
+  --u-bg-window: #0b0b0d;
+  --u-bg-toolbar: #0b0b0d;
+  --u-bg-sidebar: #0b0b0d;
+  --u-bg-inspector: #0e0e11;
+  --u-bg-timeline: #0b0b0d;
+  --u-bg-raised: #141417;
+  /* Sunken means *darker* here, not a shade of the ink — one step below the
+   * window ground so a diff still reads as a well on the inspector too. */
+  --u-bg-sunken: #050506;
+  --u-bg-hover: rgba(255, 255, 255, 0.04);
+  --u-bg-selected: rgba(255, 255, 255, 0.07);
+
+  --u-text: #e8e8e3;
+  --u-text-secondary: #9a9aa2;
+  --u-text-tertiary: #7a7a82;
+
+  --u-line: #2a2a2e;
+  --u-line-strong: #3a3a40;
+  --u-line-faint: #16161a;
+
+  --u-accent: #c8ff00;
+  --u-accent-soft: rgba(200, 255, 0, 0.1);
+  --u-accent-ink: #0b0b0d;
+  --u-conflict: #ff453a;
+  --u-conflict-soft: rgba(255, 69, 58, 0.12);
+  --u-added: #30d158;
+  --u-added-soft: rgba(48, 209, 88, 0.11);
+  --u-removed: #ff453a;
+  --u-removed-soft: rgba(255, 69, 58, 0.1);
+  --u-modified: #ffb020;
+  --u-immutable: #55555c;
+
+  /* Nothing here is rounded. A terminal draws rules, it does not draw pills. */
+  --u-radius-sm: 0;
+  --u-radius: 0;
+  --u-radius-lg: 0;
+  --u-radius-pill: 0;
+
+  /* Mono for the chrome as well as the IDs — that is the whole texture of this
+   * theme. The Korean face is named after the mono stack because no monospace
+   * face on the system covers Hangul, and without it a Korean description falls
+   * to whatever the platform picks.
+   *
+   * ponytail: the artboard is set in Space Grotesk and JetBrains Mono. The
+   * window's CSP blocks remote `url()` and this repo bundles no font files, so
+   * the stacks below only *reach for* JetBrains Mono in case the developer has
+   * it installed locally and otherwise land on the system mono — close in
+   * rhythm, not in character. Upgrade path: bundle the face with the theme, the
+   * way `themes.ts` already says a theme must. */
+  --u-font: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, "Apple SD Gothic Neo",
+    monospace;
+  --u-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  --u-font-size: 12.5px;
+  --u-font-size-small: 10.5px;
+
+  /* Mono is wider than the contract's UI face, so the lanes move in to leave the
+   * change ID its column. */
+  --u-lane-inset: 36px;
+}
+
+/* Layer 2: component shapes. Only contract classes appear below. */
+
+/* The contract fills `.key` with black alphas, which vanish on a black ground.
+ * Light alphas rather than a flat colour, so one rule serves the badge on the
+ * window, the inspector and a raised sheet alike. */
+:root[data-theme="acid"] .key {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--u-text-secondary);
+}
+
+:root[data-theme="acid"] .tb-btn {
+  background: transparent;
+  border: 1px solid var(--u-line);
+}
+:root[data-theme="acid"] .tb-btn:hover:not(:disabled) {
+  background: var(--u-bg-hover);
+  border-color: var(--u-line-strong);
+}
+/* Overriding `.tb-btn` outranks the contract's primary rule, so the fill has to
+ * be restated or the button loses it — the trap the changelog records. */
+:root[data-theme="acid"] .tb-btn[data-variant="primary"] {
+  background: var(--u-accent);
+  border-color: var(--u-accent);
+  color: var(--u-accent-ink);
+  font-weight: 600;
+}
+:root[data-theme="acid"] .tb-btn[data-variant="primary"]:hover:not(:disabled) {
+  background: #d8ff3a;
+  border-color: #d8ff3a;
+}
+:root[data-theme="acid"] .tb-btn[data-variant="primary"]:disabled {
+  background: transparent;
+  border-color: var(--u-line);
+  color: var(--u-text-tertiary);
+  font-weight: 400;
+}
+/* The contract's own `.tb-btn[data-variant="primary"] .key` puts white alphas on
+ * the badge, which assumes a dark fill; this one is lime with near-black ink, so
+ * the alphas invert. Written out in full because a bare `.key` override only
+ * ties with that rule on specificity and would lose on source order. */
+:root[data-theme="acid"] .tb-btn[data-variant="primary"] .key {
+  background: transparent;
+  border-color: rgba(0, 0, 0, 0.32);
+  color: var(--u-accent-ink);
+}
+:root[data-theme="acid"] .tb-btn[data-variant="primary"]:disabled .key {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--u-text-tertiary);
+}
+
+:root[data-theme="acid"] .pill {
+  background: transparent;
+  border: 1px solid currentColor;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+:root[data-theme="acid"] .row {
+  border-bottom: 1px solid var(--u-line-faint);
+}
+/* A lime wash over the whole row would tint the description text with the
+ * accent; the selection is a neutral lift plus one lime edge instead. */
+:root[data-theme="acid"] .row[aria-selected="true"] {
+  background: var(--u-bg-selected);
+  box-shadow: inset 2px 0 0 var(--u-accent);
+}
+
+:root[data-theme="acid"] .side-item[aria-current="true"] {
+  box-shadow: inset 2px 0 0 var(--u-accent);
+}
+
+:root[data-theme="acid"] .side-head {
+  color: var(--u-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* `.avatar`'s literal `#fff` and its `border-radius: 11px` are the contract's
+ * other two hardcoded values. The white survives — the chip's background comes
+ * from the app's fixed palette, not from the theme, so it is exactly as light
+ * as it is under the default theme. The radius does not. */
+:root[data-theme="acid"] .avatar {
+  border-radius: 0;
+}
+
+:root[data-theme="acid"] .step {
+  background: transparent;
+  border: 1px solid var(--u-line);
+  border-radius: 0;
+  margin-bottom: 4px;
+}
+:root[data-theme="acid"] .step:hover:not(:disabled) {
+  background: var(--u-bg-hover);
+  border-color: var(--u-line-strong);
+}
+:root[data-theme="acid"] .step[data-variant="primary"] {
+  background: var(--u-accent);
+  border-color: var(--u-accent);
+  color: var(--u-accent-ink);
+  font-weight: 600;
+}
+:root[data-theme="acid"] .step[data-variant="primary"]:disabled {
+  background: transparent;
+  border-color: var(--u-line);
+  color: var(--u-text-tertiary);
+  font-weight: 400;
+}
+/* The contract has no `.step[data-variant="primary"] .key` counterpart to the
+ * one it gives `.tb-btn`, because on the default theme the primary step is a
+ * tint and its badge never sits on a fill. Give it a fill and the gap shows. */
+:root[data-theme="acid"] .step[data-variant="primary"] .key {
+  background: transparent;
+  border-color: rgba(0, 0, 0, 0.32);
+  color: var(--u-accent-ink);
+}
+
+/* The artboard tints added lines lime. Diff bodies are read for minutes at a
+ * stretch, so they stay green and the lime is kept for selection and focus —
+ * an accent that appears in the text stops being a signal. */
+:root[data-theme="acid"] .diff-line[data-kind="hunk"] {
+  border-top: 1px solid var(--u-line-faint);
+  border-bottom: 1px solid var(--u-line-faint);
+}
+
+/* The last of the contract's black alphas, and the one that fails hardest: on a
+ * black ground it is not a faint scrollbar, it is no scrollbar. */
+:root[data-theme="acid"] .u-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+:root[data-theme="acid"] .u-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0;
+}

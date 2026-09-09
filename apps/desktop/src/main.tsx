@@ -1,3 +1,13 @@
+/*
+ * The contract is imported before anything that overrides it, because the
+ * cascade decides ties by source order: a theme rule that lands on the same
+ * specificity as one of the contract's own state rules — say a theme's `.key`
+ * against the contract's `.tb-btn[data-variant="primary"] .key` — has to be the
+ * later of the two, or the obligation written down in `themes/CHANGELOG.md`
+ * ("if you override a base class, restate the states you still want") is a
+ * promise the stylesheet order quietly breaks.
+ */
+import "./themes/contract.css";
 import { StrictMode, useEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,7 +27,6 @@ import { Welcome } from "./ui/Welcome.tsx";
 import { progressSnapshot, subscribeProgress } from "./ui/onboarding.ts";
 import { applyTheme, THEMES } from "./themes/themes.ts";
 import { applyLocale, currentLocale, initialLocale, subscribeLocale, t, tParts } from "./i18n/i18n.ts";
-import "./themes/contract.css";
 
 const client = new QueryClient({
   defaultOptions: {

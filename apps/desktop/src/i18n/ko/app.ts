@@ -70,6 +70,15 @@ export const app: Record<string, string> = {
   "Ink & Paper": "잉크와 종이",
   "macOS standard. The contract's own defaults, with no overrides.":
     "macOS 표준. 계약이 정한 기본값 그대로, 덮어쓴 데가 없습니다.",
+  "Acid Terminal": "애시드 터미널",
+  "Near-black, acid lime, hard rules, mono throughout. The dark one.":
+    "근검정과 애시드 라임, 딱딱한 선, 전부 고정폭. 다크 테마입니다.",
+  "Aurora Glass": "오로라 글래스",
+  "Indigo to plum, frosted chrome, glowing lanes. Dark, and flat where you read.":
+    "인디고에서 자두색으로, 서리 낀 크롬과 빛나는 레인. 다크지만 읽는 곳은 평평합니다.",
+  "Candy Bento": "캔디 벤토",
+  "White cards on lilac grey, fat lanes, one purple.":
+    "라일락 회색 위 흰 카드, 두툼한 레인, 보라 하나.",
   "Warm paper, ink rules, one vermilion. Serif descriptions.":
     "따뜻한 종이, 잉크 괘선, 주홍 하나. 설명은 세리프체.",
   Language: "언어",

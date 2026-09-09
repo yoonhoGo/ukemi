@@ -10,6 +10,9 @@
  * remote `url()` loads, so a theme cannot phone home.
  */
 import "./ink.css";
+import "./acid.css";
+import "./aurora.css";
+import "./candy.css";
 
 export interface Theme {
   readonly id: string;
@@ -30,6 +33,21 @@ export const THEMES: readonly Theme[] = [
     id: "ink",
     name: "Ink & Paper",
     note: "Warm paper, ink rules, one vermilion. Serif descriptions.",
+  },
+  {
+    id: "acid",
+    name: "Acid Terminal",
+    note: "Near-black, acid lime, hard rules, mono throughout. The dark one.",
+  },
+  {
+    id: "aurora",
+    name: "Aurora Glass",
+    note: "Indigo to plum, frosted chrome, glowing lanes. Dark, and flat where you read.",
+  },
+  {
+    id: "candy",
+    name: "Candy Bento",
+    note: "White cards on lilac grey, fat lanes, one purple.",
   },
 ];
 

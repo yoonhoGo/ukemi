@@ -1,0 +1,143 @@
+/**
+ * Candy Bento — built-in theme.
+ *
+ * Floating white cards on a lilac-gray ground, fat radii, one saturated purple.
+ * Where Ink & Paper tests whether the contract survives a change of *texture*,
+ * this one tests whether it survives a change of *surface*: the panels stay
+ * white while the window ground goes coloured, so the edge of a card has to
+ * come from the tokens rather than from a border a theme cannot reach. It is
+ * also the first light theme, which is why it leaves `.key` and `.u-scroll`
+ * alone — their hardcoded black alphas are already right on paper.
+ *
+ * Contract version: 1
+ */
+
+:root[data-theme="candy"] {
+  /* The window ground is the only coloured surface; everything the app calls a
+   * panel is white, so the ground shows as the well the graph rows float in. */
+  --u-bg-window: #ecebf3;
+  --u-bg-toolbar: #ffffff;
+  --u-bg-sidebar: #ffffff;
+  --u-bg-inspector: #ffffff;
+  --u-bg-timeline: #ffffff;
+  --u-bg-raised: #ffffff;
+  --u-bg-sunken: #f4f3f9;
+  --u-bg-hover: rgba(66, 48, 128, 0.1);
+  --u-bg-selected: rgba(66, 48, 128, 0.15);
+
+  /* The artboard's greys are lilac-tinted but too pale to read a diff by, so
+   * secondary and tertiary are pulled down until secondary clears 4.5:1 on the
+   * window ground — the darkest ground any of this ink lands on. */
+  --u-text: #1c1b22;
+  --u-text-secondary: #65627a;
+  --u-text-tertiary: #9d9ab0;
+
+  --u-line: #e6e3f0;
+  --u-line-strong: #d5d1e4;
+  --u-line-faint: #f0eef7;
+
+  /* The artboard's purple is #6a4cff, which leaves accent-on-lilac text at
+   * 4.4:1 — a shade under. Darkening it two steps keeps the hue and buys the
+   * `.step` label and the bookmark chip their contrast. */
+  --u-accent: #6039f2;
+  --u-accent-soft: #efeaff;
+  --u-accent-ink: #ffffff;
+  --u-conflict: #c0281c;
+  --u-conflict-soft: #ffd9d6;
+  --u-added: #1e7a3c;
+  --u-added-soft: #d8f7e3;
+  --u-removed: #c0281c;
+  --u-removed-soft: #ffd9d6;
+  --u-modified: #a35a00;
+  --u-immutable: #8a879a;
+
+  --u-radius-sm: 7px;
+  --u-radius: 12px;
+  --u-radius-lg: 16px;
+  --u-radius-pill: 8px;
+
+  /* The artboard is set in Sora and JetBrains Mono. The window's CSP blocks
+   * remote `url()` and the repo bundles no faces, so these are the nearest
+   * system stacks: Avenir Next carries the geometric warmth, and the Korean
+   * face is named explicitly because Avenir Next has no Hangul and would
+   * otherwise hand it to whatever `sans-serif` resolves to mid-sentence.
+   * ponytail: system stacks only, which costs the artboard's exact
+   * letterforms; bundling the two faces as woff2 beside this file is the fix. */
+  --u-font: "Avenir Next", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --u-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  --u-font-size-small: 10.5px;
+
+  /* The lane metrics deliberately stay at their contract defaults. Despite the
+   * tokens, `graph-geometry.ts` still hardcodes ROW / LANE_PITCH / LANE_INSET /
+   * NODE_R as JS constants and only promises to be "kept in sync", so moving
+   * them slides the rows further out from under the nodes with every row. The
+   * fat lanes here come from the gap the row cards leave for them instead. */
+}
+
+/* Layer 2: component shapes. Only contract classes appear below. */
+
+/* The card is painted inside a symmetric transparent border rather than with a
+ * margin or an inset padding. `box-sizing` is border-box app-wide, so a border
+ * keeps the row's outer box at exactly `--u-row-height` — the pitch the lane
+ * SVG behind the rows computes from — and a border on the block axis alone
+ * leaves `grid-template-columns` untouched, so lane 0 still lands in the gutter
+ * column. `background-color` rather than the shorthand in every state, because
+ * the shorthand would reset `background-clip` and refill the whole row. */
+:root[data-theme="candy"] .row {
+  border-width: 3px 0;
+  border-color: transparent;
+  background-color: var(--u-bg-raised);
+  background-clip: padding-box;
+}
+/* Restated: the rule above outranks the contract's own `:hover` and
+ * `aria-selected` backgrounds and would otherwise freeze every row white. */
+:root[data-theme="candy"] .row:hover {
+  background-color: #f6f4fc;
+}
+:root[data-theme="candy"] .row[aria-selected="true"] {
+  background-color: var(--u-accent-soft);
+  box-shadow: inset 0 0 0 1.5px rgba(96, 57, 242, 0.3);
+}
+
+:root[data-theme="candy"] .tb-btn {
+  font-weight: 500;
+}
+/* The coloured lift is the artboard's one piece of shade. Restating it here
+ * outranks the contract's `:disabled` rule, so that has to follow. */
+:root[data-theme="candy"] .tb-btn[data-variant="primary"] {
+  background: var(--u-accent);
+  color: var(--u-accent-ink);
+  box-shadow: 0 6px 16px rgba(96, 57, 242, 0.32);
+}
+:root[data-theme="candy"] .tb-btn[data-variant="primary"]:disabled {
+  background: var(--u-bg-selected);
+  color: var(--u-text-tertiary);
+  box-shadow: none;
+}
+
+:root[data-theme="candy"] .step {
+  border-radius: 10px;
+  font-weight: 500;
+}
+:root[data-theme="candy"] .step[data-variant="primary"] {
+  background: var(--u-accent-soft);
+  color: var(--u-accent);
+}
+:root[data-theme="candy"] .step[data-variant="primary"]:disabled {
+  background: var(--u-bg-sunken);
+  color: var(--u-text-tertiary);
+  font-weight: 400;
+}
+
+/* The artboard fills a bookmark chip with its lane colour; lane colours are
+ * chosen in JS and the contract does not expose them, so the chip takes the one
+ * saturated fill a theme can reach. */
+:root[data-theme="candy"] .pill[data-kind="bookmark"] {
+  background: var(--u-accent);
+  color: var(--u-accent-ink);
+}
+
+:root[data-theme="candy"] .side-head {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

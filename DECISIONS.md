@@ -219,6 +219,12 @@ collision is one where the two really cannot share a word.
 
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
 - **Licence and pricing for Ukemi itself.**
+- **Whether the graph should read the metric tokens** instead of the JS
+  constants in `ui/graph-geometry.ts`. It would need `getComputedStyle` on the
+  root plus a theme store to re-render on a switch, and no theme has yet wanted
+  a different row pitch badly enough to pay for it — Candy Bento got its fat
+  lanes out of the gap its row cards leave. Until then the tokens are half
+  true and the changelog says so.
 - **Worker/OffscreenCanvas in WKWebView**, which decides whether a
   theme-supplied graph renderer (theme contract layer 3) can be sandboxed.
 
@@ -248,6 +254,14 @@ what the card shows.
 No Git index warning in the transparency panel. In a colocated repo jj resets
 the index to match `@` on every command, and the app runs commands constantly,
 so a staged-only state cannot persist long enough to warn about.
+
+No Jelly skin. The design canvas's fifth style is a motion spec — squash is
+two blobs pressing into one, split is one blob pinching in two, rebase stretches
+and snaps — and a theme in contract v1 can only paint tokens and classes. The
+graph renderer is layer 3 and is not in the contract, so Jelly as CSS would be
+the gummy shell without the physics, which is the part that made it worth
+picking. It waits on layer 3, which waits on the Worker/OffscreenCanvas
+question above.
 
 No three-way merge editor. The conflict panel offers "take a side"; anything
 finer is a hunk edit, and that editor already exists. A second merge UI would

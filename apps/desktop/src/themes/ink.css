@@ -55,11 +55,13 @@
   --u-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
   --u-font-size: 13.5px;
 
-  /* Serif at a larger size needs more room; the metrics are tokens precisely
-   * so a theme can do this without the graph and the rows disagreeing. */
-  --u-row-height: 46px;
-  --u-lane-width: 30px;
-  --u-lane-inset: 38px;
+  /* The metric tokens are deliberately left alone, though serif at this size
+   * would like more room. `graph-geometry.ts` holds JS copies of the row pitch
+   * and lane geometry and the lane SVG is laid out from those, so a theme that
+   * raises `--u-row-height` grows the HTML rows while the nodes behind them
+   * keep the old pitch — two pixels of drift per row, which by the twentieth
+   * row puts a node between two rows. This theme shipped with 46px and did
+   * exactly that. See `CHANGELOG.md` v1.2. */
 }
 
 /* Layer 2: component shapes. Only contract classes appear below. */
