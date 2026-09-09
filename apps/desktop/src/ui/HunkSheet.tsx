@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DiffGroup, FileDiff, PlanFile, Revision } from "@ukemi/domain";
 import { allGroups, applySelectedGroups } from "@ukemi/domain";
 import { useHunkEditData, useJjMutation } from "../repo.tsx";
 import { t, tParts } from "../i18n/i18n.ts";
 import { nodeColor } from "./change-color.ts";
+import { useModal } from "./modal.ts";
 
 /**
  * The hunk editor — design §4.2, "커밋 편집" without a staging area.
@@ -151,6 +152,11 @@ export function HunkSheet({
   // key and the coloured ID drops into the slot.
   const [beforeChange, afterChange] = tParts(copy.title, "change");
   const [beforeCommand, afterCommand] = tParts("Runs {command} · undo with", "command");
+  // Cancel, not the run button (disabled until something is checked) and not
+  // the description field: the window handler below spends space on toggling
+  // the focused hunk, so landing in a text field would look broken.
+  const cancel = useRef<HTMLButtonElement>(null);
+  const panel = useModal(cancel);
 
   const splitHunks = useJjMutation((port, plan: PlanFile[]) =>
     port.splitHunks({ rev: revision.changeId, keep: plan, message }),
@@ -187,6 +193,19 @@ export function HunkSheet({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // This listener is on the window in *capture*, so it runs before the
+      // focused field's own handler — which is why the split sheet's
+      // description input could not take a space at all: the hunk-toggle
+      // binding below claimed it first and the input's `stopPropagation`
+      // came a phase too late to matter. A text field is excused here
+      // instead, keeping only the two chords that mean "the sheet", not
+      // "this word".
+      const target = event.target;
+      const typing =
+        target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+      if (typing && event.key !== "Escape" && !(event.key === "Enter" && event.metaKey)) {
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
@@ -241,8 +260,13 @@ export function HunkSheet({
       }}
     >
       <div
+        ref={panel}
         role="dialog"
+        aria-modal="true"
+        // The title here is a composed sentence with the change ID spliced
+        // into it, not a heading, so the verb is the name worth announcing.
         aria-label={t(copy.verb)}
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
         style={{
           display: "flex",
@@ -439,7 +463,7 @@ export function HunkSheet({
             )}
           </span>
           <span style={{ flexGrow: 1 }} />
-          <button type="button" className="tb-btn" onClick={onClose}>
+          <button type="button" ref={cancel} className="tb-btn" onClick={onClose}>
             {t("Cancel")} <span className="key">esc</span>
           </button>
           <button

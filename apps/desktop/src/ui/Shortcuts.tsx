@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { t } from "../i18n/i18n.ts";
+import { useModal } from "./modal.ts";
 
 /** The ⌘/ sheet. Mirrors the key map in `App`; both must move together. */
 const GROUPS = [
@@ -8,6 +10,7 @@ const GROUPS = [
       ["↑ ↓", "Move selection"],
       ["⌘L", "Focus the revset field"],
       ["⌘1…⌘7", "Saved revsets"],
+      ["⌘,", "Settings"],
       ["⌘R", "Reload from disk"],
       ["⌘⇧W", "Workspace board"],
       ["⌘G", "Look up a git command"],
@@ -64,6 +67,11 @@ const GROUPS = [
 ] as const;
 
 export function Shortcuts({ onClose }: { onClose(): void }) {
+  // The sheet is a reference card with one control in it, so Done is both the
+  // only sensible landing spot and the whole focus ring.
+  const done = useRef<HTMLButtonElement>(null);
+  const panel = useModal(done);
+
   return (
     <div
       onClick={onClose}
@@ -78,8 +86,12 @@ export function Shortcuts({ onClose }: { onClose(): void }) {
       }}
     >
       <div
+        ref={panel}
         role="dialog"
+        aria-modal="true"
+        // The visible heading is just "Shortcuts"; the label says what kind.
         aria-label={t("Keyboard shortcuts")}
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
         style={{
           width: 720,
@@ -97,7 +109,7 @@ export function Shortcuts({ onClose }: { onClose(): void }) {
             {t("No command is typed. Every jj verb is a key or a drag.")}
           </span>
           <span style={{ flexGrow: 1 }} />
-          <button type="button" className="tb-btn" onClick={onClose}>
+          <button type="button" ref={done} className="tb-btn" onClick={onClose}>
             {t("Done")} <span className="key">Esc</span>
           </button>
         </div>

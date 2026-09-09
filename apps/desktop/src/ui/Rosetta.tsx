@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { t, tParts } from "../i18n/i18n.ts";
+import { useModal } from "./modal.ts";
 import { lookup, type RosettaEntry } from "./rosetta.ts";
 
 /**
@@ -22,14 +23,15 @@ export function Rosetta({ onClose }: { onClose(): void }) {
   const [picked, setPicked] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  // The sheet exists to be typed into, so the field is the landing spot; the
+  // hook takes over the focus-on-mount this component used to do itself.
+  const panel = useModal(input);
 
   const results = useMemo(() => lookup(query), [query]);
   // A typed query selects its best answer for you; an untouched sheet is a
   // reference list with nothing singled out.
   const selected: RosettaEntry | undefined =
     results.find((entry) => entry.git === picked) ?? (query.trim() ? results[0] : undefined);
-
-  useEffect(() => input.current?.focus(), []);
 
   const copy = () => {
     if (!selected) return;
@@ -61,8 +63,13 @@ export function Rosetta({ onClose }: { onClose(): void }) {
       }}
     >
       <div
+        ref={panel}
         role="dialog"
+        aria-modal="true"
+        // The heading is an instruction, not a name; the label is what the ⌘G
+        // key is called everywhere else in the window.
         aria-label={t("Look up a git command")}
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
         style={{
           display: "flex",

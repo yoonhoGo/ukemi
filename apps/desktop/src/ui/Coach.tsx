@@ -1,5 +1,6 @@
-import { useSyncExternalStore, type CSSProperties } from "react";
+import { useRef, useSyncExternalStore, type CSSProperties } from "react";
 import { t, tParts } from "../i18n/i18n.ts";
+import { useModal } from "./modal.ts";
 import {
   acknowledgeHint,
   hasGraduated,
@@ -183,6 +184,9 @@ function Meter({ done }: { done: number }) {
   );
 }
 
+/** Only ever one of these on screen, so a constant id is enough to point at. */
+const HEADING = "progress-panel-heading";
+
 /** The seven, and which of them the user has actually been through. */
 export function ProgressPanel({ onClose }: { onClose(): void }) {
   const progress = useProgress();
@@ -192,6 +196,10 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
   // Korean puts the command first and the postposition after it, so the sentence
   // stays one key and the mono span drops into the slot.
   const [beforeCmd, afterCmd] = tParts("instead of {command}", "command");
+  // The close button is the only control above the list, so landing there puts
+  // the hints switch one Tab away rather than seven rows away.
+  const close = useRef<HTMLButtonElement>(null);
+  const panel = useModal(close);
 
   return (
     <div
@@ -207,8 +215,13 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
       }}
     >
       <div
+        ref={panel}
         role="dialog"
-        aria-label={t("Moving from Git")}
+        aria-modal="true"
+        // The heading already says "Moving from Git"; pointing at it beats
+        // translating the same sentence twice and letting the two drift.
+        aria-labelledby={HEADING}
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
         className="u-scroll"
         style={{
@@ -223,13 +236,16 @@ export function ProgressPanel({ onClose }: { onClose(): void }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{t("Moving from Git")}</h2>
+          <h2 id={HEADING} style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+            {t("Moving from Git")}
+          </h2>
           <span style={{ flexGrow: 1 }} />
           <span className="sec" style={{ fontSize: 11.5 }}>
             {t("{done} of {total}", { done, total: MILESTONE_COUNT })}
           </span>
           <button
             type="button"
+            ref={close}
             className="tb-btn"
             style={{ height: 22, background: "transparent" }}
             onClick={onClose}

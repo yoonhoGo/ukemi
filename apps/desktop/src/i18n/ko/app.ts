@@ -4,6 +4,7 @@ export const app: Record<string, string> = {
   "Viewing a past operation — the repository is untouched.":
     "지난 오퍼레이션을 보는 중입니다 — 저장소는 그대로입니다.",
   "Back to now": "지금으로",
+  Dismiss: "닫기",
   Change: "체인지",
   Description: "설명",
   Bookmarks: "북마크",
@@ -64,7 +65,8 @@ export const app: Record<string, string> = {
   yesterday: "어제",
   "{count}d": "{count}일",
 
-  // Theme and language pickers
+  // Settings sheet — theme and language pickers
+  Settings: "설정",
   Theme: "테마",
   System: "시스템",
   "Ink & Paper": "잉크와 종이",
