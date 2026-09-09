@@ -118,6 +118,61 @@ minted `push-<change>` bookmarks, `gh pr create` opened #1 → main and
 #2 → push-first, `pullRequestFor` matched both through bookmark = head
 branch, and a describe + re-push moved both bookmarks with the same command.
 
+**Onboarding starts before there is a jj repo — the empty state is the door.**
+A Git user's first action is to open their Git repository, so "not inside a jj
+repository" was the app's only real first contact with them, and it was a dead
+end. That screen now offers `jj git init --colocate` instead, and spends its
+space on the one question that decides whether they take it: what happens to
+`.git`. Ran against three shapes of real Git repo — a normal one with an
+uncommitted file, one with no commits at all, and a detached HEAD — all three
+colocate with exit 0 and `jj root` answers afterwards. `rm -rf .jj` then leaves
+the branch, the commit and the uncommitted file exactly as they were, which is
+what makes the "reversible" row in that table an honest claim rather than a
+reassuring one.
+
+**`git_probe` asks twice, and that is not redundancy.**
+`rev-parse --git-dir` is the existence test and `symbolic-ref --short HEAD` is
+the branch name, as two invocations inside one blocking call. Combining them
+was tried and is wrong: `symbolic-ref` fails on a repo with no commits and on a
+detached HEAD, and neither of those means "not a Git repository" — a single
+call would refuse exactly the repos most worth offering the door to. The commit
+count and dirty-file count the design sketched were dropped rather than costing
+two more invocations: "anything uncommitted becomes the working-copy change" is
+the fact a wary user needs, and it needs no counting.
+
+**Colocating needed no new Rust command.**
+`jj_exec` is already argv-in, captured-output-out with no knowledge of jj's
+verbs, so `["git", "init", "--colocate"]` goes through the existing seam and
+through `observed`, which lands it in the command log like everything else —
+the first command the app ever runs on a repo being the one most worth showing.
+It is deliberately *not* a `JjPort` method: the port's `root` promises a jj
+workspace, and this runs where there is not one yet.
+
+**`jj backout` does not exist — the lookup table was checked against the binary.**
+Written from memory the ⌘G table would have shipped at least one command that
+is not there. Against jj 0.43: revert is `jj revert -r <rev> --onto <rev>`
+(and `--onto` is required), `duplicate` spells its destination `--onto` with
+`-d` as an alias, and `op log` is an alias for `operation log`. Every row's jj
+side also uses the *adapter's* spelling (`--onto`, `--from`/`--into`,
+`op restore`), so what the panel promises and what actually executes cannot
+drift apart in wording.
+
+**Milestones are derived from the command log, not wired to buttons.**
+The same jj verb is reachable from several places — the inspector's next steps,
+the hunk sheet, the stack panel, an ⌥ drag in the graph — so a milestone that
+ticked from only one of them would be a lie about what the user has done. Five
+of the seven are read off `CommandRecord` argv in one testable function; the
+remaining two (meeting a conflict, opening the board) have no command behind
+them and are reached by the window. Only exit code 0 counts: a command that
+failed taught nothing. Rescanning the whole bounded log on each new command is
+cheaper than tracking a cursor and cannot double-count, because reaching a
+milestone is idempotent.
+
+**Transition progress belongs to the user, not the repository.**
+One `localStorage` key, not one per repo: the habits being unlearned are the
+person's, and re-teaching "there is no index" on their second repository would
+be insulting. It also means the three welcome cards appear exactly once, ever.
+
 ## Still open
 
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
@@ -155,3 +210,18 @@ so a staged-only state cannot persist long enough to warn about.
 No three-way merge editor. The conflict panel offers "take a side"; anything
 finer is a hunk edit, and that editor already exists. A second merge UI would
 be a second thing to keep correct for no new capability.
+
+No Run button in the ⌘G panel. For most rows the answer *is* a keystroke in
+this window, and the rest are one-liners to copy; a Run that worked for some
+rows and not others would be worse than none. Copy plus the keys is the whole
+affordance.
+
+No measured positioning for coach hints. Four fixed spots (toolbar, inspector,
+sidebar, timeline), because every one of the seven is about one of those
+regions. Measuring real anchor elements is the upgrade if a hint ever needs to
+point at something that moves.
+
+No localisation of the onboarding copy. It is written in the same voice as the
+rest of the window, which is English; translating onboarding alone would make
+it the one screen that does not match the app around it. Localisation is an
+app-wide decision, not an onboarding one.
