@@ -206,25 +206,28 @@ function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
 }
 
 /**
- * Remote rows with no local bookmark behind them — a teammate's work, as a
- * fetch leaves it.
+ * Remote rows nobody tracks — a teammate's work, as a fetch leaves it.
  *
  * jj's `git.auto-local-bookmark` defaults to off, so a fetch imports the ref
  * without minting a local name for it: the bookmark is in the repo but no
- * revset the sidebar offers can see it. Absent counts is what marks a row
- * untracked, and that same test keeps the colocated `@git` rows out, since
- * those are tracked by construction.
+ * revset the sidebar offers can see it.
+ *
+ * Absent counts is the whole test, and it is exact rather than a heuristic:
+ * `tracking_ahead_count` answers only for a tracked ref, so the template emits
+ * null for precisely the untracked ones. That also keeps the colocated `@git`
+ * rows out, since those are tracked by construction, and it keeps a bookmark
+ * deleted locally but still tracked out, since its counts are still numbers.
+ *
+ * Deliberately *not* also filtered on "no local row of that name": a local
+ * `foo` and an untracked `foo@origin` can coexist — a name pushed by someone
+ * else, or a remote untracked by hand — and that is exactly the case where the
+ * two want connecting.
  */
 function untrackedRemotes(
   bookmarks: readonly Bookmark[],
 ): { name: string; remote: string }[] {
-  const local = new Set(
-    bookmarks.filter((bookmark) => bookmark.remote === undefined).map((b) => b.name),
-  );
   return bookmarks.flatMap((bookmark) =>
-    bookmark.remote !== undefined &&
-    bookmark.ahead === undefined &&
-    !local.has(bookmark.name)
+    bookmark.remote !== undefined && bookmark.ahead === undefined
       ? [{ name: bookmark.name, remote: bookmark.remote }]
       : [],
   );
@@ -241,7 +244,7 @@ export function Sidebar({
   onOpenProgress(): void;
   onOpenSettings(): void;
 }) {
-  const { revset, setRevset } = useRepo();
+  const { revset, setRevset, isPinned } = useRepo();
   const bookmarks = useBookmarks();
   const workspaces = useWorkspaces();
   const track = useJjMutation((port, args: { name: string; remote: string }) =>
@@ -320,11 +323,17 @@ export function Sidebar({
             type="button"
             className="side-item"
             key={`${remote.name}@${remote.remote}`}
-            disabled={track.isPending}
-            onClick={() => track.mutate(remote)}
-            title={t("Track {name} to get a local bookmark for it", {
-              name: `${remote.name}@${remote.remote}`,
-            })}
+            disabled={isPinned || track.isPending}
+            onClick={() => {
+              if (!isPinned) track.mutate(remote);
+            }}
+            title={
+              isPinned
+                ? t("The window is parked on a past operation. Return to now to make changes.")
+                : t("Track {name} to get a local bookmark for it", {
+                    name: `${remote.name}@${remote.remote}`,
+                  })
+            }
           >
             <BookmarkIcon />
             <span
