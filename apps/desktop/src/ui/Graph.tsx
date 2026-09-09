@@ -13,6 +13,7 @@ import {
   ROW,
   rowY,
 } from "./graph-geometry.ts";
+import { popupRowMenu } from "./menu.ts";
 import { relativeTime } from "./time.ts";
 import { ROW_ATTRIBUTE } from "./drag-rebase.tsx";
 
@@ -178,7 +179,21 @@ function Row({
       // implicit pointer capture.
       {...{ [ROW_ATTRIBUTE]: revision.changeId }}
       onClick={() => onSelect(revision.changeId)}
-      onPointerDown={(event) => onDragStart(revision.changeId, event)}
+      // A drag is a primary-button gesture; the right button belongs to the
+      // row menu below, and without this ⌥right-click would arm a rebase.
+      onPointerDown={(event) => {
+        if (event.button === 0) onDragStart(revision.changeId, event);
+      }}
+      onContextMenu={(event) => {
+        // Select first. Every item in that menu fires its own chord and the
+        // window's map acts on the *selection*, so a menu opened on a row that
+        // was not selected yet would otherwise apply to the previous one.
+        onSelect(revision.changeId);
+        // The row's own menu replaces the web view's, the way the app menu
+        // replaces the default one. Under plain `vite` neither appears.
+        event.preventDefault();
+        void popupRowMenu();
+      }}
       style={{
         ...(moving ? { opacity: 0.45 } : {}),
         ...(isTarget
@@ -239,7 +254,9 @@ function Row({
             key={name}
             style={{ cursor: "grab" }}
             title={t("Drag {name} onto a revision to move it there.", { name })}
-            onPointerDown={(event) => onBookmarkDragStart(name, revision.changeId, event)}
+            onPointerDown={(event) => {
+              if (event.button === 0) onBookmarkDragStart(name, revision.changeId, event);
+            }}
           >
             {name}
           </span>

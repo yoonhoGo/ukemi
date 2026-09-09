@@ -190,6 +190,32 @@ function changeMenu(): SubmenuOptions {
   };
 }
 
+/**
+ * The same six verbs, popped up on a graph row.
+ *
+ * `changeMenu().items` rather than a second list: the row menu and the Change
+ * menu are the same commands, and a copy of them here would be a third place
+ * to keep in step with `App`'s map. Nothing is greyed out, for the reason the
+ * menu bar greys nothing out — an item knows only its chord, and the window's
+ * map is what decides whether a command applies right now. It stays honest
+ * because a refused command is silent, not destructive.
+ *
+ * ponytail: a fresh menu per right-click, never freed. It cannot be built once
+ * at import — the labels follow the locale — so caching it would mean tracking
+ * the locale here; do that if the resource count ever shows up.
+ */
+export async function popupRowMenu(): Promise<void> {
+  try {
+    const menu = await Menu.new({ items: changeMenu().items });
+    // No position argument: muda pops at the pointer, which is where the
+    // right-click was.
+    await menu.popup();
+  } catch {
+    // No Tauri, no native menu — the same quiet degrade as `installAppMenu`,
+    // and for the same reason: every item in here is a keystroke as well.
+  }
+}
+
 function viewMenu(): SubmenuOptions {
   return {
     text: t("View"),
