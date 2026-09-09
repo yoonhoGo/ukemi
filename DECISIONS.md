@@ -44,10 +44,28 @@ overriding `.tb-btn` without restating `[data-variant="primary"]` made the
 primary button invisible. Now fixed in the theme and written down as an
 obligation in `apps/desktop/src/themes/CHANGELOG.md`.
 
+**`ui.diff-editor` protocol — resolved, and the worry does not apply.**
+jj hands a diff editor two directories (`left`, `right`) and waits for the
+process to exit; whatever `right` holds then becomes the selection. The draft
+asked whether that wait fits a Tauri window's lifecycle. It does not have to:
+the UI collects the hunk selection *before* jj runs, so the "editor" never
+shows a window. It is a fixed `/bin/sh` script that copies a pre-computed plan
+over `right` and exits. No IPC, no second window, no lifecycle to reconcile.
+See `packages/jj-cli-adapter/src/hunk-plan.ts`.
+
+**Hunk selection is per change-run, not per jj hunk.**
+jj pads a hunk with context, so two unrelated edits eight lines apart arrive as
+a single `@@` block — a UI offering jj's hunks could not separate them.
+`parseGitDiff` regroups each hunk into maximal runs of adjacent +/- lines,
+which is the finest unit the diff actually supports.
+
+**Non-interactive jj covers more than expected.**
+`jj split [FILESETS]`, `jj squash [FILESETS]` and `jj resolve --tool :ours`
+need no editor at all, so file-level split/squash and "take a side" resolution
+avoid the protocol entirely. Only true hunk-level editing needs it.
+
 ## Still open
 
-- **`ui.diff-editor` protocol.** Whether jj's wait-for-editor-exit contract fits
-  a Tauri window lifecycle is untested; the hunk editor is P1.
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
 - **Licence and pricing for Ukemi itself.**
 - **Worker/OffscreenCanvas in WKWebView**, which decides whether a
@@ -62,5 +80,15 @@ focus proves too coarse.
 No virtual scrolling in the graph. The default revset is bounded; add it when a
 real repo is slow, not before.
 
-No `rebase`/`squash`/`split` in the port. They are P1, and a port method is a
-two-line addition when the UI for them exists.
+No line-by-line hunk selection (the design's "⇧ + click to split finer").
+Change-runs are the natural unit of a unified diff and cover the cases that
+motivated the feature; splitting inside a run means synthesising a diff jj
+never produced, which is a different and riskier job.
+
+No conflict prediction in the rebase preview. Nothing short of performing the
+rebase can know the outcome, and a fabricated "1 conflict resolves" would be
+worse than silence. The HUD promises the true thing instead: one ⌘Z.
+
+No three-way merge editor. The conflict panel offers "take a side"; anything
+finer is a hunk edit, and that editor already exists. A second merge UI would
+be a second thing to keep correct for no new capability.

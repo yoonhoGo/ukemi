@@ -12,6 +12,7 @@ import {
 } from "./repo.tsx";
 import { Graph } from "./ui/Graph.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
+import { HunkSheet, type HunkSheetMode } from "./ui/HunkSheet.tsx";
 import { SAVED_REVSETS, Sidebar } from "./ui/Sidebar.tsx";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
@@ -35,6 +36,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
   const client = useQueryClient();
   const [selected, setSelected] = useState<ChangeId | undefined>(undefined);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [sheet, setSheet] = useState<HunkSheetMode | undefined>(undefined);
   const [copied, setCopied] = useState(false);
 
   const rows = layout?.rows ?? [];
@@ -146,6 +148,12 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
       } else if (event.key === "Backspace") {
         event.preventDefault();
         if (!isPinned && effectiveSelection) abandon.mutate(effectiveSelection);
+      } else if (key === "s" && event.shiftKey) {
+        event.preventDefault();
+        if (!isPinned && selectedRevision) setSheet("split");
+      } else if (key === "k" && event.shiftKey) {
+        event.preventDefault();
+        if (!isPinned && selectedRevision?.parents.length === 1) setSheet("squash");
       } else if (key === "f" && event.shiftKey) {
         event.preventDefault();
         if (!isPinned) fetch.mutate(undefined);
@@ -182,6 +190,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
     push,
     copyLastCommand,
     setRevset,
+    selectedRevision,
   ]);
 
   const failure = [newChange, edit, abandon, undo, restore, fetch, push, rebase].find(
@@ -347,7 +356,7 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
             )}
           </div>
         </main>
-        <Inspector revision={selectedRevision} />
+        <Inspector revision={selectedRevision} onOpenSheet={setSheet} />
       </div>
 
       <Timeline />
@@ -367,6 +376,13 @@ function Window({ onOpenRepo }: { onOpenRepo(): void }) {
             />
           )}
         </>
+      )}
+      {sheet && selectedRevision && (
+        <HunkSheet
+          revision={selectedRevision}
+          mode={sheet}
+          onClose={() => setSheet(undefined)}
+        />
       )}
       {showShortcuts && <Shortcuts onClose={() => setShowShortcuts(false)} />}
     </div>

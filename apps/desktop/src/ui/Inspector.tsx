@@ -3,6 +3,8 @@ import type { FileChange, Revision } from "@ukemi/domain";
 import { useDiffSummary, useFileDiff, useJjMutation, useRepo } from "../repo.tsx";
 import { authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
+import type { HunkSheetMode } from "./HunkSheet.tsx";
+import { Conflicts } from "./Conflicts.tsx";
 
 const STATUS_MARK: Record<FileChange["status"], { mark: string; color: string }> = {
   added: { mark: "A", color: "var(--u-added)" },
@@ -154,7 +156,13 @@ function Diff({ text }: { text: string }) {
   );
 }
 
-export function Inspector({ revision }: { revision: Revision | undefined }) {
+export function Inspector({
+  revision,
+  onOpenSheet,
+}: {
+  revision: Revision | undefined;
+  onOpenSheet(mode: HunkSheetMode): void;
+}) {
   const { isPinned } = useRepo();
   const [openFile, setOpenFile] = useState<string | undefined>(undefined);
   const files = useDiffSummary(revision?.changeId);
@@ -274,6 +282,32 @@ export function Inspector({ revision }: { revision: Revision | undefined }) {
           onRun={() => newChange.mutate(revision.changeId)}
         />
         <Step
+          label="Split into two changes"
+          shortcut="⌘⇧S"
+          disabled={readOnly || (files.data?.length ?? 0) === 0}
+          title={
+            readOnlyReason ??
+            ((files.data?.length ?? 0) === 0 ? "Nothing to split" : undefined)
+          }
+          onRun={() => onOpenSheet("split")}
+        />
+        <Step
+          label="Squash hunks into parent"
+          shortcut="⌘⇧K"
+          disabled={
+            readOnly || revision.parents.length !== 1 || (files.data?.length ?? 0) === 0
+          }
+          title={
+            readOnlyReason ??
+            (revision.parents.length !== 1
+              ? "A merge has no single parent to squash into"
+              : (files.data?.length ?? 0) === 0
+                ? "Nothing to squash"
+                : undefined)
+          }
+          onRun={() => onOpenSheet("squash")}
+        />
+        <Step
           label="Edit this change"
           shortcut="⌘E"
           disabled={readOnly || revision.isWorkingCopy}
@@ -288,6 +322,10 @@ export function Inspector({ revision }: { revision: Revision | undefined }) {
           onRun={() => abandon.mutate(revision.changeId)}
         />
       </div>
+
+      {revision.hasConflict && (
+        <Conflicts revision={revision} onShowRevision={() => onOpenSheet("split")} />
+      )}
 
       <div
         style={{

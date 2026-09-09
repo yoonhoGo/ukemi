@@ -15,6 +15,7 @@ import {
 import type {
   Bookmark,
   ChangeId,
+  ConflictedFile,
   FileChange,
   JjPort,
   Operation,
@@ -22,7 +23,15 @@ import type {
   Revision,
   Workspace,
 } from "@ukemi/domain";
-import { layoutGraph, rebaseSetRevset, type GraphLayout, type RebaseMode } from "@ukemi/domain";
+import {
+  layoutGraph,
+  parseGitDiff,
+  rebaseSetRevset,
+  verifyRoundTrip,
+  type FileDiff,
+  type GraphLayout,
+  type RebaseMode,
+} from "@ukemi/domain";
 import { portFor, rememberRepo } from "./jj.ts";
 
 /**
@@ -250,4 +259,74 @@ export function useRebasePreview(
     source: useMode("source").data,
     branch: useMode("branch").data,
   };
+}
+
+/** Everything the split/squash sheet needs about one revision's changes. */
+export interface HunkEditData {
+  readonly files: readonly FileDiff[];
+  /** Content before the change, by path. Absent for binary files. */
+  readonly before: ReadonlyMap<string, string>;
+  /** Content after the change, by path. Absent for binary files. */
+  readonly after: ReadonlyMap<string, string>;
+  /** Set when a file's diff could not be accounted for; blocks the operation. */
+  readonly problem?: string | undefined;
+}
+
+/**
+ * Load a revision's diff along with both sides of every text file, and check
+ * that partial application can reproduce them exactly.
+ *
+ * Verifying on open rather than on submit is deliberate: if the parser cannot
+ * account for a diff, the user should find out while the sheet is harmless, not
+ * after pressing Split. jj would faithfully commit whatever tree we hand it.
+ */
+export function useHunkEditData(rev: ChangeId | undefined): UseQueryResult<HunkEditData> {
+  const { root, port, opId } = useRepo();
+  return useQuery({
+    queryKey: ["repo", root, opId, "hunk-edit", rev],
+    enabled: opId !== undefined && rev !== undefined,
+    staleTime: Infinity,
+    queryFn: async (): Promise<HunkEditData> => {
+      const revision = await port.show(rev!, { atOp: opId });
+      if (!revision) throw new Error(`revision ${rev} not found`);
+      const parent = revision.parents[0];
+      const files = parseGitDiff(await port.diff(rev!, undefined, { atOp: opId }));
+
+      const before = new Map<string, string>();
+      const after = new Map<string, string>();
+      let problem: string | undefined;
+
+      for (const file of files) {
+        if (file.isBinary) continue;
+        // A file this change added has no "before"; one it removed has no
+        // "after". Asking jj for either would just be an error.
+        const left =
+          file.status === "added" || parent === undefined
+            ? ""
+            : await port.fileContent(parent, file.oldPath ?? file.path, { atOp: opId });
+        const right =
+          file.status === "removed"
+            ? ""
+            : await port.fileContent(rev!, file.path, { atOp: opId });
+        before.set(file.path, left);
+        after.set(file.path, right);
+
+        const check = verifyRoundTrip(left, right, file);
+        if (!check.ok && problem === undefined) problem = check.reason;
+      }
+
+      return { files, before, after, ...(problem ? { problem } : {}) };
+    },
+  });
+}
+
+/** Conflicted files in a revision. Empty for a clean one, never an error. */
+export function useConflicts(rev: ChangeId | undefined): UseQueryResult<ConflictedFile[]> {
+  const { root, port, opId } = useRepo();
+  return useQuery({
+    queryKey: ["repo", root, opId, "conflicts", rev],
+    queryFn: () => port.conflicts(rev!, { atOp: opId }),
+    enabled: opId !== undefined && rev !== undefined,
+    staleTime: Infinity,
+  });
 }

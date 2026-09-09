@@ -33,3 +33,7 @@ override a base class, restate the states of that class you still want.**
 Overriding `.tb-btn`'s background without restating the primary variant makes
 the primary button vanish — light ink on a transparent ground. The bundled Ink
 & Paper theme hit exactly this, which is why a second theme ships at all.
+
+The same trap has a second form inside the contract itself: a `[data-variant]`
+rule that paints a fill must also handle `:disabled`, or an unavailable action
+keeps looking available. `.tb-btn` and `.step` now do; a new variant should.

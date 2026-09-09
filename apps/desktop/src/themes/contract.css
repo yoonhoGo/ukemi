@@ -194,6 +194,17 @@ button {
   background: var(--u-accent);
   color: var(--u-accent-ink);
 }
+/* A primary button keeps its accent fill through `:disabled` unless this says
+ * otherwise, which makes an unavailable action look available. */
+.tb-btn[data-variant="primary"]:disabled {
+  background: var(--u-bg-selected);
+  color: var(--u-text-disabled, var(--u-text-tertiary));
+}
+.tb-btn[data-variant="primary"]:disabled .key {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.09);
+  color: var(--u-text-tertiary);
+}
 .tb-btn[data-variant="primary"] .key {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.25);
@@ -308,6 +319,11 @@ button {
   background: var(--u-accent-soft);
   color: var(--u-accent);
   font-weight: 500;
+}
+.step[data-variant="primary"]:disabled {
+  background: var(--u-bg-sunken);
+  color: var(--u-text-tertiary);
+  font-weight: 400;
 }
 
 /** A changed-file row in the inspector. */

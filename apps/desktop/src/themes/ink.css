@@ -92,6 +92,11 @@
 :root[data-theme="ink"] .tb-btn[data-variant="primary"]:hover:not(:disabled) {
   background: #a82a13;
 }
+:root[data-theme="ink"] .tb-btn[data-variant="primary"]:disabled {
+  background: transparent;
+  border-color: var(--u-line);
+  color: var(--u-text-tertiary);
+}
 
 :root[data-theme="ink"] .pill {
   border-radius: 2px;

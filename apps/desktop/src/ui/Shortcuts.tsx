@@ -16,7 +16,9 @@ const GROUPS = [
       ["⌘N", "New change on top of the selection"],
       ["⌘E", "Edit the selected change"],
       ["⌘⌫", "Abandon the selected change"],
-      ["⌘↩", "Save the description (in the editor)"],
+      ["⌘⇧S", "Split by hunk"],
+      ["⌘⇧K", "Squash hunks into the parent"],
+      ["⌘↩", "Save the description / run the sheet"],
     ],
   },
   {
@@ -35,6 +37,14 @@ const GROUPS = [
       ["⌘Z", "Undo the last operation"],
       ["⌘⇧R", "Restore to the parked operation"],
       ["Esc", "Back to now"],
+    ],
+  },
+  {
+    title: "In the hunk sheet",
+    items: [
+      ["space", "Check or uncheck the focused hunk"],
+      ["↑ ↓", "Move between hunks"],
+      ["⌘A", "Check or uncheck everything"],
     ],
   },
   {
