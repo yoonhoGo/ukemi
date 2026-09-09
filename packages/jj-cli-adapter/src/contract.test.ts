@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { layoutGraph } from "@ukemi/domain";
 import { JjCliAdapter } from "./adapter.ts";
-import { nodeExec } from "./node-exec.ts";
+import { nodeExec } from "./node-exec.ts"; // node-only entry; see index.ts
 import { JjError } from "./exec.ts";
 
 /**
@@ -201,4 +201,25 @@ test("a bookmark name with revset syntax cannot widen the revset", async () => {
   const { bookmarkRevset } = await import("@ukemi/domain");
   const revisions = await jj.log(bookmarkRevset("trunk | all()"));
   assert.deepEqual(revisions, [], "a name that is not a bookmark must match nothing");
+});
+
+test("every saved revset in the sidebar is valid jj syntax", async () => {
+  // These are domain constants, but only jj can say whether they parse and
+  // what they mean. A sidebar button bound to a broken revset is a dead button,
+  // so the constants are verified here rather than trusted.
+  const { CONFLICTS_REVSET, DEFAULT_REVSET, UNPUSHED_REVSET } = await import("@ukemi/domain");
+  for (const revset of [DEFAULT_REVSET, CONFLICTS_REVSET, UNPUSHED_REVSET]) {
+    await assert.doesNotReject(() => jj.log(revset), `revset failed: ${revset}`);
+  }
+});
+
+test("the default revset shows every mutable head, not just bookmarked ones", async () => {
+  const { DEFAULT_REVSET } = await import("@ukemi/domain");
+  // `feature` is bookmarked; `second head` is not. An earlier default hid the
+  // unbookmarked one, which is the regression this pins down.
+  const shown = (await jj.log(DEFAULT_REVSET)).map((r) => r.description);
+  assert.ok(
+    shown.some((description) => description === "second head"),
+    `unbookmarked head missing from default revset: ${JSON.stringify(shown)}`,
+  );
 });

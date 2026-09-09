@@ -18,7 +18,7 @@ import type {
  * operation scrubber drives, which always passes the op it is parked on.
  */
 export interface ReadOptions {
-  readonly atOp?: OperationId;
+  readonly atOp?: OperationId | undefined;
 }
 
 /** Result of a write: the operation it created, so the UI can advance its pin. */
@@ -84,9 +84,9 @@ export interface JjPort {
    * by default; `changes` pushes `--change` for each, minting bookmark names.
    */
   push(args?: {
-    readonly remote?: string;
-    readonly bookmarks?: readonly string[];
-    readonly changes?: readonly ChangeId[];
+    readonly remote?: string | undefined;
+    readonly bookmarks?: readonly string[] | undefined;
+    readonly changes?: readonly ChangeId[] | undefined;
   }): Promise<WriteResult>;
 
   /** Undo one operation (`jj undo`). */

@@ -17,14 +17,24 @@ export function quote(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-/** The revset the window opens on: recent work plus everything it descends from. */
-export const DEFAULT_REVSET = "present(@) | ancestors(bookmarks() | @, 12)";
+/**
+ * The revset the window opens on — jj's own default `revsets.log`, verbatim.
+ *
+ * Matching the CLI is the point: the window shows what `jj log` shows, so the
+ * app teaches the tool rather than inventing a second idea of "recent". An
+ * earlier attempt at `ancestors(bookmarks() | @, 12)` looked reasonable and was
+ * wrong: it silently hid the tip of any stack that had no bookmark yet, which
+ * is most of them. `immutable_heads()..` is "everything you can still change",
+ * which is the actual question.
+ */
+export const DEFAULT_REVSET =
+  "present(@) | ancestors(immutable_heads().., 2) | present(trunk())";
 
-/** Revisions with a conflict anywhere in the visible history. */
+/** Revisions carrying a conflict. */
 export const CONFLICTS_REVSET = "conflicts()";
 
-/** Your own changes that no remote has yet. */
-export const UNPUSHED_REVSET = "mine() & ~::remote_bookmarks()";
+/** Your own mutable changes that no remote bookmark contains yet. */
+export const UNPUSHED_REVSET = "mine() & mutable() & ~::remote_bookmarks()";
 
 /** Cap a revset so a huge repo cannot stall the first paint. */
 export function withLimit(revset: string, limit: number): string {

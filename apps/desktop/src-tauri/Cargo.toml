@@ -1,0 +1,19 @@
+[package]
+name = "ukemi"
+version = "0.0.0"
+edition = "2021"
+description = "A desktop GUI for Jujutsu"
+default-run = "ukemi"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true

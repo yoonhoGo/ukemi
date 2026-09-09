@@ -1,0 +1,125 @@
+/**
+ * Ink & Paper — built-in theme.
+ *
+ * Warm paper, black ink rules, one vermilion accent. Exists as much to *test*
+ * the contract as to be pretty: it changes surface, ink, radius, type and lane
+ * metrics all at once, and it may only touch tokens and the classes declared in
+ * `contract.css`. If a theme this different needs a hook the contract does not
+ * expose, the contract is not yet sufficient (design §8 principle ③).
+ *
+ * Contract version: 1
+ */
+
+:root[data-theme="ink"] {
+  --u-bg-window: #faf7f0;
+  --u-bg-toolbar: #f3eee3;
+  --u-bg-sidebar: #f3eee3;
+  --u-bg-inspector: #f6f2e9;
+  --u-bg-timeline: #f0ebe0;
+  --u-bg-raised: #fffdf8;
+  --u-bg-sunken: rgba(28, 24, 18, 0.045);
+  --u-bg-hover: rgba(28, 24, 18, 0.05);
+  --u-bg-selected: rgba(28, 24, 18, 0.08);
+
+  --u-text: #1c1812;
+  --u-text-secondary: rgba(28, 24, 18, 0.62);
+  --u-text-tertiary: rgba(28, 24, 18, 0.34);
+
+  --u-line: rgba(28, 24, 18, 0.16);
+  --u-line-strong: rgba(28, 24, 18, 0.26);
+  --u-line-faint: rgba(28, 24, 18, 0.1);
+
+  --u-accent: #c8351a;
+  --u-accent-soft: rgba(200, 53, 26, 0.1);
+  --u-accent-ink: #faf7f0;
+  --u-conflict: #a02008;
+  --u-conflict-soft: rgba(160, 32, 8, 0.1);
+  --u-added: #2f6b34;
+  --u-added-soft: rgba(47, 107, 52, 0.1);
+  --u-removed: #a02008;
+  --u-removed-soft: rgba(160, 32, 8, 0.07);
+  --u-modified: #8a6116;
+  --u-immutable: #8c8479;
+
+  /* Ink rules are drawn, not rounded. */
+  --u-radius-sm: 2px;
+  --u-radius: 2px;
+  --u-radius-lg: 3px;
+  --u-radius-pill: 2px;
+
+  /* A serif for prose; the Korean face is named explicitly because the Latin
+   * serif would otherwise fall back to a sans for Hangul and the row would
+   * change texture mid-sentence. */
+  --u-font: "Iowan Old Style", "Apple Garamond", Georgia, "Apple SD Gothic Neo",
+    "Noto Serif KR", serif;
+  --u-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --u-font-size: 13.5px;
+
+  /* Serif at a larger size needs more room; the metrics are tokens precisely
+   * so a theme can do this without the graph and the rows disagreeing. */
+  --u-row-height: 46px;
+  --u-lane-width: 30px;
+  --u-lane-inset: 38px;
+}
+
+/* Layer 2: component shapes. Only contract classes appear below. */
+
+:root[data-theme="ink"] .key {
+  border-radius: 2px;
+  background: transparent;
+  border: 1px solid var(--u-line-strong);
+  font-family: var(--u-font-mono);
+  font-size: 10.5px;
+}
+
+:root[data-theme="ink"] .tb-btn {
+  background: transparent;
+  border: 1px solid var(--u-line-strong);
+}
+:root[data-theme="ink"] .tb-btn:hover:not(:disabled) {
+  background: var(--u-bg-hover);
+}
+/* A theme that overrides `.tb-btn` outranks the contract's
+ * `.tb-btn[data-variant="primary"]` rule, so it must restate the primary fill
+ * or the button keeps its light ink on a now-transparent background and
+ * disappears. Found by actually switching to this theme, which is the point of
+ * shipping a second one. */
+:root[data-theme="ink"] .tb-btn[data-variant="primary"] {
+  background: var(--u-accent);
+  color: var(--u-accent-ink);
+  border-color: var(--u-accent);
+}
+:root[data-theme="ink"] .tb-btn[data-variant="primary"]:hover:not(:disabled) {
+  background: #a82a13;
+}
+
+:root[data-theme="ink"] .pill {
+  border-radius: 2px;
+  background: transparent;
+  border: 1px solid currentColor;
+  font-weight: 500;
+  font-family: var(--u-font-mono);
+  font-size: 10.5px;
+}
+
+:root[data-theme="ink"] .row[aria-selected="true"] {
+  background: transparent;
+  box-shadow: inset 3px 0 0 var(--u-accent);
+}
+
+:root[data-theme="ink"] .avatar {
+  border-radius: 2px;
+}
+
+:root[data-theme="ink"] .step {
+  background: transparent;
+  border-bottom: 1px solid var(--u-line-faint);
+  border-radius: 0;
+}
+
+:root[data-theme="ink"] .side-head {
+  font-family: var(--u-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}

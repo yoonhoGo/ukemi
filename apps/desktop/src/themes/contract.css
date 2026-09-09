@@ -1,0 +1,382 @@
+/**
+ * The theme class contract — v1.
+ *
+ * This file is a public API. A theme is a stylesheet that overrides these
+ * tokens and classes and nothing else; the app promises not to rename them
+ * without a version bump recorded in `themes/CHANGELOG.md`. That promise is
+ * what makes a theme survive an app update, and it is the whole reason the
+ * built-in themes load through the same path an external one would (design
+ * §8 principle ③) — if a built-in theme needs a hook this file does not
+ * declare, the contract is not yet sufficient.
+ *
+ * Layer 1 of the four in design §8: tokens. Layer 2 is a full stylesheet
+ * override of the classes below. Layer 3 (a swappable graph renderer) and
+ * layer 4 (component replacement) are not in this version.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ---- surfaces ---- */
+  --u-bg-window: #ffffff;
+  --u-bg-toolbar: linear-gradient(#f6f6f6, #ececec);
+  --u-bg-sidebar: #f3f3f5;
+  --u-bg-inspector: #fafafa;
+  --u-bg-timeline: #f3f3f5;
+  --u-bg-raised: #ffffff;
+  --u-bg-sunken: rgba(0, 0, 0, 0.035);
+  --u-bg-hover: rgba(0, 0, 0, 0.045);
+  --u-bg-selected: rgba(0, 0, 0, 0.06);
+
+  /* ---- ink ---- */
+  --u-text: #1d1d1f;
+  --u-text-secondary: rgba(60, 60, 67, 0.6);
+  --u-text-tertiary: rgba(60, 60, 67, 0.3);
+
+  /* ---- lines ---- */
+  --u-line: rgba(0, 0, 0, 0.1);
+  --u-line-strong: rgba(0, 0, 0, 0.14);
+  --u-line-faint: rgba(0, 0, 0, 0.07);
+
+  /* ---- accent and semantics ---- */
+  --u-accent: #0a84ff;
+  --u-accent-soft: rgba(10, 132, 255, 0.12);
+  --u-accent-ink: #ffffff;
+  --u-conflict: #c0281c;
+  --u-conflict-soft: rgba(255, 59, 48, 0.13);
+  --u-added: #1f8a3a;
+  --u-added-soft: rgba(52, 199, 89, 0.12);
+  --u-removed: #c0281c;
+  --u-removed-soft: rgba(255, 59, 48, 0.08);
+  --u-modified: #b25e00;
+  --u-immutable: #8e8e93;
+
+  /* ---- shape ---- */
+  --u-radius-sm: 5px;
+  --u-radius: 6px;
+  --u-radius-lg: 8px;
+  --u-radius-pill: 9px;
+
+  /* ---- type ---- */
+  --u-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    system-ui, sans-serif;
+  --u-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --u-font-size: 13px;
+  --u-font-size-small: 11px;
+  --u-font-size-mono: 12px;
+
+  /* ---- metrics the graph renderer reads ---- */
+  /* Row height and lane pitch are tokens, not constants, because a theme that
+   * changes type size must be able to keep nodes centred on their rows. */
+  --u-row-height: 44px;
+  --u-lane-width: 32px;
+  --u-lane-inset: 40px;
+  --u-node-radius: 6px;
+
+  /* ---- motion ---- */
+  --u-duration: 180ms;
+  --u-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Themes that want a dark default still define the full palette on :root; this
+ * block only follows the system when a theme has opted into both. */
+@media (prefers-color-scheme: dark) {
+  :root[data-theme-follows-system] {
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --u-duration: 0ms;
+  }
+}
+
+/* ===================================================================
+   Reset — the app owns the whole window, so this is deliberately blunt.
+   =================================================================== */
+
+* {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--u-font);
+  font-size: var(--u-font-size);
+  color: var(--u-text);
+  background: var(--u-bg-window);
+  -webkit-font-smoothing: antialiased;
+  /* A desktop window is not a document: nothing at the root may scroll or
+   * rubber-band, or the whole chrome slides under the title bar. */
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* Chrome is furniture; only text meant to be copied opts back in below. */
+  user-select: none;
+  cursor: default;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  cursor: default;
+}
+
+/* ===================================================================
+   Contract classes. A theme may restyle any of these freely.
+   =================================================================== */
+
+/** Monospace run: change IDs, commit IDs, diff text. */
+.mono {
+  font-family: var(--u-font-mono);
+  font-size: var(--u-font-size-mono);
+}
+
+/** Secondary and tertiary ink. */
+.sec {
+  color: var(--u-text-secondary);
+}
+.ter {
+  color: var(--u-text-tertiary);
+}
+
+/** Selectable text — IDs, descriptions, diff bodies. */
+.selectable {
+  user-select: text;
+  cursor: text;
+}
+
+/** A keyboard shortcut badge. Every action shows one. */
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--u-radius-sm);
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  font-family: var(--u-font);
+  font-size: var(--u-font-size-small);
+  color: var(--u-text-secondary);
+  white-space: nowrap;
+}
+
+/** A toolbar button. */
+.tb-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--u-radius);
+  background: var(--u-bg-hover);
+  font-size: var(--u-font-size);
+  white-space: nowrap;
+}
+.tb-btn:hover:not(:disabled) {
+  background: var(--u-bg-selected);
+}
+.tb-btn:disabled {
+  color: var(--u-text-tertiary);
+}
+.tb-btn[data-variant="primary"] {
+  background: var(--u-accent);
+  color: var(--u-accent-ink);
+}
+.tb-btn[data-variant="primary"] .key {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--u-accent-ink);
+}
+
+/** A sidebar row, and its section heading. */
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--u-radius);
+  font-size: var(--u-font-size);
+  text-align: left;
+}
+.side-item:hover {
+  background: var(--u-bg-hover);
+}
+.side-item[aria-current="true"] {
+  background: var(--u-bg-selected);
+}
+.side-head {
+  padding: 14px 8px 4px;
+  font-size: var(--u-font-size-small);
+  font-weight: 600;
+  color: var(--u-text-secondary);
+  letter-spacing: 0.02em;
+}
+
+/**
+ * One revision row in the graph.
+ *
+ * The column template is part of the contract: the graph gutter is the first
+ * column, so the lane SVG behind the rows and the rows themselves agree on
+ * where lane 0 sits without either measuring the other.
+ */
+.row {
+  display: grid;
+  grid-template-columns: var(--u-row-gutter, 132px) 76px minmax(0, 1fr) 160px 36px 64px;
+  align-items: center;
+  width: 100%;
+  height: var(--u-row-height);
+  padding: 0 12px 0 0;
+  border-radius: var(--u-radius);
+  text-align: left;
+}
+.row:hover {
+  background: var(--u-bg-hover);
+}
+.row[aria-selected="true"] {
+  background: var(--u-accent-soft);
+  box-shadow: inset 2px 0 0 var(--u-accent);
+}
+
+/** A small status chip: bookmark name, conflict, working copy, tag. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--u-radius-pill);
+  background: var(--u-bg-selected);
+  font-size: var(--u-font-size-small);
+  font-weight: 600;
+  color: var(--u-text-secondary);
+  white-space: nowrap;
+}
+.pill[data-kind="conflict"] {
+  background: var(--u-conflict-soft);
+  color: var(--u-conflict);
+}
+.pill[data-kind="bookmark"] {
+  background: var(--u-accent-soft);
+  color: var(--u-accent);
+}
+
+/** An author chip. */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/** A NEXT STEPS row in the inspector: one jj verb plus its key. */
+.step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--u-bg-sunken);
+  text-align: left;
+}
+.step:hover:not(:disabled) {
+  background: var(--u-bg-hover);
+}
+.step:disabled {
+  color: var(--u-text-tertiary);
+}
+.step[data-variant="primary"] {
+  background: var(--u-accent-soft);
+  color: var(--u-accent);
+  font-weight: 500;
+}
+
+/** A changed-file row in the inspector. */
+.file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: var(--u-radius-sm);
+  font-size: 12px;
+  text-align: left;
+}
+.file:hover {
+  background: var(--u-bg-hover);
+}
+.file[aria-selected="true"] {
+  background: var(--u-accent-soft);
+}
+
+/** One line of a unified diff. */
+.diff-line {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  min-height: 18px;
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.diff-line[data-kind="add"] {
+  background: var(--u-added-soft);
+  color: var(--u-added);
+}
+.diff-line[data-kind="del"] {
+  background: var(--u-removed-soft);
+  color: var(--u-removed);
+}
+.diff-line[data-kind="hunk"] {
+  color: var(--u-text-secondary);
+  background: var(--u-bg-sunken);
+}
+.diff-line > .ln {
+  padding-right: 10px;
+  text-align: right;
+  color: var(--u-text-tertiary);
+}
+
+/** A thin overlay scrollbar for inner scroll regions. */
+.u-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+.u-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.u-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+}
+.u-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/** Keyboard focus. Never removed — this is the only way to drive the app by key. */
+:focus-visible {
+  outline: 2px solid var(--u-accent);
+  outline-offset: -2px;
+}

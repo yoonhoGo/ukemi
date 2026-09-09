@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@ukemi/domain": "*" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node-exec.ts"
+  },
+  "dependencies": {
+    "@ukemi/domain": "*"
+  }
 }

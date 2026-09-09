@@ -42,12 +42,12 @@ export interface Revision {
 export interface Bookmark {
   readonly name: string;
   /** Absent when the bookmark is deleted locally but still on a remote. */
-  readonly target?: ChangeId;
+  readonly target?: ChangeId | undefined;
   /** Remote name when this row is a remote-tracking bookmark. */
-  readonly remote?: string;
+  readonly remote?: string | undefined;
   /** Ahead/behind against the tracked remote, when tracking. */
-  readonly ahead?: number;
-  readonly behind?: number;
+  readonly ahead?: number | undefined;
+  readonly behind?: number | undefined;
   readonly hasConflict: boolean;
 }
 
@@ -59,7 +59,7 @@ export interface Operation {
   /** `user@host` as recorded by jj. */
   readonly user: string;
   /** The `jj` argv that produced this operation, when recorded. */
-  readonly args?: string;
+  readonly args?: string | undefined;
   /** True for the operation the repo currently sits at. */
   readonly isCurrent: boolean;
 }
@@ -76,8 +76,8 @@ export interface FileChange {
   readonly path: string;
   readonly status: FileStatus;
   /** Present only when a stat was requested; diffs are counted lazily. */
-  readonly insertions?: number;
-  readonly deletions?: number;
+  readonly insertions?: number | undefined;
+  readonly deletions?: number | undefined;
 }
 
 /** A revision plus the layout the graph renderer needs. Produced by `layoutGraph`. */

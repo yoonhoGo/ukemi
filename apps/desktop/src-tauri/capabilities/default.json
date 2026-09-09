@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Ukemi's main window: pick a repository folder, and run the bundled jj.",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}

@@ -1,0 +1,18 @@
+Ukemi bundles the Jujutsu (`jj`) command-line binary as a sidecar.
+
+  Jujutsu — https://github.com/jj-vcs/jj
+  Copyright the Jujutsu authors
+  Licensed under the Apache License, Version 2.0
+
+A copy of the Apache 2.0 licence text ships beside the binary in the
+application bundle, at `Contents/Resources/LICENSE-jj`, and is reachable in
+the app from About → Open-source licences.
+
+Ukemi does not modify the `jj` binary. It invokes it as a subprocess and
+parses its `--template` output; see `packages/jj-cli-adapter`.
+
+Why bundle at all: the templates in `packages/jj-cli-adapter/src/templates.ts`
+are written against a specific jj version. Shipping that version removes the
+class of bug where the app parses output from whatever jj happens to be on the
+user's PATH. A colocated repository is safe to use with a different jj CLI at
+the same time — jj reconciles concurrent operations by merging op heads.
