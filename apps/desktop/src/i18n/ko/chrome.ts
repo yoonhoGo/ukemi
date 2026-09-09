@@ -16,7 +16,7 @@ export const chrome: Record<string, string> = {
   "None yet.": "아직 없습니다.",
   local: "로컬",
   Track: "추적",
-  "Track {name} to get a local bookmark for it": "{name}을 추적해 로컬 북마크로 가져옵니다",
+  "Track {name} to get a local bookmark for it": "{name}을(를) 추적해 로컬 북마크로 가져옵니다",
   Workspaces: "워크스페이스",
   Board: "보드",
   "Workspace board (⌘⇧W)": "워크스페이스 보드 (⌘⇧W)",

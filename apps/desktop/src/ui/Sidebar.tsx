@@ -13,6 +13,7 @@ import {
 } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import {
+  messageFor,
   useBookmarks,
   useDeleteRevsetAlias,
   useJjMutation,
@@ -314,9 +315,9 @@ export function Sidebar({
 
       {/* Under the same head, but muted and named the way jj names them: these
           are not bookmarks of this repo yet, and the whole row is the verb.
-          ponytail: a failed track leaves the row where it is and says nothing —
-          the error strip in `App` is for the mutations it owns, and one row
-          that did not move is a mild enough tell to wait for a complaint. */}
+          A failure reports under the list rather than in `App`'s strip: that
+          strip belongs to the mutations `App` owns, and a row that simply did
+          not move is no explanation at all. */}
       {bookmarks.data &&
         untrackedRemotes(bookmarks.data).map((remote) => (
           <button
@@ -353,6 +354,21 @@ export function Sidebar({
             </span>
           </button>
         ))}
+
+      {track.error && (
+        <div
+          role="alert"
+          className="mono selectable"
+          style={{
+            fontSize: 11,
+            color: "var(--u-conflict)",
+            whiteSpace: "pre-wrap",
+            padding: "2px 8px",
+          }}
+        >
+          {messageFor(track.error)}
+        </div>
+      )}
 
       <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {t("Workspaces")}

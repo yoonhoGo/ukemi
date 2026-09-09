@@ -299,6 +299,17 @@ export function useFileDiff(
 }
 
 /**
+ * The one place a failure is turned into a line of text.
+ *
+ * `JjError` carries jj's own stderr as its `message`, so everything that
+ * shells out already reads as the tool's own prose — there is nothing to
+ * paraphrase, and the `Error` branch covers it along with everything else.
+ */
+export function messageFor(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * Runs a write and moves the window onto the operation it produced.
  *
  * Two things must happen together: the pin is released (a write means you are

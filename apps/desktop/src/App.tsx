@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ChangeId, RebaseMode } from "@ukemi/domain";
-import { JjError } from "@ukemi/jj-cli-adapter";
 import {
   LOG_LIMIT,
+  messageFor,
   RepoProvider,
   useCommandLog,
   useGraph,
@@ -700,12 +700,6 @@ function Window({
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
   );
-}
-
-function messageFor(error: unknown): string {
-  if (error instanceof JjError) return error.message;
-  if (error instanceof Error) return error.message;
-  return String(error);
 }
 
 export function App({

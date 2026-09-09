@@ -327,6 +327,46 @@ test("absorb moves a line edit into the ancestor that last touched it", async ()
   assert.equal(await jj.fileContent(base.changeId, "z.txt"), "ONE\ntwo\n");
 });
 
+test("squash and split move whole files between revisions", async () => {
+  // Its own three-file stack rather than the one the earlier tests left: the
+  // assertions name where each file lands, so the change must start with a
+  // known set of them.
+  raw("new", "trunk", "-m", "files-parent");
+  raw("new", "-m", "files-child");
+  writeFileSync(join(repo, "sq-a.txt"), "a\n");
+  writeFileSync(join(repo, "sq-b.txt"), "b\n");
+  writeFileSync(join(repo, "sq-c.txt"), "c\n");
+  raw("status"); // snapshot the working copy before anything reads change ids
+
+  const at = async (desc: string) =>
+    (await jj.log("all()")).find((r) => r.description === desc)!;
+  const child = await at("files-child");
+  const parent = await at("files-parent");
+
+  await jj.squash({ from: child.changeId, into: parent.changeId, paths: ["sq-a.txt"] });
+  assert.equal(await jj.fileContent(parent.changeId, "sq-a.txt"), "a\n");
+  assert.deepEqual(
+    (await jj.diffSummary(child.changeId)).map((f) => f.path).sort(),
+    ["sq-b.txt", "sq-c.txt"],
+    "only the named path may move to the parent",
+  );
+
+  // `split` keeps the original change id on the *lower* revision and mints a
+  // new one for the upper, which is why the original id reads the lower half.
+  await jj.split({ rev: child.changeId, paths: ["sq-b.txt"] });
+  assert.deepEqual(
+    (await jj.diffSummary(child.changeId)).map((f) => f.path),
+    ["sq-b.txt"],
+    "the named path belongs to the first revision",
+  );
+  const upper = await at("files-child");
+  assert.notEqual(upper.changeId, child.changeId, "the description stays upstairs");
+  assert.deepEqual(
+    (await jj.diffSummary(upper.changeId)).map((f) => f.path),
+    ["sq-c.txt"],
+  );
+});
+
 test("tracking a remote-only bookmark mints the local one", async () => {
   // The state a fetch leaves behind for someone else's bookmark: jj's default
   // `git.auto-local-bookmark = false` imports the remote ref without making a

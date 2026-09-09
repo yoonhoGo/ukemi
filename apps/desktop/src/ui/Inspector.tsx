@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FileChange, Revision } from "@ukemi/domain";
-import { useDiffSummary, useJjMutation, useLog, useRepo } from "../repo.tsx";
+import { messageFor, useDiffSummary, useJjMutation, useLog, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
@@ -529,7 +529,7 @@ export function Inspector({
                   whiteSpace: "pre-wrap",
                 }}
               >
-                {String(((squashFiles.error ?? splitFiles.error) as Error).message)}
+                {messageFor(squashFiles.error ?? splitFiles.error)}
               </div>
             )}
           </div>

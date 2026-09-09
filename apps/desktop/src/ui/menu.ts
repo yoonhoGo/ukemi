@@ -12,6 +12,12 @@
  * synthesises its own keystroke and lets `App`'s window keydown map decide,
  * which is the same path the keyboard already takes.
  *
+ * One verb is missing on purpose: deleting a bookmark lives on the bookmark
+ * pill's context menu only. It takes a bookmark as its object, not the
+ * selected revision, and a menu item that fires a keystroke has no way to say
+ * *which* pill — so the menu bar would need the second definition this file
+ * exists to avoid.
+ *
  * Every submenu is a function rather than a constant, because the whole point
  * of building the menu in TypeScript is that it can be rebuilt in the other
  * language — a module-level `t()` would freeze the labels at import time.
