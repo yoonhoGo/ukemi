@@ -523,6 +523,17 @@ renders it to a 1024px master and `npx tauri icon` derives the `.icns`, the
 single accent node is the one colour the icon spends, on the node you land on,
 because in jj the interesting revision is always the one you ended up at.
 
+**`npm run typecheck` is two `tsc` runs behind one script.** The UI needs
+`jsx` and `vite/client` types the packages must not see, so one invocation
+cannot cover both; project references were the alternative and want
+`composite`, which wants emit, and this repo has no build step to emit into.
+So the script is `tsc --noEmit && tsc -p apps/desktop --noEmit` — the two
+configs stay as they were, `&&` fails on the first, and the workflow's promise
+of one command is now true. The five errors it had been hiding are fixed at the
+type level: `CATALOGS` is a `satisfies` literal so its two keys are known ones
+rather than an open `Record`, and `changeMenu()` spells `items` required
+because `popupRowMenu` reads it back out.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
@@ -545,14 +556,6 @@ because in jj the interesting revision is always the one you ended up at.
   toggling that item's `enabled` while the sheet is up. Dragging across the
   checkboxes now covers what the key was for, so this is a documentation bug
   before it is a functional one — the shortcut sheet still promises ⌘A.
-- **`npm run typecheck` does not cover `apps/desktop`.** The root tsconfig
-  includes `packages/*/src/**/*.ts` only, so the UI is typechecked by
-  `tsc -p apps/desktop --noEmit` — which currently reports four errors that
-  predate this note (`i18n/i18n.ts` against `noUncheckedIndexedAccess`, and one
-  `exactOptionalPropertyTypes` mismatch in `menu.ts` against Tauri's
-  `MenuOptions`). Either the root include grows and those four get fixed, or the
-  workflow says two commands instead of one. Right now it says one and means
-  the packages.
 - **Windows.** P0 targets macOS and Linux. jj's snapshotting is slow there.
 - **Licence and pricing for Ukemi itself.**
 - **Whether the graph should read the metric tokens** instead of the JS

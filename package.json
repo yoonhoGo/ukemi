@@ -7,7 +7,7 @@
   "engines": { "node": ">=24" },
   "scripts": {
     "test": "node --test \"packages/*/src/**/*.test.ts\" \"apps/desktop/src/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p apps/desktop --noEmit",
     "dev": "npm run dev --workspace @ukemi/desktop"
   },
   "devDependencies": {

@@ -31,9 +31,21 @@ export const LOCALES: readonly Locale[] = [
 type Catalog = Record<string, string>;
 
 /** English is the empty catalog: every key already is its English string. */
-const CATALOGS: Record<string, Catalog> = { en: {}, ko };
+const CATALOGS = { en: {}, ko } satisfies Record<string, Catalog>;
 
-let active = "en";
+/**
+ * The locales that actually have a catalog. `LOCALES` above is the display
+ * side of the same pair; this is the side a lookup can be trusted against, so
+ * `CATALOGS[active]` needs no fallback for a key that cannot exist.
+ */
+type LocaleId = keyof typeof CATALOGS;
+
+/** Narrow a tag from outside — a saved choice, `navigator.language` — to one. */
+function known(id: string): LocaleId | undefined {
+  return id in CATALOGS ? (id as LocaleId) : undefined;
+}
+
+let active: LocaleId = "en";
 let catalog: Catalog = CATALOGS.en;
 const listeners = new Set<() => void>();
 
@@ -55,7 +67,7 @@ export function currentLocale(): string {
 }
 
 export function applyLocale(id: string): void {
-  active = id in CATALOGS ? id : "en";
+  active = known(id) ?? "en";
   catalog = CATALOGS[active];
   if (typeof document !== "undefined") document.documentElement.lang = active;
   try {
@@ -70,13 +82,12 @@ export function applyLocale(id: string): void {
 export function initialLocale(): string {
   try {
     const saved = localStorage.getItem("ukemi:locale");
-    if (saved && saved in CATALOGS) return saved;
+    if (saved && known(saved)) return saved;
   } catch {
     // No storage: fall through to the system language.
   }
   const tag = typeof navigator === "undefined" ? "" : navigator.language;
-  const base = tag.split("-")[0];
-  return base in CATALOGS ? base : "en";
+  return known(tag.split("-")[0] ?? "") ?? "en";
 }
 
 export function subscribeLocale(listener: () => void): () => void {

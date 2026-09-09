@@ -160,8 +160,13 @@ function editMenu(): SubmenuOptions {
   };
 }
 
-/** The jj verbs. "Change" is the app's own noun for a commit, so it is the title. */
-function changeMenu(): SubmenuOptions {
+/**
+ * The jj verbs. "Change" is the app's own noun for a commit, so it is the title.
+ *
+ * `items` is spelled required because `popupRowMenu` reads it back out; every
+ * builder here always sets it, and `SubmenuOptions` only says it might.
+ */
+function changeMenu(): SubmenuOptions & Required<Pick<SubmenuOptions, "items">> {
   return {
     text: t("Change"),
     items: [
