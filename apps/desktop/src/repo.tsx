@@ -45,6 +45,7 @@ import { t } from "./i18n/i18n.ts";
 import {
   commandLogSnapshot,
   forgeFor,
+  pickWorkspaceFolder,
   portFor,
   rememberRepo,
   subscribeCommands,
@@ -330,6 +331,28 @@ export function useJjMutation<TArgs, TResult = unknown>(
       void client.invalidateQueries({ queryKey: ["op-head", root] });
     },
   });
+}
+
+/**
+ * Add a workspace, after asking where to put it.
+ *
+ * The picker lives here rather than in the sidebar because it is Tauri, and
+ * `ui/` does not know Tauri exists. A dismissed picker is not an error and
+ * runs nothing — going through the mutation would have released the operation
+ * pin for a dialog the user closed.
+ */
+export function useAddWorkspace() {
+  const add = useJjMutation((port, path: string) => port.addWorkspace(path));
+  const pickAndAdd = useCallback(() => {
+    void pickWorkspaceFolder().then((path) => {
+      if (path !== undefined) add.mutate(path);
+    });
+  }, [add]);
+  return { pickAndAdd, error: add.error };
+}
+
+export function useForgetWorkspace() {
+  return useJjMutation((port, name: string) => port.forgetWorkspace(name));
 }
 
 /** Persist the repo choice once it has actually opened. */

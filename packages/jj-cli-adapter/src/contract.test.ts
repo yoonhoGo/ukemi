@@ -1,7 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { layoutGraph } from "@ukemi/domain";
@@ -412,4 +412,26 @@ test("the observer sees each invocation with its argv and exit code", async () =
   assert.equal(seen.length, 1);
   assert.equal(seen[0]![0], "jj");
   assert.ok(seen[0]!.includes("op"));
+});
+
+// Last in the file on purpose: a second workspace means a second working-copy
+// commit, and the tests above count those.
+test("a workspace is added at a path and forgotten by name, leaving the folder", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ukemi-workspace-"));
+  try {
+    await jj.addWorkspace(dir, "second");
+    assert.deepEqual(
+      (await jj.workspaces()).map((w) => w.name),
+      ["default", "second"],
+    );
+    await jj.forgetWorkspace("second");
+    assert.deepEqual(
+      (await jj.workspaces()).map((w) => w.name),
+      ["default"],
+    );
+    // jj only stops tracking it; what the user has on disk is their own.
+    assert.ok(existsSync(join(dir, ".jj")));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

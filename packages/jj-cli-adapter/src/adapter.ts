@@ -372,6 +372,17 @@ export class JjCliAdapter implements JjPort {
     return this.write(["bookmark", "delete", name]);
   }
 
+  addWorkspace(path: string, name?: string): Promise<WriteResult> {
+    const args = ["workspace", "add"];
+    if (name !== undefined) args.push("--name", name);
+    args.push(path);
+    return this.write(args);
+  }
+
+  forgetWorkspace(name: string): Promise<WriteResult> {
+    return this.write(["workspace", "forget", name]);
+  }
+
   bookmarkTrack(name: string, remote: string): Promise<WriteResult> {
     return this.write(["bookmark", "track", `${name}@${remote}`]);
   }

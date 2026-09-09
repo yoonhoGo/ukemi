@@ -649,6 +649,17 @@ holding everything, which is a rename, not a split. No target picker — "squash
 into some other revision" would want one, and until something asks for it the
 parent and a new change below are the two targets, with ⌘Z as the confirm.
 
+**A workspace is made with a folder picker and dropped with the same × the
+saved revsets use.** `jj workspace add` needs a path and nothing else — the
+folder's basename becomes the name, which is jj's own rule — so the ＋ beside
+the board button opens the native panel and that is the whole dialog. No name
+field, and no confirmation on the ×: `jj workspace forget` is an operation like
+any other, so ⌘Z puts it back, and it deletes nothing — the folder and its files
+stay on disk until the user removes them. Removing them is exactly what this
+app will not do behind one button, which is also why the row for the current
+workspace has no × at all: forgetting the working copy this window is looking
+at would leave it pointing at a workspace the repo no longer has.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship

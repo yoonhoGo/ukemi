@@ -14,8 +14,10 @@ import {
 import { t } from "../i18n/i18n.ts";
 import {
   messageFor,
+  useAddWorkspace,
   useBookmarks,
   useDeleteRevsetAlias,
+  useForgetWorkspace,
   useJjMutation,
   useRepo,
   useRevsetAliases,
@@ -251,6 +253,8 @@ export function Sidebar({
   const track = useJjMutation((port, args: { name: string; remote: string }) =>
     port.bookmarkTrack(args.name, args.remote),
   );
+  const addWorkspace = useAddWorkspace();
+  const forget = useForgetWorkspace();
 
   return (
     <nav
@@ -377,6 +381,16 @@ export function Sidebar({
           type="button"
           className="tb-btn"
           style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
+          onClick={addWorkspace.pickAndAdd}
+          title={t("New workspace")}
+          aria-label={t("New workspace")}
+        >
+          ＋
+        </button>
+        <button
+          type="button"
+          className="tb-btn"
+          style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
           aria-pressed={view === "board"}
           {...(view === "board" ? { "data-variant": "primary" } : {})}
           onClick={onToggleBoard}
@@ -386,20 +400,62 @@ export function Sidebar({
         </button>
       </div>
       {workspaces.data?.map((workspace, index) => (
-        <button
-          type="button"
+        <div
           className="side-item"
           key={workspace.name}
-          onClick={() => setRevset(workspace.changeId)}
           title={t("Working copy of {name}", { name: workspace.name })}
         >
           {index === 0 ? <CurrentWorkspaceIcon /> : <WorkspaceIcon />}
-          <span style={{ flexGrow: 1 }}>{workspace.name}</span>
+          <button
+            type="button"
+            onClick={() => setRevset(workspace.changeId)}
+            style={{
+              flexGrow: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              textAlign: "left",
+            }}
+          >
+            {workspace.name}
+          </button>
           <span className="mono ter" style={{ fontSize: 11 }}>
             {workspace.changeId.slice(0, 4)}
           </span>
-        </button>
+          {/* Not offered for the first row: that is this window's own working
+              copy, and forgetting it would leave the app looking at a
+              workspace the repo no longer has. No confirmation on the rest —
+              `jj workspace forget` is an operation like any other, so ⌘Z puts
+              it back, and the folder on disk is untouched either way. */}
+          {index > 0 && (
+            <button
+              type="button"
+              className="ter"
+              onClick={() => forget.mutate(workspace.name)}
+              title={t("Forget {name}", { name: workspace.name })}
+              aria-label={t("Forget {name}", { name: workspace.name })}
+              style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
+            >
+              ×
+            </button>
+          )}
+        </div>
       ))}
+      {(addWorkspace.error ?? forget.error) && (
+        <div
+          role="alert"
+          className="mono selectable"
+          style={{
+            fontSize: 11,
+            color: "var(--u-conflict)",
+            whiteSpace: "pre-wrap",
+            padding: "2px 8px",
+          }}
+        >
+          {messageFor(addWorkspace.error ?? forget.error)}
+        </div>
+      )}
 
       <SavedAliases />
 

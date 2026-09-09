@@ -51,6 +51,8 @@ export const rosetta: Record<string, string> = {
   Fetch: "페치",
   "Select both parents, then start a change": "부모 둘을 고르고 체인지 시작",
   "Workspace board": "워크스페이스 보드",
+  "New workspace": "새 워크스페이스",
+  "Forget the workspace": "워크스페이스 잊기",
   "Abandon the selected change": "선택한 체인지 버리기",
 
   // Why it differs: one paragraph per row, and the reason this app exists.
@@ -90,6 +92,8 @@ export const rosetta: Record<string, string> = {
     "revert는 Git에서와 똑같이 이전 것을 무르는 새 체인지를 만듭니다. 여기서 ⌘Z로 손이 가면 안 됩니다. 그건 커밋이 아니라 마지막 오퍼레이션을 되돌립니다.",
   "Workspaces share one operation log, so a second working copy — or an agent running in one — shows up on the same timeline instead of being a repo you have to remember about.":
     "워크스페이스는 오퍼레이션 로그 하나를 함께 씁니다. 그래서 두 번째 작업 사본도, 그 안에서 도는 에이전트도, 따로 기억해둬야 할 저장소가 아니라 같은 타임라인에 나타납니다.",
+  "Forgetting a workspace stops jj tracking a working copy there and nothing else: the folder and everything in it stays until you delete it yourself, and ⌘Z brings the workspace back.":
+    "워크스페이스를 잊는 것은 jj가 그곳의 작업 사본을 더 이상 따라가지 않게 할 뿐, 그 이상은 아닙니다. 폴더와 그 안의 모든 것은 직접 지울 때까지 그대로 남고, ⌘Z를 누르면 워크스페이스가 돌아옵니다.",
   "Discarding is undoable here, which it never was in Git: restore rewrites the files and abandon drops the change, and ⌘Z brings either one back.":
     "여기서는 버리는 것도 되돌릴 수 있습니다. Git에서는 한 번도 그러지 못했습니다. restore는 파일을 되돌려 쓰고 abandon은 체인지를 떨굽니다. 어느 쪽이든 ⌘Z가 도로 가져옵니다.",
 };

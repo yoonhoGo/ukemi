@@ -245,6 +245,26 @@ export interface JjPort {
    */
   absorb(from: string, into?: string): Promise<WriteResult>;
 
+  /**
+   * Create a workspace at `path` (`jj workspace add`).
+   *
+   * The directory must be empty or absent — jj makes it when it is absent. Its
+   * basename becomes the workspace name unless `name` says otherwise, which is
+   * jj's own rule and the reason the UI can get away with a folder picker and
+   * no second field.
+   */
+  addWorkspace(path: string, name?: string): Promise<WriteResult>;
+
+  /**
+   * Drop a workspace from the repo (`jj workspace forget`).
+   *
+   * The folder on disk stays — jj only stops tracking a working copy there, so
+   * this is undoable with ⌘Z and deletes nothing the user wrote. Removing the
+   * directory is the user's call, and not something this app should do behind
+   * one button.
+   */
+  forgetWorkspace(name: string): Promise<WriteResult>;
+
   /** Undo one operation (`jj undo`). */
   undo(): Promise<WriteResult>;
 

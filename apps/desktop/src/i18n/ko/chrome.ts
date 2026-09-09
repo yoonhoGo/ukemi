@@ -20,6 +20,8 @@ export const chrome: Record<string, string> = {
   Workspaces: "워크스페이스",
   Board: "보드",
   "Workspace board (⌘⇧W)": "워크스페이스 보드 (⌘⇧W)",
+  "New workspace": "새 워크스페이스",
+  "Empty folder for the new workspace": "새 워크스페이스를 놓을 빈 폴더",
   "Working copy of {name}": "{name}의 작업 사본",
   "Saved revsets": "저장한 리브셋",
   // SAVED_REVSETS names. The revset expressions themselves are never translated.

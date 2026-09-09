@@ -134,13 +134,24 @@ export function initialRepo(): Promise<string | undefined> {
 }
 
 /** Native folder picker. Returns the chosen path, or `undefined` if cancelled. */
-export async function pickRepoFolder(): Promise<string | undefined> {
-  const chosen = await open({
-    directory: true,
-    multiple: false,
-    title: t("Open repository"),
-  });
+async function pickFolder(title: string): Promise<string | undefined> {
+  const chosen = await open({ directory: true, multiple: false, title });
   return typeof chosen === "string" ? chosen : undefined;
+}
+
+export function pickRepoFolder(): Promise<string | undefined> {
+  return pickFolder(t("Open repository"));
+}
+
+/**
+ * Where a new workspace goes.
+ *
+ * A folder picker rather than a text field, because the path is the one thing
+ * `jj workspace add` cannot guess and the one thing a typo makes expensive.
+ * The panel's New Folder button covers "somewhere that does not exist yet".
+ */
+export function pickWorkspaceFolder(): Promise<string | undefined> {
+  return pickFolder(t("Empty folder for the new workspace"));
 }
 
 const RECENT_REPOS_KEY = "ukemi:recent-repos";

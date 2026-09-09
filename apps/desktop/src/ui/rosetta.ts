@@ -187,10 +187,18 @@ export const ROSETTA: readonly RosettaEntry[] = [
   {
     git: "git worktree add <path>",
     also: ["worktree", "parallel", "second checkout", "agent"],
-    steps: [{ label: "Workspace board", shortcut: "⌘⇧W" }],
+    steps: [{ label: "New workspace" }, { label: "Workspace board", shortcut: "⌘⇧W" }],
     runs: ["jj workspace add <path>"],
     why:
       "Workspaces share one operation log, so a second working copy — or an agent running in one — shows up on the same timeline instead of being a repo you have to remember about.",
+  },
+  {
+    git: "git worktree remove <path>",
+    also: ["worktree remove", "worktree prune", "remove workspace"],
+    steps: [{ label: "Forget the workspace" }],
+    runs: ["jj workspace forget <name>"],
+    why:
+      "Forgetting a workspace stops jj tracking a working copy there and nothing else: the folder and everything in it stays until you delete it yourself, and ⌘Z brings the workspace back.",
   },
   {
     git: "git clean -fd",
