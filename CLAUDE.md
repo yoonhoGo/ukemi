@@ -63,6 +63,9 @@ Dependency direction is one-way: `jj-cli-adapter → domain`, `desktop → domai
   `src-tauri/jj` (gitignored sidecar).
 - Do not bump the `PINNED` jj version in `stage-jj.mjs` without running the
   adapter contract test in the same change.
+- Do not put a version anywhere but `version` in
+  `apps/desktop/src-tauri/tauri.conf.json`. The `package.json` files and
+  `Cargo.toml` stay at `0.0.0`; the git tag is `v` + that config version.
 
 ## Workflow
 
@@ -71,6 +74,9 @@ Dependency direction is one-way: `jj-cli-adapter → domain`, `desktop → domai
    is why the codebase has no second merge editor, no fs watcher, no virtual
    scrolling.
 3. The repo is jj-colocated (`.jj/` and `.git/`); jj commands are safe here.
+4. Releases are `0.MINOR.PATCH`: feature or jj bump → minor, fix → patch. Bump
+   the config version, commit as `release: vX.Y.Z`, tag `vX.Y.Z`. See
+   `README.md` § Versioning.
 
 ## 📚 References
 

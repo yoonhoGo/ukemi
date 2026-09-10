@@ -150,6 +150,15 @@ dev-clean and `tauri.bundle-jj.conf.json` adds the two resources at release
 time. `stage-jj.mjs` refuses a `jj` that is not the pinned version, because a
 sidecar whose version nobody checks is just a slower PATH lookup.
 
+**Version lives in `tauri.conf.json` alone; the tag is its mirror.**
+Tauri reads `version` from its config before `Cargo.toml`, and that value is
+the one users see (About, bundle name, updater). The three `package.json` files
+and the crate are private workspace members, so their `0.0.0` is left alone
+rather than kept in step by a bump script — a second copy that nothing consumes
+is only a way to drift. Changesets and per-package versions were refused for the
+same reason: one app ships, so one number. Pre-1.0 SemVer, tag `v` + version on
+the release commit.
+
 **Stacked PRs — the whole path ran against GitHub once.**
 Private repo `yoonhoGo/ukemi-fixture`: `push --change` on a two-change stack
 minted `push-<change>` bookmarks, `gh pr create` opened #1 → main and

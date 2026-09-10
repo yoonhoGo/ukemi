@@ -1,0 +1,44 @@
+# A `v*` tag is a release. The tag must equal `version` in tauri.conf.json —
+# that file is the single source of truth (README § Versioning) and this check
+# is what makes it so.
+name: release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Tag must match tauri.conf.json
+        run: |
+          v=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != config version $v"; exit 1; }
+
+      # The pinned jj goes first on PATH so both the contract test and
+      # stage-jj.mjs (which resolves `which jj`) see the same binary.
+      - name: Fetch pinned jj
+        run: |
+          pin=$(node -p "require('fs').readFileSync('apps/desktop/src-tauri/stage-jj.mjs','utf8').match(/PINNED = '(.+)'/)[1]")
+          mkdir -p "$RUNNER_TEMP/jj"
+          curl -fsSL "https://github.com/jj-vcs/jj/releases/download/v$pin/jj-v$pin-aarch64-apple-darwin.tar.gz" | tar xz -C "$RUNNER_TEMP/jj"
+          echo "$RUNNER_TEMP/jj" >> "$GITHUB_PATH"
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:bundled --workspace @ukemi/desktop
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+          generate_release_notes: true

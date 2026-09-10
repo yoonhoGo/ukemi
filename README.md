@@ -54,6 +54,30 @@ Stacked PRs use the `gh` CLI from your PATH, with your own login. Without it,
 or without a GitHub remote, everything else works and the stack panel only
 pushes.
 
+## Versioning
+
+One number, one place: `version` in `apps/desktop/src-tauri/tauri.conf.json`.
+Tauri prefers it over `Cargo.toml`, and it is what the app's About box, the
+bundle file name and the updater manifest show. Every `package.json` and the
+Cargo crate stay at `0.0.0` — they are private workspace members, never
+published, so a version there would be a second truth nobody reads.
+
+SemVer, pre-1.0: `0.MINOR.PATCH`. A new capability or a jj sidecar bump is a
+minor; a fix is a patch. Cutting a release is three steps:
+
+    # 1. bump "version" in apps/desktop/src-tauri/tauri.conf.json
+    jj commit -m "release: v0.2.0"
+    jj bookmark set main -r @- && jj git push
+    git tag v0.2.0 && git push origin v0.2.0
+
+The tag is `v` + the config version, on the release commit. `0.0.0` means
+"never released"; the first tag will be `v0.1.0`.
+
+Pushing the tag runs `.github/workflows/release.yml`: it refuses a tag that
+does not match the config version, fetches the pinned `jj`, runs the tests,
+builds the bundled DMG for Apple silicon and attaches it to a GitHub Release.
+The build is not signed or notarised yet — first launch is right-click → Open.
+
 ## Licence
 
 The bundled `jj` is Apache-2.0; see `NOTICE`.
