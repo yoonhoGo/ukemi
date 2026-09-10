@@ -447,7 +447,10 @@ export function Sidebar({
         )}
         {bookmarks.data &&
           sortBookmarks(localBookmarks(bookmarks.data), trunk).map((bookmark) => {
-            const target = bookmarkRevset(bookmark.name);
+            // The bookmark *and* everything under it: one revision is what the
+            // pill on the graph already tells you, the line down to root is
+            // what a sidebar click is for.
+            const target = `::${bookmarkRevset(bookmark.name)}`;
             return (
               <button
                 type="button"
