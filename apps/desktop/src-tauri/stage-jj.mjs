@@ -15,8 +15,10 @@ const PINNED = '0.43.0'
 const here = dirname(fileURLToPath(import.meta.url))
 const source = process.argv[2] ?? execFileSync('which', ['jj']).toString().trim()
 
+// Official release binaries report `jj 0.43.0-<commit>`; a local cargo
+// install reports `jj 0.43.0`. Both are the pinned version.
 const version = execFileSync(source, ['--version']).toString().trim()
-if (version !== `jj ${PINNED}`) {
+if (version !== `jj ${PINNED}` && !version.startsWith(`jj ${PINNED}-`)) {
   throw new Error(`${source} is "${version}", but this build pins jj ${PINNED}`)
 }
 
