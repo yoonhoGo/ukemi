@@ -115,6 +115,10 @@ export function sortBookmarks<T extends { readonly name: string }>(
  * The `git` remote of a colocated repo is not one of those: jj tracks it by
  * construction, so folding its counts in would give every bookmark a ↑0 and
  * hide the one fact worth seeing — that nobody has pushed the name anywhere.
+ *
+ * The counts arrive counted from the remote's side and come out counted from
+ * the local one: `ahead` on the row this returns is what the local bookmark
+ * has and the remote does not, which is what a ↑ beside a local name means.
  */
 export function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
   const remotes = bookmarks.filter(
@@ -126,7 +130,12 @@ export function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
       const tracked = remotes.find(
         (remote) => remote.name === local.name && remote.ahead !== undefined,
       );
-      return tracked ? { ...local, ahead: tracked.ahead, behind: tracked.behind } : local;
+      // Swapped, because the counts are the remote row's and this is the local
+      // row: jj's "@origin (ahead by 1)" is one commit the local bookmark does
+      // not have, so on the local row that is one commit *behind*. Folding
+      // them across without turning them around is what made ↑ and ↓ point
+      // the wrong way.
+      return tracked ? { ...local, ahead: tracked.behind, behind: tracked.ahead } : local;
     });
 }
 

@@ -516,6 +516,18 @@ test("naming a bookmark pushes one the remote has never had, and tracks it", asy
     const pushed = after.find((b) => b.remote === "fresh");
     assert.equal(pushed?.ahead, 0, "the remote must now have the bookmark");
     assert.equal(pushed?.behind, 0, "and pushing must have tracked it");
+
+    // Which way jj counts, pinned: the local bookmark drops to trunk while the
+    // remote stays where it was, so the remote is one commit ahead of the
+    // local. jj reports that as `ahead` *on the remote row* — which is why the
+    // sidebar swaps the pair when it folds the row onto the local one. A jj
+    // that ever flipped this would turn every ↑ in the window into a ↓.
+    raw("bookmark", "set", "brand-new", "-r", "trunk", "--allow-backwards");
+    const moved = (await jj.bookmarks()).find(
+      (b) => b.name === "brand-new" && b.remote === "fresh",
+    );
+    assert.equal(moved?.ahead, 1, "the remote row counts what the remote has");
+    assert.equal(moved?.behind, 0);
   } finally {
     raw("bookmark", "forget", "brand-new");
     raw("git", "remote", "remove", "fresh");

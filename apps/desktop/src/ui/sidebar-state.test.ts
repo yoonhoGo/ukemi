@@ -55,15 +55,42 @@ test("a bookmark only the colocated git repo has still counts as unpushed", () =
     { name: "my-feature", target: "kk", remote: "git", ahead: 0, behind: 0, hasConflict: false },
     { name: "main", target: "mm", hasConflict: false },
     { name: "main", target: "mm", remote: "git", ahead: 0, behind: 0, hasConflict: false },
-    { name: "main", target: "mm", remote: "origin", ahead: 2, behind: 0, hasConflict: false },
+    // origin is "behind by 2": the local has two commits it does not.
+    { name: "main", target: "mm", remote: "origin", ahead: 0, behind: 2, hasConflict: false },
   ];
   assert.deepEqual(unpushedBookmarks(rows), ["my-feature"]);
   assert.deepEqual(
     localBookmarks(rows).map((bookmark) => [bookmark.name, bookmark.ahead]),
     [
       ["my-feature", undefined],
+      // The origin row is "behind by 2" — the local has two it does not — so
+      // the local row is two ahead. See the swap in `localBookmarks`.
       ["main", 2],
     ],
+  );
+});
+
+test("the local row counts from the local side, not the remote's", () => {
+  // jj counts from the row it is describing: on `main@origin`, ahead is what
+  // origin has that the local bookmark does not. Read straight across, a local
+  // bookmark one commit *behind* origin would draw a ↑1.
+  const behind = localBookmarks([
+    { name: "main", target: "mm", hasConflict: false },
+    { name: "main", target: "nn", remote: "origin", ahead: 1, behind: 0, hasConflict: false },
+  ]);
+  assert.deepEqual(
+    behind.map((bookmark) => [bookmark.ahead, bookmark.behind]),
+    [[0, 1]],
+    "one commit on origin the local does not have is one commit behind",
+  );
+
+  const diverged = localBookmarks([
+    { name: "main", target: "mm", hasConflict: false },
+    { name: "main", target: "nn", remote: "origin", ahead: 3, behind: 2, hasConflict: false },
+  ]);
+  assert.deepEqual(
+    diverged.map((bookmark) => [bookmark.ahead, bookmark.behind]),
+    [[2, 3]],
   );
 });
 

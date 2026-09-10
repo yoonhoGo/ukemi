@@ -12,7 +12,11 @@ fallback the draft held in reserve is unnecessary. Two gaps found in the
 process: `json(self)` on a commit omits the conflict/empty/working-copy flags,
 so the template composes those explicitly; and `tracking_ahead_count` *raises*
 on an untracked ref, so it is guarded by `if(tracked, …)` and read via
-`.lower()` because it is a size hint, not an integer.
+`.lower()` because it is a size hint, not an integer. Both counts are counted
+from the side of the row they are on: on `main@origin`, `ahead` is what origin
+has and the local bookmark does not — jj prints "@origin (ahead by 1
+commits)" — so the sidebar swaps the pair when it folds the remote row onto
+the local one, and the contract test pins the direction.
 
 **Graph colour — lines by stack head, dots by change.**
 An edge takes the colour of the head of the stack its child sits in

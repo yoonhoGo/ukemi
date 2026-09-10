@@ -53,7 +53,16 @@ export interface Bookmark {
   readonly target?: ChangeId | undefined;
   /** Remote name when this row is a remote-tracking bookmark. */
   readonly remote?: string | undefined;
-  /** Ahead/behind against the tracked remote, when tracking. */
+  /**
+   * How far apart this row and the local bookmark of the same name are, when
+   * tracking; absent on an untracked row, which is the test for tracking.
+   *
+   * Counted from *this row's* side, the way jj counts it: on a `main@origin`
+   * row `ahead` is what the remote has and the local does not — jj prints it
+   * as "@origin (ahead by 1 commits)" — so it is the local bookmark that is
+   * behind by that many. A UI that draws the local row has to swap them; see
+   * `localBookmarks`.
+   */
   readonly ahead?: number | undefined;
   readonly behind?: number | undefined;
   readonly hasConflict: boolean;
