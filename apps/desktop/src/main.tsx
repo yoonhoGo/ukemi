@@ -10,8 +10,9 @@
 import "./themes/contract.css";
 import { StrictMode, useEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { App } from "./App.tsx";
 import {
@@ -42,6 +43,28 @@ const client = new QueryClient({
     },
   },
 });
+
+/**
+ * Teach the focus refetch what "focused" means for a native window.
+ *
+ * React Query tracks focus through `visibilitychange` alone, and a window
+ * sitting behind a terminal is still `visibilityState === "visible"` — so the
+ * event never fires, and `refetchOnWindowFocus` above was dead. The window
+ * kept reading at the operation it saw last: run `jj` in the terminal beside
+ * it, come back, and the graph, the timeline and the bookmark counts were all
+ * still describing the past. Tauri's window focus is the signal macOS
+ * actually has, so it is handed straight to the focus manager.
+ *
+ * Same shape as the drag-drop listener below: under plain `vite` there is no
+ * window to listen to, and `visibilityState` remains the fallback.
+ */
+void Promise.resolve()
+  .then(() =>
+    getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      focusManager.setFocused(focused);
+    }),
+  )
+  .catch(() => {});
 
 /** A Git repository the user picked that has no jj in it yet. */
 interface ColocateOffer {

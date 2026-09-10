@@ -117,8 +117,11 @@ export function RepoProvider({
   const head = useQuery({
     queryKey: ["op-head", root],
     queryFn: () => port.currentOperation(),
-    // Refetched on window focus (React Query's default), which is what keeps
-    // the window honest when the user runs jj in a terminal and comes back.
+    // Refetched when the window is activated, which is what keeps the window
+    // honest when the user runs jj in a terminal and comes back. That needs
+    // Tauri's window focus wired into React Query's focus manager — see
+    // `main.tsx`; `visibilitychange` on its own never fires for a native
+    // window that is merely behind another one.
     // ponytail: no fs watcher yet — add one on .jj/repo/op_heads/ if focus
     // refetching proves too coarse in daily use.
     staleTime: 0,
