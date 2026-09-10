@@ -13,6 +13,7 @@ function rev(changeId: string, parents: string[] = []): Revision {
     committer: { name: "T", email: "t@e", timestamp: "2026-01-01T00:00:00+09:00" },
     parents,
     bookmarks: [],
+    remoteBookmarks: [],
     tags: [],
     isWorkingCopy: false,
     isEmpty: false,
@@ -87,4 +88,19 @@ test("lanes are reused after a branch closes, so width does not creep", () => {
   ]);
   assert.equal(layout.laneCount, 2);
   assert.equal(layout.rows[3]!.lane, 0);
+});
+
+test("a lane held by an elided parent is freed for the next stack", () => {
+  // Two disjoint stacks, each rooted on a parent outside the revset: the
+  // second must reuse lane 0 instead of being pushed right by a `~`.
+  const layout = layoutGraph([rev("a", ["a-root"]), rev("b", ["b-root"])]);
+  assert.deepEqual(
+    layout.rows.map((r) => r.lane),
+    [0, 0],
+  );
+  assert.equal(layout.laneCount, 1);
+  assert.deepEqual(
+    layout.rows.map((r) => r.edges[0]!.elided),
+    [true, true],
+  );
 });

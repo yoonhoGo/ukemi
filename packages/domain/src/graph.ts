@@ -74,6 +74,14 @@ export function layoutGraph(revisions: readonly Revision[]): GraphLayout {
       };
     });
 
+    // An elided parent is outside the revset, so it never arrives as a row and
+    // nothing would ever release the lane reserved for it — every later stack
+    // would then start one column further right, which is how a six-stack
+    // revset grew a gutter wide enough to squeeze out the description. jj log
+    // reuses the column as soon as it has printed `~`, and the stub is drawn
+    // from the edge itself, so the reservation buys nothing.
+    for (const edge of edges) if (edge.elided) lanes[edge.toLane] = null;
+
     rows.push({ revision, row, lane, edges });
 
     // Trim trailing empties so laneCount tracks real width, not high-water marks.

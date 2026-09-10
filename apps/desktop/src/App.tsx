@@ -19,6 +19,7 @@ import { CommandPanel } from "./ui/CommandPanel.tsx";
 import { DiffSheet } from "./ui/DiffSheet.tsx";
 import { isRead, shellLine } from "./ui/command-line.ts";
 import { Graph } from "./ui/Graph.tsx";
+import { gutterWidth } from "./ui/graph-geometry.ts";
 import { Inspector } from "./ui/Inspector.tsx";
 import { HunkSheet, type HunkSheetMode } from "./ui/HunkSheet.tsx";
 import { installAppMenu } from "./ui/menu.ts";
@@ -527,13 +528,19 @@ function Window({
           onOpenSettings={() => setShowSettings(true)}
         />
         <main
-          style={{
-            flexGrow: 1,
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            background: "var(--u-bg-window)",
-          }}
+          style={
+            {
+              flexGrow: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--u-bg-window)",
+              // The gutter widens with the graph, and the column labels below
+              // are a `.row` too — so the variable lives on the ancestor both
+              // share, or the header's columns drift off the rows'.
+              "--u-row-gutter": `${gutterWidth(layout?.laneCount ?? 0)}px`,
+            } as React.CSSProperties
+          }
         >
           {/* Column labels for the graph's grid — the board has no such grid. */}
           {view === "graph" && (
@@ -549,7 +556,9 @@ function Window({
               <div />
               <div>{t("Change")}</div>
               <div>{t("Description")}</div>
-              <div>{t("Bookmarks")}</div>
+              {/* Clipped for the same reason the rows' bookmark cell is: this
+                  is the column that narrows first. */}
+              <div style={{ overflow: "hidden" }}>{t("Bookmarks")}</div>
               <div />
               <div style={{ textAlign: "right" }}>{t("When")}</div>
             </div>

@@ -17,6 +17,7 @@ function rev(
     committer: sig,
     parents,
     bookmarks: [],
+    remoteBookmarks: [],
     tags: [],
     isWorkingCopy: false,
     isEmpty: false,

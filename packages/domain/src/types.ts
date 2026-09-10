@@ -32,6 +32,12 @@ export interface Revision {
   readonly parents: readonly ChangeId[];
   /** Local bookmark names pointing here. */
   readonly bookmarks: readonly string[];
+  /**
+   * Remote-tracking names (`main@origin`) pointing here that the local
+   * bookmark of that name does not. Empty in the ordinary case, where local
+   * and remote agree; non-empty is exactly the state worth seeing.
+   */
+  readonly remoteBookmarks: readonly string[];
   readonly tags: readonly string[];
   readonly isWorkingCopy: boolean;
   readonly isEmpty: boolean;

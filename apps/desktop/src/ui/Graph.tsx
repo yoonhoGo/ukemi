@@ -231,7 +231,12 @@ function Row({
              the glyphs and the row reads as broken. The parentheses and the
              secondary ink are how the inspector and the rebase HUD already
              mark this same placeholder. */
-          <span className="sec">{t("(no description set)")}</span>
+          <span
+            className="sec"
+            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {t("(no description set)")}
+          </span>
         )}
         {revision.isWorkingCopy && <span className="pill">{t("working copy")}</span>}
         {revision.hasConflict && (
@@ -249,7 +254,10 @@ function Row({
           </span>
         )}
       </div>
-      <div style={{ display: "flex", gap: 4, minWidth: 0 }}>
+      {/* Clipped, because this is the column that narrows first when the
+          graph is wide: a name that no longer fits is cut off rather than
+          spilling over the row's next column. */}
+      <div style={{ display: "flex", gap: 4, minWidth: 0, overflow: "hidden" }}>
         {revision.bookmarks.map((name) => (
           /* Drag it to another row to move the bookmark there. `cursor: grab`
              is the whole affordance — a name on a commit is the one thing in
@@ -273,6 +281,19 @@ function Row({
               event.stopPropagation();
               void popupBookmarkMenu(name, () => onBookmarkDelete(name));
             }}
+          >
+            {name}
+          </span>
+        ))}
+        {/* A remote name the local bookmark has drifted from. Muted and not
+            draggable: `main@origin` is the remote's opinion, and the way to
+            move it is a push, not a hand. */}
+        {revision.remoteBookmarks.map((name) => (
+          <span
+            className="pill"
+            data-kind="remote-bookmark"
+            key={name}
+            title={t("{name} sits here; the local bookmark does not.", { name })}
           >
             {name}
           </span>
@@ -331,6 +352,8 @@ export function Graph({
   targetBlocked?: boolean | undefined;
 }) {
   // The gutter widens with the graph so lanes never overlap the change column.
+  // `App` sets `--u-row-gutter` from the same number, so the lanes drawn here
+  // and the rows' first column land on the same width.
   const gutter = gutterWidth(layout.laneCount);
   return (
     <div
@@ -339,15 +362,7 @@ export function Graph({
       role="listbox"
       aria-label={t("Revisions")}
     >
-      <div
-        style={
-          {
-            position: "relative",
-            paddingRight: 6,
-            "--u-row-gutter": `${gutter}px`,
-          } as React.CSSProperties
-        }
-      >
+      <div style={{ position: "relative", paddingRight: 6 }}>
         <Lanes layout={layout} width={gutter} />
         {layout.rows.map((row) => (
           <Row

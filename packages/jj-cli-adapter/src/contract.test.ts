@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { layoutGraph } from "@ukemi/domain";
+import type { Revision } from "@ukemi/domain";
 import { JjCliAdapter } from "./adapter.ts";
 import { nodeExec } from "./node-exec.ts"; // node-only entry; see index.ts
 import { JjError } from "./exec.ts";
@@ -400,6 +401,25 @@ test("tracking a remote-only bookmark mints the local one", async () => {
   const remote = tracked.find((b) => b.remote === "origin");
   assert.equal(typeof remote?.ahead, "number");
   assert.equal(typeof remote?.behind, "number");
+
+  // With the two sides agreeing, the remote name is noise and jj folds it away
+  // — the same folding that keeps `@git` out of a colocated repo's rows.
+  const carrying = async (name: string, pick: (r: Revision) => readonly string[]) =>
+    (await jj.log("all()")).filter((r) => pick(r).includes(name));
+  assert.deepEqual(await carrying("shared@origin", (r) => r.remoteBookmarks), []);
+
+  // Now drive them apart, which is the case the graph could not draw: both
+  // rows used to arrive as a bare `shared`, on two different revisions.
+  raw("bookmark", "set", "shared", "-r", "@", "--allow-backwards");
+  const local = await carrying("shared", (r) => r.bookmarks);
+  const drifted = await carrying("shared@origin", (r) => r.remoteBookmarks);
+  assert.equal(local.length, 1);
+  assert.equal(drifted.length, 1);
+  assert.notEqual(local[0]!.changeId, drifted[0]!.changeId);
+  assert.ok(
+    !drifted[0]!.bookmarks.includes("shared"),
+    "the remote row must not arrive as a bare local name",
+  );
 });
 
 test("the observer sees each invocation with its argv and exit code", async () => {

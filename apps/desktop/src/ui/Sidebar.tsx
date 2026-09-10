@@ -309,7 +309,13 @@ export function Sidebar({
                 <span className="pill">↓{bookmark.behind}</span>
               )}
               {bookmark.ahead === undefined && (
-                <span className="ter" style={{ fontSize: 11 }}>
+                /* `nowrap` because a line breaks between Hangul syllables:
+                   under a long bookmark name the label would otherwise stack
+                   one syllable per line and push the row taller. */
+                <span
+                  className="ter"
+                  style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
+                >
                   {t("local")}
                 </span>
               )}
@@ -353,7 +359,10 @@ export function Sidebar({
             >
               {remote.name}@{remote.remote}
             </span>
-            <span className="ter" style={{ fontSize: 11 }}>
+            <span
+              className="ter"
+              style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
+            >
               {t("Track")}
             </span>
           </button>

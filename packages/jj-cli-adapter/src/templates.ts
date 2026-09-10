@@ -18,7 +18,16 @@ export const REVISION_TEMPLATE = [
   '",\\"committer\\":" ++ json(committer)',
   // Parent *change* IDs: topology that survives a rebase.
   '",\\"parents\\":" ++ json(parents.map(|c| c.change_id()))',
-  '",\\"bookmarks\\":" ++ json(bookmarks.map(|b| b.name()))',
+  // Local names only: `bookmarks` also carries a remote-tracking row whose
+  // target has drifted from the local one, and `b.name()` drops the `@origin`
+  // that tells them apart — two identical pills on two different rows. The
+  // split keeps this field the one the push and PR code already reads.
+  '",\\"bookmarks\\":" ++ json(local_bookmarks.map(|b| b.name()))',
+  // The drifted remote rows, as jj names them. `bookmarks` has done the
+  // folding already — a tracked remote at the same target, `@git` included,
+  // is not in it — so this filter is the whole rule. `stringify` because a
+  // `++` of strings is a template, which `json` will not serialize.
+  '",\\"remoteBookmarks\\":" ++ json(bookmarks.filter(|b| b.remote()).map(|b| stringify(b.name() ++ "@" ++ b.remote())))',
   '",\\"tags\\":" ++ json(tags.map(|t| t.name()))',
   '",\\"isWorkingCopy\\":" ++ json(current_working_copy)',
   '",\\"isEmpty\\":" ++ json(empty)',

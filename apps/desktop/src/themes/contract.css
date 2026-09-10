@@ -459,10 +459,16 @@ button {
  * The column template is part of the contract: the graph gutter is the first
  * column, so the lane SVG behind the rows and the rows themselves agree on
  * where lane 0 sits without either measuring the other.
+ *
+ * The description's 140px floor is part of it too. A wide graph pushes the
+ * gutter out, and the description is the only flexible column, so without a
+ * floor it collapses to nothing and every row reads as an ellipsis. The
+ * bookmarks column gives way instead: `minmax(0, 160px)` keeps the same width
+ * whenever there is room, but can shrink to nothing when there isn't.
  */
 .row {
   display: grid;
-  grid-template-columns: var(--u-row-gutter, 132px) 76px minmax(0, 1fr) 160px 36px 64px;
+  grid-template-columns: var(--u-row-gutter, 132px) 76px minmax(140px, 1fr) minmax(0, 160px) 36px 64px;
   align-items: center;
   width: 100%;
   height: var(--u-row-height);
@@ -513,6 +519,14 @@ button {
 .pill[data-kind="bookmark"] {
   background: var(--u-accent-soft);
   color: var(--u-accent);
+}
+/* The same name as it stands on a remote, when the local bookmark has drifted
+ * off it. Outlined rather than filled: it names the accent it is a version of
+ * without claiming to be the bookmark itself. */
+.pill[data-kind="remote-bookmark"] {
+  background: transparent;
+  color: var(--u-accent);
+  box-shadow: inset 0 0 0 1px var(--u-accent-soft);
 }
 /* A pull request chip; `data-state` is open | merged | closed. */
 .pill[data-kind="pr"] {

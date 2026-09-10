@@ -49,6 +49,8 @@ export const chrome: Record<string, string> = {
   divergent: "갈라짐",
   "new parent": "새 부모",
   "Drag {name} onto a revision to move it there.": "{name}을(를) 리비전 위로 끌면 그 자리로 옮겨집니다.",
+  "{name} sits here; the local bookmark does not.":
+    "{name}은(는) 여기 있고, 로컬 북마크는 다른 곳에 있습니다.",
   "Delete the bookmark {name}": "북마크 {name} 지우기",
   "Name for a bookmark on the selected change": "선택한 체인지에 붙일 북마크 이름",
   "{name} here": "{name}을(를) 여기로",
