@@ -5,6 +5,7 @@ import {
   LOG_LIMIT,
   messageFor,
   RepoProvider,
+  useBookmarks,
   useCommandLog,
   useGraph,
   useJjMutation,
@@ -27,6 +28,7 @@ import { milestoneForCommand, reachMilestone } from "./ui/onboarding.ts";
 import { Lookup, type LookupFocus } from "./ui/Lookup.tsx";
 import { Settings } from "./ui/Settings.tsx";
 import { SAVED_REVSETS, Sidebar } from "./ui/Sidebar.tsx";
+import { unpushedBookmarks } from "./ui/sidebar-state.ts";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
 import { Toolbar } from "./ui/Toolbar.tsx";
@@ -157,7 +159,24 @@ function Window({
   const undo = useJjMutation((port) => port.undo());
   const restore = useJjMutation((port, id: string) => port.restoreOperation(id));
   const fetch = useJjMutation((port) => port.fetch());
-  const push = useJjMutation((port) => port.push());
+  /**
+   * ⇧⌘P: everything jj would push, plus the names it refuses to.
+   *
+   * Two invocations, because one cannot say both things. jj's default push set
+   * is the *tracking* bookmarks, so a bookmark that has never been pushed is
+   * declined with a warning on stderr and a "Nothing changed" — the button
+   * looked like it worked and the name stayed on the machine. Naming those
+   * with `--bookmark` pushes them, but naming any bookmark replaces the
+   * default set rather than adding to it, so the default push runs first and
+   * the new names follow. Nothing new to push is the ordinary case, and then
+   * this is the single call it always was.
+   */
+  const bookmarks = useBookmarks();
+  const unpushed = unpushedBookmarks(bookmarks.data ?? []);
+  const push = useJjMutation(async (port) => {
+    await port.push();
+    if (unpushed.length > 0) await port.push({ bookmarks: unpushed });
+  });
   const absorb = useJjMutation((port, rev: string) => port.absorb(rev));
 
   const move = useCallback(

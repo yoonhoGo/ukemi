@@ -7,6 +7,7 @@
  * onboarding progress so the rows and the ⌘-digit map read one value.
  */
 import { useSyncExternalStore } from "react";
+import type { Bookmark } from "@ukemi/domain";
 
 const KEY = "ukemi:sidebar";
 
@@ -106,4 +107,39 @@ export function sortBookmarks<T extends { readonly name: string }>(
     if (b.name === trunk) return 1;
     return naturalCompare(a.name, b.name);
   });
+}
+
+/**
+ * Local rows only; remote-tracking rows fold into their local row's counts.
+ *
+ * The `git` remote of a colocated repo is not one of those: jj tracks it by
+ * construction, so folding its counts in would give every bookmark a ↑0 and
+ * hide the one fact worth seeing — that nobody has pushed the name anywhere.
+ */
+export function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
+  const remotes = bookmarks.filter(
+    (bookmark) => bookmark.remote !== undefined && bookmark.remote !== "git",
+  );
+  return bookmarks
+    .filter((bookmark) => bookmark.remote === undefined)
+    .map((local) => {
+      const tracked = remotes.find(
+        (remote) => remote.name === local.name && remote.ahead !== undefined,
+      );
+      return tracked ? { ...local, ahead: tracked.ahead, behind: tracked.behind } : local;
+    });
+}
+
+/**
+ * The bookmarks no remote has yet, which `jj git push` on its own will not
+ * send: its default set is the *tracking* bookmarks, so a name that has never
+ * been pushed comes back as "Refusing to create new remote bookmark" — a
+ * warning on stderr that the window never shows, under a "Nothing changed".
+ * Naming them with `--bookmark` is what pushes them, and doing that also
+ * tracks them, so a bookmark appears here exactly once in its life.
+ */
+export function unpushedBookmarks(bookmarks: readonly Bookmark[]): string[] {
+  return localBookmarks(bookmarks)
+    .filter((bookmark) => bookmark.target !== undefined && bookmark.ahead === undefined)
+    .map((bookmark) => bookmark.name);
 }

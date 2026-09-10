@@ -487,6 +487,42 @@ test("tracking a remote-only bookmark mints the local one", async () => {
   );
 });
 
+test("naming a bookmark pushes one the remote has never had, and tracks it", async () => {
+  // The state `jj git push` on its own will not leave: its default set is the
+  // tracking bookmarks, so a name that has never been pushed comes back as
+  // "Refusing to create new remote bookmark". `--bookmark` is what sends it,
+  // and jj tracks it on the way — the sidebar's Push button rests on both
+  // halves of that, and a jj bump that took either away would show up here.
+  const fresh = mkdtempSync(join(tmpdir(), "ukemi-fresh-"));
+  try {
+    execFileSync("git", ["init", "--bare", "--quiet", fresh]);
+    raw("git", "remote", "add", "fresh", fresh);
+    raw("bookmark", "create", "brand-new", "-r", "feature");
+
+    // Colocated, so jj reports a `git` row for it with counts of 0 the moment
+    // it exists. That row is why the sidebar cannot read counts as "pushed":
+    // this repo is the fixture for `localBookmarks` skipping the git remote.
+    const before = (await jj.bookmarks()).filter((b) => b.name === "brand-new");
+    assert.deepEqual(
+      before.map((b) => b.remote),
+      [undefined, "git"],
+      "only the local row and the colocated git repo may have it yet",
+    );
+    assert.equal(before.find((b) => b.remote === "git")?.ahead, 0);
+
+    await jj.push({ remote: "fresh", bookmarks: ["brand-new"] });
+
+    const after = (await jj.bookmarks()).filter((b) => b.name === "brand-new");
+    const pushed = after.find((b) => b.remote === "fresh");
+    assert.equal(pushed?.ahead, 0, "the remote must now have the bookmark");
+    assert.equal(pushed?.behind, 0, "and pushing must have tracked it");
+  } finally {
+    raw("bookmark", "forget", "brand-new");
+    raw("git", "remote", "remove", "fresh");
+    rmSync(fresh, { recursive: true, force: true });
+  }
+});
+
 test("the observer sees each invocation with its argv and exit code", async () => {
   const seen: string[][] = [];
   const spy = new JjCliAdapter(repo, nodeExec("jj", repo), undefined, (record) => {

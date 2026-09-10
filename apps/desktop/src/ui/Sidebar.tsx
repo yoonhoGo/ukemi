@@ -45,6 +45,7 @@ import {
   WorkspaceIcon,
 } from "./icons.tsx";
 import {
+  localBookmarks,
   orderRows,
   reorder,
   setCollapsed,
@@ -336,19 +337,6 @@ function MyRevsets() {
   );
 }
 
-/** Local rows only; remote-tracking rows fold into their local row's counts. */
-function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
-  const remotes = bookmarks.filter((bookmark) => bookmark.remote !== undefined);
-  return bookmarks
-    .filter((bookmark) => bookmark.remote === undefined)
-    .map((local) => {
-      const tracked = remotes.find(
-        (remote) => remote.name === local.name && remote.ahead !== undefined,
-      );
-      return tracked ? { ...local, ahead: tracked.ahead, behind: tracked.behind } : local;
-    });
-}
-
 /**
  * Remote rows nobody tracks — a teammate's work, as a fetch leaves it.
  *
@@ -411,6 +399,7 @@ export function Sidebar({
   const track = useJjMutation((port, args: { name: string; remote: string }) =>
     port.bookmarkTrack(args.name, args.remote),
   );
+  const pushOne = useJjMutation((port, name: string) => port.push({ bookmarks: [name] }));
   const addWorkspace = useAddWorkspace();
   const forget = useForgetWorkspace();
 
@@ -452,23 +441,24 @@ export function Sidebar({
             // what a sidebar click is for.
             const target = `::${bookmarkRevset(bookmark.name)}`;
             return (
-              <button
-                type="button"
-                className="side-item"
-                key={bookmark.name}
-                aria-current={revset === target}
-                onClick={() => setRevset(target)}
-              >
-                <span
+              /* A div rather than a button, because the row now holds one: the
+                 name applies the revset, and the trailing verb pushes. Same
+                 shape as the workspace and saved-revset rows. */
+              <div className="side-item" key={bookmark.name} aria-current={revset === target}>
+                <button
+                  type="button"
+                  onClick={() => setRevset(target)}
                   style={{
                     flexGrow: 1,
+                    minWidth: 0,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    textAlign: "left",
                   }}
                 >
                   {bookmark.name}
-                </span>
+                </button>
                 {bookmark.hasConflict && (
                   <span className="pill" data-kind="conflict">
                     ⚠
@@ -481,17 +471,38 @@ export function Sidebar({
                   <span className="pill">↓{bookmark.behind}</span>
                 )}
                 {bookmark.ahead === undefined && (
-                  /* `nowrap` because a line breaks between Hangul syllables:
+                  /* No remote has this name yet, so the state and the way out
+                     of it are the same word: the row said "local" here, which
+                     named the state and offered nothing. The toolbar's Push
+                     covers these too — this is the one that pushes *this* name
+                     and nothing else.
+
+                     `nowrap` because a line breaks between Hangul syllables:
                      under a long bookmark name the label would otherwise stack
                      one syllable per line and push the row taller. */
-                  <span
+                  <button
+                    type="button"
                     className="ter"
-                    style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
+                    disabled={isPinned || pushOne.isPending}
+                    onClick={() => pushOne.mutate(bookmark.name)}
+                    title={
+                      isPinned
+                        ? t(
+                            "The window is parked on a past operation. Return to now to make changes.",
+                          )
+                        : t("Push {name} to create it on the remote", { name: bookmark.name })
+                    }
+                    style={{
+                      fontSize: 11,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                      padding: "0 2px",
+                    }}
                   >
-                    {t("local")}
-                  </span>
+                    {t("Push")}
+                  </button>
                 )}
-              </button>
+              </div>
             );
           })}
 
@@ -539,7 +550,7 @@ export function Sidebar({
             </button>
           ))}
 
-        {track.error && (
+        {(track.error ?? pushOne.error) && (
           <div
             role="alert"
             className="mono selectable"
@@ -550,7 +561,7 @@ export function Sidebar({
               padding: "2px 8px 2px 28px",
             }}
           >
-            {messageFor(track.error)}
+            {messageFor(track.error ?? pushOne.error)}
           </div>
         )}
       </Section>

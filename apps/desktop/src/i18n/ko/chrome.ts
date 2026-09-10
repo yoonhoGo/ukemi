@@ -16,7 +16,7 @@ export const chrome: Record<string, string> = {
   // ── Sidebar ────────────────────────────────────────────────────────────
   Bookmarks: "북마크",
   "None yet.": "아직 없습니다.",
-  local: "로컬",
+  "Push {name} to create it on the remote": "{name}을(를) 원격에 새로 만들며 푸시합니다",
   Track: "추적",
   "Track {name} to get a local bookmark for it": "{name}을(를) 추적해 로컬 북마크로 가져옵니다",
   Tags: "태그",

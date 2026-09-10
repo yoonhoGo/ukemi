@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { orderRows, reorder, sortBookmarks, sortTags } from "./sidebar-state.ts";
+import {
+  localBookmarks,
+  orderRows,
+  reorder,
+  sortBookmarks,
+  sortTags,
+  unpushedBookmarks,
+} from "./sidebar-state.ts";
 
 test("orderRows follows the remembered order and appends the unknown", () => {
   const rows = ["a", "b", "c", "d"];
@@ -36,5 +43,35 @@ test("bookmarks pin trunk first, then natural order", () => {
   assert.deepEqual(
     sortBookmarks([{ name: "b" }, { name: "a" }], undefined).map((b) => b.name),
     ["a", "b"],
+  );
+});
+
+test("a bookmark only the colocated git repo has still counts as unpushed", () => {
+  // What a colocated repo reports for a name nobody has pushed: jj tracks the
+  // `git` remote by construction, so the row exists with counts of 0 and would
+  // otherwise fold in and read as "pushed, up to date".
+  const rows = [
+    { name: "my-feature", target: "kk", hasConflict: false },
+    { name: "my-feature", target: "kk", remote: "git", ahead: 0, behind: 0, hasConflict: false },
+    { name: "main", target: "mm", hasConflict: false },
+    { name: "main", target: "mm", remote: "git", ahead: 0, behind: 0, hasConflict: false },
+    { name: "main", target: "mm", remote: "origin", ahead: 2, behind: 0, hasConflict: false },
+  ];
+  assert.deepEqual(unpushedBookmarks(rows), ["my-feature"]);
+  assert.deepEqual(
+    localBookmarks(rows).map((bookmark) => [bookmark.name, bookmark.ahead]),
+    [
+      ["my-feature", undefined],
+      ["main", 2],
+    ],
+  );
+});
+
+test("a bookmark deleted locally is not something to push", () => {
+  // Present on the remote, gone here: the row has no target, and naming it in
+  // a push would ask jj to delete the remote side, which is not this button.
+  assert.deepEqual(
+    unpushedBookmarks([{ name: "gone", remote: "origin", hasConflict: false }]),
+    [],
   );
 });

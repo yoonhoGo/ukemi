@@ -117,6 +117,22 @@ push and moves it after a rebase, so one button covers create and update. PRs
 are matched to revisions through bookmark = head branch, never by predicting
 the bookmark name jj will mint.
 
+**A bookmark the remote has never had is pushed by name, in its own call.**
+jj 0.43's default push set is the *tracking* bookmarks, so `jj git push` meets
+a never-pushed name with "Refusing to create new remote bookmark" on stderr and
+exits 0 — the button looked like it worked. `--bookmark <name>` sends it and
+tracks it on the way (`--allow-new` is gone in 0.43), but naming any bookmark
+*replaces* the default set instead of adding to it. So ⇧⌘P runs the plain push
+and then a second one naming what is new, and the sidebar row offers the same
+push for one name. `--all` was refused: it would also push bookmarks that have
+nothing to do with the working copy, which jj's default deliberately leaves
+alone.
+
+Counts cannot answer "has this been pushed" in a colocated repo: jj tracks the
+`git` remote by construction, so a brand-new bookmark already has a
+`name@git` row at ↑0. `localBookmarks` skips the `git` remote when it folds
+remote rows in, which is what makes the row say anything at all here.
+
 **`gh` is borrowed, not bundled.**
 It carries the user's GitHub login. The forge adapter passes `-R owner/repo`
 on every call (slug parsed from `jj git remote list`), so a non-colocated repo
