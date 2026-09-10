@@ -114,8 +114,17 @@ function Section({
           <ChevronIcon />
         </span>
         {icon}
-        <span style={{ flexGrow: 1 }}>{title}</span>
-        {actions && <span onClick={(event) => event.preventDefault()}>{actions}</span>}
+        <span style={{ flexGrow: 1, minWidth: 0, whiteSpace: "nowrap" }}>{title}</span>
+        {/* One row, always: the buttons keep their width and the title gives
+            way, or a narrow heading stacks them and the fold arrow drifts. */}
+        {actions && (
+          <span
+            onClick={(event) => event.preventDefault()}
+            style={{ display: "flex", gap: 4, flexShrink: 0 }}
+          >
+            {actions}
+          </span>
+        )}
       </summary>
       {children}
     </details>
