@@ -4,6 +4,14 @@ The classes and custom properties in `contract.css` are a public API. A theme
 written against version *n* must keep working until this file records a
 breaking change and the version is bumped.
 
+## v1.5 — 2026-09-10
+
+Additive. `.side-item` directly under a `<details>` is indented 28px so rows
+step in past the heading's chevron column; `.chev` is a 14px flex box holding
+an SVG rather than a 10px glyph. `summary.side-head[aria-current]` is gone —
+a heading only folds now, it is never the selected revset — so a theme that
+styled it has a dead rule, not a broken one.
+
 ## v1.4 — 2026-09-10
 
 Additive. `.side-head` may now be a `<summary>` — the sidebar sections fold —

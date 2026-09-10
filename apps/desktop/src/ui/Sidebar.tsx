@@ -33,9 +33,14 @@ import {
 import { TransitionStrip } from "./Coach.tsx";
 import {
   BookmarkIcon,
+  BranchIcon,
+  ChevronIcon,
   CurrentWorkspaceIcon,
+  FolderIcon,
+  PencilIcon,
   RevsetIcon,
   SettingsIcon,
+  StarIcon,
   TagIcon,
   WorkspaceIcon,
 } from "./icons.tsx";
@@ -51,17 +56,17 @@ import {
 
 /**
  * Built-in revsets, bound to ⌘1…⌘8 by position *in this list*. Handled in
- * `App`'s key map and the View menu too. The sidebar files each under the kind
- * of revset it is — three of them as a section heading — but the key stays with
- * the revset, so where a row sits never changes what a chord means.
+ * `App`'s key map and the View menu too. This order is the order the rows
+ * appear down the sidebar, so reading the digits top to bottom counts 1…8:
+ * a row's place in the list *is* its chord, and moving a row here moves both.
  */
 export const SAVED_REVSETS = [
   { label: "Recent work", revset: DEFAULT_REVSET, key: "⌘1" },
   { label: "Mine, unpushed", revset: UNPUSHED_REVSET, key: "⌘2" },
   { label: "Conflicts", revset: CONFLICTS_REVSET, key: "⌘3" },
   { label: "Current stack", revset: stackRevset("@"), key: "⌘4" },
-  { label: "All bookmarks", revset: BOOKMARKS_REVSET, key: "⌘5" },
-  { label: "Empty changes", revset: EMPTY_REVSET, key: "⌘6" },
+  { label: "Empty changes", revset: EMPTY_REVSET, key: "⌘5" },
+  { label: "All bookmarks", revset: BOOKMARKS_REVSET, key: "⌘6" },
   { label: "Everything", revset: ALL_REVSET, key: "⌘7" },
   // What a Git client's "all branches" view draws. Offered under a Git word
   // because that is the picture a Fork or Tower user is looking for on day one.
@@ -78,63 +83,38 @@ function preset(label: Preset["label"]): Preset {
 /**
  * A section is a kind of revset; its rows are members of that kind.
  *
- * The heading is two controls. The chevron folds — native `<details>`, so the
- * fold and its keyboard handling are the browser's and only *which* sections
- * are folded is ours. The name, when the section stands for a revset, filters
- * the graph to the whole kind, and the ⌘-digit on it is the built-in that
- * revset already was. A button inside a `<summary>` fires its own click and
- * stops the fold, which is what lets one heading carry both.
+ * The heading does one thing, the way a macOS sidebar group header does: the
+ * whole of it — chevron, icon, name — folds the section. Native `<details>`,
+ * so the fold and its keyboard handling are the browser's and only *which*
+ * sections are folded is ours. The kind's own revset is the first row under
+ * it, not the heading, so a heading is never both a fold and a filter. The
+ * action buttons on the right swallow their click so they do not fold.
  */
 function Section({
   id,
   title,
   icon,
-  revset,
-  shortcut,
   actions,
   children,
 }: {
   id: string;
   title: string;
-  icon?: ReactNode;
-  /** What the whole section resolves to; absent for a list that is not a kind. */
-  revset?: string | undefined;
-  shortcut?: string | undefined;
+  icon: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
 }) {
   const { collapsed } = useSidebarState();
-  const { revset: current, setRevset } = useRepo();
   return (
     <details
       open={!collapsed.includes(id)}
       onToggle={(event) => setCollapsed(id, !event.currentTarget.open)}
     >
-      <summary
-        className="side-head"
-        aria-current={revset !== undefined && current === revset}
-        style={{ display: "flex", alignItems: "center", gap: 6 }}
-      >
+      <summary className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span className="chev" aria-hidden>
-          ▾
+          <ChevronIcon />
         </span>
         {icon}
-        {revset === undefined ? (
-          <span style={{ flexGrow: 1 }}>{title}</span>
-        ) : (
-          <button
-            type="button"
-            title={t("Show {revset}", { revset })}
-            onClick={(event) => {
-              event.preventDefault();
-              setRevset(revset);
-            }}
-            style={{ flexGrow: 1, textAlign: "left", font: "inherit", color: "inherit" }}
-          >
-            {title}
-          </button>
-        )}
-        {shortcut && <span className="key">{shortcut}</span>}
+        <span style={{ flexGrow: 1 }}>{title}</span>
         {actions && <span onClick={(event) => event.preventDefault()}>{actions}</span>}
       </summary>
       {children}
@@ -142,22 +122,36 @@ function Section({
   );
 }
 
-/** One built-in row: label, its key, and the revset it applies. */
-function PresetRow({ label }: { label: Preset["label"] }) {
+/** A row that applies a revset: label, the key if it has one, and the query. */
+function RevsetRow({
+  label,
+  revset: target,
+  shortcut,
+}: {
+  label: string;
+  revset: string;
+  shortcut?: string;
+}) {
   const { revset, setRevset } = useRepo();
-  const saved = preset(label);
   return (
     <button
       type="button"
       className="side-item"
-      aria-current={revset === saved.revset}
-      onClick={() => setRevset(saved.revset)}
+      aria-current={revset === target}
+      title={t("Show {revset}", { revset: target })}
+      onClick={() => setRevset(target)}
     >
       <RevsetIcon />
-      <span style={{ flexGrow: 1 }}>{t(saved.label)}</span>
-      <span className="key">{saved.key}</span>
+      <span style={{ flexGrow: 1 }}>{label}</span>
+      {shortcut && <span className="key">{shortcut}</span>}
     </button>
   );
+}
+
+/** One built-in row, looked up by its label. */
+function PresetRow({ label }: { label: Preset["label"] }) {
+  const saved = preset(label);
+  return <RevsetRow label={t(saved.label)} revset={saved.revset} shortcut={saved.key} />;
 }
 
 /**
@@ -198,6 +192,7 @@ function MyRevsets() {
     <Section
       id="mine"
       title={t("My revsets")}
+      icon={<StarIcon />}
       actions={
         <button
           type="button"
@@ -248,17 +243,17 @@ function MyRevsets() {
           rule was broken. The name becomes a bare symbol inside a revset, so
           the narrow shape is `isAliasName`'s doing, not a UI preference. */}
       {naming && draft.length > 0 && !valid && (
-        <div className="ter" style={{ padding: "0 8px 2px", fontSize: 11 }}>
+        <div className="ter" style={{ padding: "0 8px 2px 28px", fontSize: 11 }}>
           {t("A letter, then letters, digits, - or _.")}
         </div>
       )}
       {naming && valid && taken && (
-        <div className="ter" style={{ padding: "0 8px 2px", fontSize: 11 }}>
+        <div className="ter" style={{ padding: "0 8px 2px 28px", fontSize: 11 }}>
           {t("Replaces the revset {name} already stands for.", { name: draft })}
         </div>
       )}
       {!naming && rows.length === 0 && (
-        <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
+        <div className="sec" style={{ padding: "0 8px 0 28px", fontSize: 12 }}>
           {t("None yet.")}
         </div>
       )}
@@ -384,9 +379,9 @@ function untrackedRemotes(
  * The sidebar: a taxonomy of revsets. Each section is one kind — the changes
  * you are working on, the bookmarks, the tags, the workspaces, the repository
  * as a whole, and the queries you named yourself — and every row in it is a
- * member of that kind. Three of the built-ins *are* a kind and sit as that
- * section's heading rather than as a row under it, which is why "All bookmarks"
- * is not listed twice.
+ * member of that kind. The kind's own revset — "All bookmarks" under Bookmarks,
+ * "Everything" under Repository — is the first row of its section, so the
+ * ⌘-digits on the rows count 1…8 straight down the sidebar.
  */
 export function Sidebar({
   view,
@@ -423,12 +418,8 @@ export function Sidebar({
         borderRight: "1px solid var(--u-line)",
       }}
     >
-      <Section
-        id="work"
-        title={t("Work")}
-        revset={preset("Recent work").revset}
-        shortcut={preset("Recent work").key}
-      >
+      <Section id="work" title={t("Work")} icon={<PencilIcon />}>
+        <PresetRow label="Recent work" />
         <PresetRow label="Mine, unpushed" />
         <PresetRow label="Conflicts" />
         <PresetRow label="Current stack" />
@@ -438,15 +429,10 @@ export function Sidebar({
       {/* One icon for the section, not one per row: a column of the same glyph
           repeated says nothing the heading has not, and it was the only thing
           between the row's left edge and the name. */}
-      <Section
-        id="bookmarks"
-        title={t("Bookmarks")}
-        icon={<BookmarkIcon />}
-        revset={preset("All bookmarks").revset}
-        shortcut={preset("All bookmarks").key}
-      >
+      <Section id="bookmarks" title={t("Bookmarks")} icon={<BookmarkIcon />}>
+        <PresetRow label="All bookmarks" />
         {bookmarks.data?.length === 0 && (
-          <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
+          <div className="sec" style={{ padding: "0 8px 0 28px", fontSize: 12 }}>
             {t("None yet.")}
           </div>
         )}
@@ -549,7 +535,7 @@ export function Sidebar({
               fontSize: 11,
               color: "var(--u-conflict)",
               whiteSpace: "pre-wrap",
-              padding: "2px 8px",
+              padding: "2px 8px 2px 28px",
             }}
           >
             {messageFor(track.error)}
@@ -561,7 +547,8 @@ export function Sidebar({
           revset is empty is a dead button. Newest first — a tag's name is its
           place in time, which is the one thing a bookmark name is not. */}
       {(tags.data?.length ?? 0) > 0 && (
-        <Section id="tags" title={t("Tags")} icon={<TagIcon />} revset={TAGS_REVSET}>
+        <Section id="tags" title={t("Tags")} icon={<TagIcon />}>
+          <RevsetRow label={t("All tags")} revset={TAGS_REVSET} />
           {sortTags(tags.data ?? []).map((tag) => {
             const target = tagRevset(tag.name);
             return (
@@ -596,7 +583,7 @@ export function Sidebar({
       <Section
         id="workspaces"
         title={t("Workspaces")}
-        revset={WORKSPACES_REVSET}
+        icon={<FolderIcon />}
         actions={
           <>
             <button
@@ -623,6 +610,7 @@ export function Sidebar({
           </>
         }
       >
+        <RevsetRow label={t("All workspaces")} revset={WORKSPACES_REVSET} />
         {workspaces.data?.map((workspace, index) => (
           <div
             className="side-item"
@@ -674,7 +662,7 @@ export function Sidebar({
               fontSize: 11,
               color: "var(--u-conflict)",
               whiteSpace: "pre-wrap",
-              padding: "2px 8px",
+              padding: "2px 8px 2px 28px",
             }}
           >
             {messageFor(addWorkspace.error ?? forget.error)}
@@ -682,12 +670,8 @@ export function Sidebar({
         )}
       </Section>
 
-      <Section
-        id="repository"
-        title={t("Repository")}
-        revset={preset("Everything").revset}
-        shortcut={preset("Everything").key}
-      >
+      <Section id="repository" title={t("Repository")} icon={<BranchIcon />}>
+        <PresetRow label="Everything" />
         <PresetRow label="All branches" />
       </Section>
 

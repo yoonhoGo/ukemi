@@ -53,10 +53,14 @@ here computes it.
 
 **The sidebar is a taxonomy of revsets, not a list of lists.**
 Each section is one kind — work, bookmarks, tags, workspaces, the repository,
-your own names — and a row is a member of that kind. Three built-ins *are* a
-kind and became their section's heading: Recent work (⌘1), All bookmarks (⌘5),
-Everything (⌘7); clicking a heading's name filters to the kind, the chevron
-folds it. Nesting bookmarks and tags *under* "Saved revsets" was considered and
+your own names — and a row is a member of that kind. The kind's own revset
+(Recent work, All bookmarks, All tags, All workspaces, Everything) is the first
+row under its heading. It sat *as* the heading for a while, with the name
+filtering and the chevron folding; that was undone for the macOS sidebar rule
+that a group header does one thing — the whole header folds, only rows select —
+and so that the ⌘-digits read 1…8 straight down the sidebar, which they could
+not while ⌘5 was a heading below ⌘6's row. Nesting bookmarks and tags *under*
+"Saved revsets" was considered and
 refused: those rows carry repository state (ahead/behind, Track) and change on
 every fetch, while a saved name is a query the user owns and hand-orders. Only
 "My revsets" is hand-ordered; bookmarks sort trunk-first then naturally, tags

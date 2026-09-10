@@ -464,18 +464,19 @@ summary.side-head::-webkit-details-marker {
   display: none;
 }
 .side-head > .chev {
-  display: inline-block;
-  width: 10px;
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  width: 14px;
   transition: transform var(--u-duration-fast) var(--u-ease);
 }
 details:not([open]) > .side-head > .chev {
   transform: rotate(-90deg);
 }
-/* A heading that is itself a revset lights up like a row when it is the one
-   the graph is showing. */
-summary.side-head[aria-current="true"] {
-  color: var(--u-text);
+/* Rows under a heading step in past the chevron column, the way an outline
+   view indents its children under a disclosure triangle. The highlight still
+   runs the full width; only the content moves. */
+details > .side-item {
+  padding-left: 28px;
 }
 
 /**

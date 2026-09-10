@@ -40,6 +40,8 @@ export const chrome: Record<string, string> = {
   "Empty changes": "빈 체인지",
   Everything: "전부",
   "All branches": "브랜치 전체",
+  "All tags": "태그 전체",
+  "All workspaces": "워크스페이스 전체",
   // Named revsets the user saved — jj's own `revset-aliases`, repo scope.
   "Name the current revset": "지금 리브셋에 이름 붙이기",
   "Name for this revset": "이 리브셋의 이름",

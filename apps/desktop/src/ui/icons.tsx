@@ -44,6 +44,55 @@ export function TagIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+/** A sidebar section's fold. Points down; the stylesheet turns it when closed. */
+export function ChevronIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} strokeWidth={1.8} aria-hidden>
+      <path d="M5.5 7.5l4.5 4.5 4.5-4.5" />
+    </svg>
+  );
+}
+
+/** Work in progress: the changes being written. */
+export function PencilIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} aria-hidden>
+      <path d="M13.5 3.5l3 3L7 16H4v-3z" />
+      <path d="M11.5 5.5l3 3" />
+    </svg>
+  );
+}
+
+/** A workspace is a folder on disk, so the section wears one. */
+export function FolderIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} aria-hidden>
+      <path d="M3 6.5V15a1.5 1.5 0 001.5 1.5h11A1.5 1.5 0 0017 15V8a1.5 1.5 0 00-1.5-1.5H10L8.5 4.5H4.5A1.5 1.5 0 003 6z" />
+    </svg>
+  );
+}
+
+/** The repository as a whole: the picture every Git client draws for it. */
+export function BranchIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} aria-hidden>
+      <circle cx="6" cy="5" r="2" />
+      <circle cx="6" cy="15" r="2" />
+      <circle cx="14" cy="7" r="2" />
+      <path d="M6 7v6M14 9c0 3-8 2-8 4" />
+    </svg>
+  );
+}
+
+/** The user's own picks — the glyph Finder gives "Favorites". */
+export function StarIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} aria-hidden>
+      <path d="M10 3l2.1 4.4 4.8.6-3.5 3.3.9 4.8L10 13.8l-4.3 2.3.9-4.8L3.1 8l4.8-.6z" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ size = 14 }: { size?: number }) {
   return (
     <svg {...base} width={size} height={size} aria-hidden>
