@@ -39,6 +39,6 @@
     ],
     "copyright": "Ukemi contributors",
     "shortDescription": "A desktop GUI for Jujutsu",
-    "macOS": { "minimumSystemVersion": "11.0" }
+    "macOS": { "minimumSystemVersion": "11.0", "signingIdentity": "-" }
   }
 }

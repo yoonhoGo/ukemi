@@ -76,7 +76,16 @@ The tag is `v` + the config version, on the release commit. `0.0.0` means
 Pushing the tag runs `.github/workflows/release.yml`: it refuses a tag that
 does not match the config version, fetches the pinned `jj`, runs the tests,
 builds the bundled DMG for Apple silicon and attaches it to a GitHub Release.
-The build is not signed or notarised yet — first launch is right-click → Open.
+The bundle is ad-hoc signed (`signingIdentity: "-"`) so Gatekeeper sees a
+valid signature, but it is not notarised, and macOS 15+ no longer offers
+right-click → Open as a way past that. Either works:
+
+    xattr -dr com.apple.quarantine /Applications/Ukemi.app
+
+or open the app once, dismiss the warning, then System Settings → Privacy &
+Security → *Open Anyway*. Notarisation needs an Apple Developer ID; the day
+there is one, `APPLE_CERTIFICATE`/`APPLE_ID` secrets in the release workflow
+replace both of these steps.
 
 ## Licence
 
