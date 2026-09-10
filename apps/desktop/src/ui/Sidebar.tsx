@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { Bookmark } from "@ukemi/domain";
 import {
   ALL_REVSET,
@@ -36,8 +36,20 @@ import {
   TagIcon,
   WorkspaceIcon,
 } from "./icons.tsx";
+import {
+  orderRows,
+  reorder,
+  setCollapsed,
+  setRevsetOrder,
+  useSidebarState,
+} from "./sidebar-state.ts";
 
-/** Saved revsets, bound to ⌘1…⌘8 by position. Handled in `App`'s key map too. */
+/**
+ * Saved revsets, bound to ⌘1…⌘8 by position *in this list*. Handled in `App`'s
+ * key map and the View menu too. The sidebar can show them in another order —
+ * the key stays with the row, so a chord does not change meaning because a row
+ * was dragged.
+ */
 export const SAVED_REVSETS = [
   { label: "Recent work", revset: DEFAULT_REVSET, key: "⌘1" },
   { label: "Mine, unpushed", revset: UNPUSHED_REVSET, key: "⌘2" },
@@ -52,8 +64,58 @@ export const SAVED_REVSETS = [
 ] as const;
 
 /**
- * The eight built-in revsets, the user's own named ones under them, and the
- * one field that adds to the second list.
+ * A foldable section. Native `<details>`: the fold, the keyboard toggle and the
+ * open state are the browser's, and only which sections are folded is ours.
+ * Controls in the heading stop the click so pressing ＋ does not also fold the
+ * list it adds to.
+ */
+function Section({
+  id,
+  title,
+  icon,
+  actions,
+  children,
+}: {
+  id: string;
+  title: string;
+  icon?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const { collapsed } = useSidebarState();
+  return (
+    <details
+      open={!collapsed.includes(id)}
+      onToggle={(event) => setCollapsed(id, !event.currentTarget.open)}
+    >
+      <summary className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span className="chev" aria-hidden>
+          ▾
+        </span>
+        {icon}
+        {title}
+        <span style={{ flexGrow: 1 }} />
+        {actions && <span onClick={(event) => event.preventDefault()}>{actions}</span>}
+      </summary>
+      {children}
+    </details>
+  );
+}
+
+/** A built-in or a user alias, as one row of the saved list. */
+interface RevsetRow {
+  /** A built-in's label or an alias's name; also what the stored order names. */
+  readonly id: string;
+  readonly label: string;
+  readonly target: string;
+  readonly key?: string | undefined;
+  readonly detail?: string | undefined;
+  readonly alias: boolean;
+}
+
+/**
+ * The eight built-in revsets and the user's own named ones, in one list the
+ * user can drag into any order, plus the field that adds to it.
  *
  * A row sets the revset to the *name*, not the expression it stands for: the
  * ⌘L field then reads `my-stack`, which is exactly what the same query is
@@ -61,16 +123,39 @@ export const SAVED_REVSETS = [
  * of storing these as jj aliases rather than app state is that the short name
  * is real everywhere.
  */
-function SavedAliases() {
+function SavedRevsets() {
   const { revset, setRevset } = useRepo();
   const aliases = useRevsetAliases();
   const save = useSaveRevsetAlias();
   const remove = useDeleteRevsetAlias();
+  const { revsetOrder } = useSidebarState();
   const [naming, setNaming] = useState(false);
   const [draft, setDraft] = useState("");
+  const [dragging, setDragging] = useState<string | undefined>(undefined);
 
   const taken = aliases.data?.some((alias) => alias.name === draft) ?? false;
   const valid = isAliasName(draft);
+
+  const rows = orderRows<RevsetRow>(
+    [
+      ...SAVED_REVSETS.map((saved) => ({
+        id: saved.label,
+        label: t(saved.label),
+        target: saved.revset,
+        key: saved.key,
+        alias: false,
+      })),
+      ...(aliases.data ?? []).map((alias) => ({
+        id: alias.name,
+        label: alias.name,
+        target: alias.name,
+        detail: alias.revset,
+        alias: true,
+      })),
+    ],
+    (row) => row.id,
+    revsetOrder,
+  );
 
   const commit = () => {
     if (!valid) return;
@@ -83,10 +168,10 @@ function SavedAliases() {
   };
 
   return (
-    <>
-      <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        {t("Saved revsets")}
-        <span style={{ flexGrow: 1 }} />
+    <Section
+      id="revsets"
+      title={t("Saved revsets")}
+      actions={
         <button
           type="button"
           className="tb-btn"
@@ -98,8 +183,8 @@ function SavedAliases() {
         >
           ＋
         </button>
-      </div>
-
+      }
+    >
       {naming && (
         <div className="side-item" style={{ gap: 6 }}>
           <RevsetIcon />
@@ -146,31 +231,43 @@ function SavedAliases() {
         </div>
       )}
 
-      {SAVED_REVSETS.map((saved) => (
-        <button
-          type="button"
-          className="side-item"
-          key={saved.label}
-          aria-current={revset === saved.revset}
-          onClick={() => setRevset(saved.revset)}
-        >
-          <RevsetIcon />
-          <span style={{ flexGrow: 1 }}>{t(saved.label)}</span>
-          <span className="key">{saved.key}</span>
-        </button>
-      ))}
-
-      {aliases.data?.map((alias) => (
+      {/* HTML5 drag, which needs `dragDropEnabled: false` on the Tauri window
+          (see tauri.conf.json) or the shell eats the events as a file drop. The
+          dropped row takes the target's place; the stored order is the whole
+          list, so a new alias lands at the end rather than anywhere. */}
+      {rows.map((row) => (
         <div
           className="side-item"
-          key={alias.name}
-          aria-current={revset === alias.name}
-          title={alias.revset}
+          key={row.id}
+          aria-current={revset === row.target}
+          title={row.detail}
+          draggable
+          onDragStart={(event) => {
+            setDragging(row.id);
+            event.dataTransfer.effectAllowed = "move";
+          }}
+          onDragEnd={() => setDragging(undefined)}
+          onDragOver={(event) => {
+            if (dragging !== undefined && dragging !== row.id) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            if (dragging === undefined) return;
+            setRevsetOrder(
+              reorder(
+                rows.map((each) => each.id),
+                dragging,
+                row.id,
+              ),
+            );
+            setDragging(undefined);
+          }}
+          style={{ cursor: "grab", ...(dragging === row.id ? { opacity: 0.4 } : {}) }}
         >
           <RevsetIcon />
           <button
             type="button"
-            onClick={() => setRevset(alias.name)}
+            onClick={() => setRevset(row.target)}
             style={{
               flexGrow: 1,
               minWidth: 0,
@@ -180,25 +277,28 @@ function SavedAliases() {
               textAlign: "left",
             }}
           >
-            {alias.name}
+            {row.label}
           </button>
+          {row.key && <span className="key">{row.key}</span>}
           {/* No confirmation sheet: the row is one line of repo config, the
               expression it removes is in the tooltip beside it, and `jj config
               set` puts it back. ponytail: if a longer expression starts being
               hard to retype, undo belongs here rather than a dialog. */}
-          <button
-            type="button"
-            className="ter"
-            onClick={() => remove.mutate(alias.name)}
-            title={t("Forget {name}", { name: alias.name })}
-            aria-label={t("Forget {name}", { name: alias.name })}
-            style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
-          >
-            ×
-          </button>
+          {row.alias && (
+            <button
+              type="button"
+              className="ter"
+              onClick={() => remove.mutate(row.id)}
+              title={t("Forget {name}", { name: row.id })}
+              aria-label={t("Forget {name}", { name: row.id })}
+              style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
+            >
+              ×
+            </button>
+          )}
         </div>
       ))}
-    </>
+    </Section>
   );
 }
 
@@ -287,130 +387,214 @@ export function Sidebar({
       {/* One icon for the section, not one per row: a column of the same glyph
           repeated says nothing the heading has not, and it was the only thing
           between the row's left edge and the name. */}
-      <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <BookmarkIcon />
-        {t("Bookmarks")}
-      </div>
-      {bookmarks.data?.length === 0 && (
-        <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
-          {t("None yet.")}
-        </div>
-      )}
-      {bookmarks.data &&
-        localBookmarks(bookmarks.data).map((bookmark) => {
-          const target = bookmarkRevset(bookmark.name);
-          return (
+      <Section id="bookmarks" title={t("Bookmarks")} icon={<BookmarkIcon />}>
+        {bookmarks.data?.length === 0 && (
+          <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
+            {t("None yet.")}
+          </div>
+        )}
+        {bookmarks.data &&
+          localBookmarks(bookmarks.data).map((bookmark) => {
+            const target = bookmarkRevset(bookmark.name);
+            return (
+              <button
+                type="button"
+                className="side-item"
+                key={bookmark.name}
+                aria-current={revset === target}
+                onClick={() => setRevset(target)}
+              >
+                <span
+                  style={{
+                    flexGrow: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {bookmark.name}
+                </span>
+                {bookmark.hasConflict && (
+                  <span className="pill" data-kind="conflict">
+                    ⚠
+                  </span>
+                )}
+                {bookmark.ahead !== undefined && bookmark.ahead > 0 && (
+                  <span className="pill">↑{bookmark.ahead}</span>
+                )}
+                {bookmark.behind !== undefined && bookmark.behind > 0 && (
+                  <span className="pill">↓{bookmark.behind}</span>
+                )}
+                {bookmark.ahead === undefined && (
+                  /* `nowrap` because a line breaks between Hangul syllables:
+                     under a long bookmark name the label would otherwise stack
+                     one syllable per line and push the row taller. */
+                  <span
+                    className="ter"
+                    style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
+                  >
+                    {t("local")}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+        {/* Under the same head, but muted and named the way jj names them: these
+            are not bookmarks of this repo yet, and the whole row is the verb.
+            A failure reports under the list rather than in `App`'s strip: that
+            strip belongs to the mutations `App` owns, and a row that simply did
+            not move is no explanation at all. */}
+        {bookmarks.data &&
+          untrackedRemotes(bookmarks.data).map((remote) => (
             <button
               type="button"
               className="side-item"
-              key={bookmark.name}
-              aria-current={revset === target}
-              onClick={() => setRevset(target)}
+              key={`${remote.name}@${remote.remote}`}
+              disabled={isPinned || track.isPending}
+              onClick={() => {
+                if (!isPinned) track.mutate(remote);
+              }}
+              title={
+                isPinned
+                  ? t("The window is parked on a past operation. Return to now to make changes.")
+                  : t("Track {name} to get a local bookmark for it", {
+                      name: `${remote.name}@${remote.remote}`,
+                    })
+              }
             >
               <span
+                className="ter"
                 style={{
                   flexGrow: 1,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  textAlign: "left",
                 }}
               >
-                {bookmark.name}
+                {remote.name}@{remote.remote}
               </span>
-              {bookmark.hasConflict && (
-                <span className="pill" data-kind="conflict">
-                  ⚠
-                </span>
-              )}
-              {bookmark.ahead !== undefined && bookmark.ahead > 0 && (
-                <span className="pill">↑{bookmark.ahead}</span>
-              )}
-              {bookmark.behind !== undefined && bookmark.behind > 0 && (
-                <span className="pill">↓{bookmark.behind}</span>
-              )}
-              {bookmark.ahead === undefined && (
-                /* `nowrap` because a line breaks between Hangul syllables:
-                   under a long bookmark name the label would otherwise stack
-                   one syllable per line and push the row taller. */
-                <span
-                  className="ter"
-                  style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
-                >
-                  {t("local")}
-                </span>
-              )}
+              <span
+                className="ter"
+                style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                {t("Track")}
+              </span>
             </button>
-          );
-        })}
+          ))}
 
-      {/* Under the same head, but muted and named the way jj names them: these
-          are not bookmarks of this repo yet, and the whole row is the verb.
-          A failure reports under the list rather than in `App`'s strip: that
-          strip belongs to the mutations `App` owns, and a row that simply did
-          not move is no explanation at all. */}
-      {bookmarks.data &&
-        untrackedRemotes(bookmarks.data).map((remote) => (
-          <button
-            type="button"
-            className="side-item"
-            key={`${remote.name}@${remote.remote}`}
-            disabled={isPinned || track.isPending}
-            onClick={() => {
-              if (!isPinned) track.mutate(remote);
+        {track.error && (
+          <div
+            role="alert"
+            className="mono selectable"
+            style={{
+              fontSize: 11,
+              color: "var(--u-conflict)",
+              whiteSpace: "pre-wrap",
+              padding: "2px 8px",
             }}
-            title={
-              isPinned
-                ? t("The window is parked on a past operation. Return to now to make changes.")
-                : t("Track {name} to get a local bookmark for it", {
-                    name: `${remote.name}@${remote.remote}`,
-                  })
-            }
           >
-            <span
-              className="ter"
+            {messageFor(track.error)}
+          </div>
+        )}
+      </Section>
+
+      <Section
+        id="workspaces"
+        title={t("Workspaces")}
+        actions={
+          <>
+            <button
+              type="button"
+              className="tb-btn"
+              style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
+              onClick={addWorkspace.pickAndAdd}
+              title={t("New workspace")}
+              aria-label={t("New workspace")}
+            >
+              ＋
+            </button>
+            <button
+              type="button"
+              className="tb-btn"
+              style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
+              aria-pressed={view === "board"}
+              {...(view === "board" ? { "data-variant": "primary" } : {})}
+              onClick={onToggleBoard}
+              title={t("Workspace board (⌘⇧W)")}
+            >
+              {t("Board")}
+            </button>
+          </>
+        }
+      >
+        {workspaces.data?.map((workspace, index) => (
+          <div
+            className="side-item"
+            key={workspace.name}
+            title={t("Working copy of {name}", { name: workspace.name })}
+          >
+            {index === 0 ? <CurrentWorkspaceIcon /> : <WorkspaceIcon />}
+            <button
+              type="button"
+              onClick={() => setRevset(workspace.changeId)}
               style={{
                 flexGrow: 1,
+                minWidth: 0,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 textAlign: "left",
               }}
             >
-              {remote.name}@{remote.remote}
+              {workspace.name}
+            </button>
+            <span className="mono ter" style={{ fontSize: 11 }}>
+              {workspace.changeId.slice(0, 4)}
             </span>
-            <span
-              className="ter"
-              style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
-            >
-              {t("Track")}
-            </span>
-          </button>
-        ))}
-
-      {track.error && (
-        <div
-          role="alert"
-          className="mono selectable"
-          style={{
-            fontSize: 11,
-            color: "var(--u-conflict)",
-            whiteSpace: "pre-wrap",
-            padding: "2px 8px",
-          }}
-        >
-          {messageFor(track.error)}
-        </div>
-      )}
-
-      {/* Only when there are some: most jj repos have none, and an empty
-          section is a heading with nothing under it. A tag is immutable by
-          default, so there is nothing to do to one here but look at it. */}
-      {(tags.data?.length ?? 0) > 0 && (
-        <>
-          <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <TagIcon />
-            {t("Tags")}
+            {/* Not offered for the first row: that is this window's own working
+                copy, and forgetting it would leave the app looking at a
+                workspace the repo no longer has. No confirmation on the rest —
+                `jj workspace forget` is an operation like any other, so ⌘Z puts
+                it back, and the folder on disk is untouched either way. */}
+            {index > 0 && (
+              <button
+                type="button"
+                className="ter"
+                onClick={() => forget.mutate(workspace.name)}
+                title={t("Forget {name}", { name: workspace.name })}
+                aria-label={t("Forget {name}", { name: workspace.name })}
+                style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
+              >
+                ×
+              </button>
+            )}
           </div>
+        ))}
+        {(addWorkspace.error ?? forget.error) && (
+          <div
+            role="alert"
+            className="mono selectable"
+            style={{
+              fontSize: 11,
+              color: "var(--u-conflict)",
+              whiteSpace: "pre-wrap",
+              padding: "2px 8px",
+            }}
+          >
+            {messageFor(addWorkspace.error ?? forget.error)}
+          </div>
+        )}
+      </Section>
+
+      <SavedRevsets />
+
+      {/* Last, and only when there are some: most jj repos have none, a tag is
+          immutable by default so there is nothing to do to one here but look at
+          it, and the sections above are the ones the day's work touches. */}
+      {(tags.data?.length ?? 0) > 0 && (
+        <Section id="tags" title={t("Tags")} icon={<TagIcon />}>
           {tags.data?.map((tag) => {
             const target = tagRevset(tag.name);
             return (
@@ -439,93 +623,8 @@ export function Sidebar({
               </button>
             );
           })}
-        </>
+        </Section>
       )}
-
-      <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        {t("Workspaces")}
-        <span style={{ flexGrow: 1 }} />
-        <button
-          type="button"
-          className="tb-btn"
-          style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
-          onClick={addWorkspace.pickAndAdd}
-          title={t("New workspace")}
-          aria-label={t("New workspace")}
-        >
-          ＋
-        </button>
-        <button
-          type="button"
-          className="tb-btn"
-          style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
-          aria-pressed={view === "board"}
-          {...(view === "board" ? { "data-variant": "primary" } : {})}
-          onClick={onToggleBoard}
-          title={t("Workspace board (⌘⇧W)")}
-        >
-          {t("Board")}
-        </button>
-      </div>
-      {workspaces.data?.map((workspace, index) => (
-        <div
-          className="side-item"
-          key={workspace.name}
-          title={t("Working copy of {name}", { name: workspace.name })}
-        >
-          {index === 0 ? <CurrentWorkspaceIcon /> : <WorkspaceIcon />}
-          <button
-            type="button"
-            onClick={() => setRevset(workspace.changeId)}
-            style={{
-              flexGrow: 1,
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              textAlign: "left",
-            }}
-          >
-            {workspace.name}
-          </button>
-          <span className="mono ter" style={{ fontSize: 11 }}>
-            {workspace.changeId.slice(0, 4)}
-          </span>
-          {/* Not offered for the first row: that is this window's own working
-              copy, and forgetting it would leave the app looking at a
-              workspace the repo no longer has. No confirmation on the rest —
-              `jj workspace forget` is an operation like any other, so ⌘Z puts
-              it back, and the folder on disk is untouched either way. */}
-          {index > 0 && (
-            <button
-              type="button"
-              className="ter"
-              onClick={() => forget.mutate(workspace.name)}
-              title={t("Forget {name}", { name: workspace.name })}
-              aria-label={t("Forget {name}", { name: workspace.name })}
-              style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
-            >
-              ×
-            </button>
-          )}
-        </div>
-      ))}
-      {(addWorkspace.error ?? forget.error) && (
-        <div
-          role="alert"
-          className="mono selectable"
-          style={{
-            fontSize: 11,
-            color: "var(--u-conflict)",
-            whiteSpace: "pre-wrap",
-            padding: "2px 8px",
-          }}
-        >
-          {messageFor(addWorkspace.error ?? forget.error)}
-        </div>
-      )}
-
-      <SavedAliases />
 
       {/* The theme and language pickers used to sit under this strip. They are
           the user's settings, not this repository's, so they moved behind ⌘,

@@ -4,6 +4,14 @@ The classes and custom properties in `contract.css` are a public API. A theme
 written against version *n* must keep working until this file records a
 breaking change and the version is bumped.
 
+## v1.4 — 2026-09-10
+
+Additive. `.side-head` may now be a `<summary>` — the sidebar sections fold —
+and carries a `.chev` child that the contract turns when the `<details>` is
+closed. The contract strips the browser's own marker on `summary.side-head`.
+A theme restyling `.side-head` keeps working; one that wants its own fold glyph
+overrides `.side-head > .chev`.
+
 ## v1.3 — 2026-09-09
 
 Additive. Found the same way v1.2 was, one appearance further along: v1.2 stood

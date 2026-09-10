@@ -452,6 +452,26 @@ button {
   color: var(--u-text-secondary);
   letter-spacing: 0.02em;
 }
+/* As a `<summary>` the heading folds its section. The browser's own marker
+   goes; the chevron inside turns instead, so a theme restyling `.side-head`
+   keeps the fold affordance without knowing it is one. */
+summary.side-head {
+  list-style: none;
+  cursor: default;
+  user-select: none;
+}
+summary.side-head::-webkit-details-marker {
+  display: none;
+}
+.side-head > .chev {
+  display: inline-block;
+  width: 10px;
+  font-size: 10px;
+  transition: transform var(--u-duration-fast) var(--u-ease);
+}
+details:not([open]) > .side-head > .chev {
+  transform: rotate(-90deg);
+}
 
 /**
  * One revision row in the graph.
