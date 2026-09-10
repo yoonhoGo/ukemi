@@ -38,6 +38,19 @@ silently hid the tip of any stack without a bookmark, which is most of them
 while you are working. Matching the CLI also means the window shows what
 `jj log` shows.
 
+**The Git-client view is a preset, not the default.**
+`::(bookmarks() | remote_bookmarks() | tags() | @) | mutable()` is what Fork
+draws as "all branches", and it sits at ⌘8 for the user arriving from one. It
+does not replace `revsets.log` as the default: on a repo of any age it is the
+whole history, `latest(…, 1000)` cuts that off silently, and the CLI's own
+default is the one the window should agree with. Two consequences of the same
+comparison: the toolbar's search box (⌘F) does not query on its own — it writes
+`description(substring-i:…) | author(…) | present(…)` into the ⌘L field, so a
+search teaches the revset it stands for; and a file's history is
+`files("path")` applied to the graph, not a second list. Blame is
+`jj file annotate` through a template, so the adapter reads it and nothing
+here computes it.
+
 **Package layout — three packages, not four.**
 The draft listed a separate `packages/jj-port`. A package holding one interface
 with one implementation is not worth its own boundary, so the port lives in

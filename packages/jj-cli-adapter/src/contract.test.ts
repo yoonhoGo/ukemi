@@ -145,6 +145,28 @@ test("workspaces list the default workspace", async () => {
   assert.match(workspaces[0]!.changeId, /^[k-z]{32}$/);
 });
 
+test("tags list is empty on a fresh repo and parses once git has one", async () => {
+  assert.deepEqual(await jj.tags(), []);
+  // jj 0.43 has no `jj tag create`; a tag arrives through the colocated git.
+  const base = (await jj.log("all()")).find((r) => r.description.startsWith("base"))!;
+  execFileSync("git", ["tag", "v1", base.commitId], { cwd: repo });
+  raw("git", "import");
+  const tags = await jj.tags();
+  assert.deepEqual(tags.map((tag) => tag.name), ["v1"]);
+  assert.match(tags[0]!.target!, /^[k-z]{32}$/);
+  assert.equal((await jj.log(`tags(exact:"v1")`)).length, 1);
+});
+
+test("annotate names the change behind each line", async () => {
+  const feature = (await jj.log("all()")).find((r) => r.description === "feature work")!;
+  const lines = await jj.annotate(feature.changeId, "b.txt");
+  assert.deepEqual(
+    lines.map((line) => [line.changeId, line.lineNumber, line.firstInHunk, line.subject, line.content]),
+    [[feature.changeId, 1, true, "feature work", "b"]],
+  );
+  assert.equal(lines[0]!.author.email, "test@ukemi.dev");
+});
+
 test("diffSummary and diff read one revision's files", async () => {
   const feature = (await jj.log("all()")).find((r) => r.description === "feature work")!;
   const files = await jj.diffSummary(feature.changeId);
@@ -216,10 +238,22 @@ test("every saved revset in the sidebar is valid jj syntax", async () => {
   // These are domain constants, but only jj can say whether they parse and
   // what they mean. A sidebar button bound to a broken revset is a dead button,
   // so the constants are verified here rather than trusted.
-  const { CONFLICTS_REVSET, DEFAULT_REVSET, UNPUSHED_REVSET } = await import("@ukemi/domain");
-  for (const revset of [DEFAULT_REVSET, CONFLICTS_REVSET, UNPUSHED_REVSET]) {
+  const { CONFLICTS_REVSET, DEFAULT_REVSET, REACHABLE_REVSET, UNPUSHED_REVSET } =
+    await import("@ukemi/domain");
+  for (const revset of [DEFAULT_REVSET, CONFLICTS_REVSET, UNPUSHED_REVSET, REACHABLE_REVSET]) {
     await assert.doesNotReject(() => jj.log(revset), `revset failed: ${revset}`);
   }
+});
+
+test("search and file-history revsets resolve, and a quote cannot break them", async () => {
+  const { fileHistoryRevset, searchRevset } = await import("@ukemi/domain");
+  // Author, message and a resolvable name each hit; a name jj cannot resolve
+  // is an empty set rather than an error, which is what `present` is for.
+  assert.ok((await jj.log(searchRevset("feature"))).length >= 1, "message or bookmark");
+  assert.ok((await jj.log(searchRevset("UKEMI TEST"))).length >= 1, "author, case-insensitive");
+  assert.deepEqual(await jj.log(searchRevset('no such " thing')), []);
+  assert.equal((await jj.log(fileHistoryRevset("b.txt"))).length, 1);
+  assert.deepEqual(await jj.log(fileHistoryRevset('odd " name.txt')), []);
 });
 
 test("the default revset shows every mutable head, not just bookmarked ones", async () => {

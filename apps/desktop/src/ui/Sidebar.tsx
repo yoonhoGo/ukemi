@@ -8,7 +8,9 @@ import {
   DEFAULT_REVSET,
   EMPTY_REVSET,
   isAliasName,
+  REACHABLE_REVSET,
   stackRevset,
+  tagRevset,
   UNPUSHED_REVSET,
 } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
@@ -22,6 +24,7 @@ import {
   useRepo,
   useRevsetAliases,
   useSaveRevsetAlias,
+  useTags,
   useWorkspaces,
 } from "../repo.tsx";
 import { TransitionStrip } from "./Coach.tsx";
@@ -30,10 +33,11 @@ import {
   CurrentWorkspaceIcon,
   RevsetIcon,
   SettingsIcon,
+  TagIcon,
   WorkspaceIcon,
 } from "./icons.tsx";
 
-/** Saved revsets, bound to ⌘1…⌘7 by position. Handled in `App`'s key map too. */
+/** Saved revsets, bound to ⌘1…⌘8 by position. Handled in `App`'s key map too. */
 export const SAVED_REVSETS = [
   { label: "Recent work", revset: DEFAULT_REVSET, key: "⌘1" },
   { label: "Mine, unpushed", revset: UNPUSHED_REVSET, key: "⌘2" },
@@ -42,10 +46,13 @@ export const SAVED_REVSETS = [
   { label: "All bookmarks", revset: BOOKMARKS_REVSET, key: "⌘5" },
   { label: "Empty changes", revset: EMPTY_REVSET, key: "⌘6" },
   { label: "Everything", revset: ALL_REVSET, key: "⌘7" },
+  // What a Git client's "all branches" view draws. Offered under a Git word
+  // because that is the picture a Fork or Tower user is looking for on day one.
+  { label: "All branches", revset: REACHABLE_REVSET, key: "⌘8" },
 ] as const;
 
 /**
- * The seven built-in revsets, the user's own named ones under them, and the
+ * The eight built-in revsets, the user's own named ones under them, and the
  * one field that adds to the second list.
  *
  * A row sets the revset to the *name*, not the expression it stands for: the
@@ -256,6 +263,7 @@ export function Sidebar({
 }) {
   const { revset, setRevset, isPinned } = useRepo();
   const bookmarks = useBookmarks();
+  const tags = useTags();
   const workspaces = useWorkspaces();
   const track = useJjMutation((port, args: { name: string; remote: string }) =>
     port.bookmarkTrack(args.name, args.remote),
@@ -392,6 +400,46 @@ export function Sidebar({
         >
           {messageFor(track.error)}
         </div>
+      )}
+
+      {/* Only when there are some: most jj repos have none, and an empty
+          section is a heading with nothing under it. A tag is immutable by
+          default, so there is nothing to do to one here but look at it. */}
+      {(tags.data?.length ?? 0) > 0 && (
+        <>
+          <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <TagIcon />
+            {t("Tags")}
+          </div>
+          {tags.data?.map((tag) => {
+            const target = tagRevset(tag.name);
+            return (
+              <button
+                type="button"
+                className="side-item"
+                key={tag.name}
+                aria-current={revset === target}
+                onClick={() => setRevset(target)}
+              >
+                <span
+                  style={{
+                    flexGrow: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {tag.name}
+                </span>
+                {tag.target && (
+                  <span className="mono ter" style={{ fontSize: 11 }}>
+                    {tag.target.slice(0, 4)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </>
       )}
 
       <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>

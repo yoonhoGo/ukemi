@@ -46,6 +46,30 @@ export const EMPTY_REVSET = "empty() & mutable() & mine()";
 export const ALL_REVSET = "all()";
 
 /**
+ * What a Git client draws by default: everything a bookmark, a remote, a tag
+ * or the working copy can reach. Git has no unnamed head, so that *is* its
+ * whole history; jj's unnamed mutable stacks are added back or the view would
+ * hide most of what you are working on.
+ */
+export const REACHABLE_REVSET =
+  "::(bookmarks() | remote_bookmarks() | tags() | @) | mutable()";
+
+/** Revisions that touched one path — the file's history, safely quoted. */
+export function fileHistoryRevset(path: string): string {
+  return `files(${quote(path)})`;
+}
+
+/**
+ * A plain-text search, the way a Git client's search box reads: the message,
+ * the author, or a name jj can resolve (a bookmark, a change id prefix).
+ * `present` turns "no such revision" into an empty set instead of an error.
+ */
+export function searchRevset(text: string): string {
+  const pattern = `substring-i:${quote(text)}`;
+  return `description(${pattern}) | author(${pattern}) | present(${quote(text)})`;
+}
+
+/**
  * One revision, the mutable history under it, and trunk for orientation.
  *
  * The board's "show this change" and the working-copy preset ask the same
@@ -64,6 +88,11 @@ export function withLimit(revset: string, limit: number): string {
 /** The revset for one bookmark by name, safely quoted. */
 export function bookmarkRevset(name: string): string {
   return `bookmarks(exact:${quote(name)})`;
+}
+
+/** The revset for one tag by name, safely quoted. */
+export function tagRevset(name: string): string {
+  return `tags(exact:${quote(name)})`;
 }
 
 /** Which revisions a rebase moves. Mirrors `jj rebase`'s `-r` / `-s` / `-b`. */

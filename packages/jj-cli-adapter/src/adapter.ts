@@ -1,4 +1,5 @@
 import type {
+  AnnotationLine,
   Bookmark,
   ChangeId,
   CommandRecord,
@@ -16,6 +17,7 @@ import type {
   Revision,
   RevsetAlias,
   RevsetFunction,
+  Tag,
   Workspace,
   WriteResult,
 } from "@ukemi/domain";
@@ -24,10 +26,12 @@ import { parseRevsetFunctions } from "./revset-help.ts";
 import { JjError, observed, type CommandObserver, type JjExec } from "./exec.ts";
 import { planToolArgs, type PlanPreparer } from "./hunk-plan.ts";
 import {
+  ANNOTATE_TEMPLATE,
   BOOKMARK_TEMPLATE,
   CONFIG_TEMPLATE,
   OPERATION_TEMPLATE,
   REVISION_TEMPLATE,
+  TAG_TEMPLATE,
   WORKSPACE_TEMPLATE,
 } from "./templates.ts";
 
@@ -47,6 +51,10 @@ interface RawBookmark {
   tracked: boolean;
   ahead: number | null;
   behind: number | null;
+  target: ChangeId | null;
+}
+interface RawTag {
+  name: string;
   target: ChangeId | null;
 }
 interface RawConfig {
@@ -231,6 +239,31 @@ export class JjCliAdapter implements JjPort {
       if (raw.behind !== null) bookmark.behind = raw.behind;
       return bookmark;
     });
+  }
+
+  async tags(opts?: ReadOptions): Promise<Tag[]> {
+    const out = await this.run([...this.readBase(opts), "tag", "list", "-T", TAG_TEMPLATE]);
+    return parseNdjson<RawTag>(out).map((raw) =>
+      raw.target === null ? { name: raw.name } : { name: raw.name, target: raw.target },
+    );
+  }
+
+  async annotate(rev: string, path: string, opts?: ReadOptions): Promise<AnnotationLine[]> {
+    const out = await this.run([
+      ...this.readBase(opts),
+      "file",
+      "annotate",
+      "-r",
+      rev,
+      "-T",
+      ANNOTATE_TEMPLATE,
+      "--",
+      path,
+    ]);
+    return parseNdjson<AnnotationLine>(out).map((line) => ({
+      ...line,
+      content: line.content.replace(/\n$/, ""),
+    }));
   }
 
   async workspaces(opts?: ReadOptions): Promise<Workspace[]> {

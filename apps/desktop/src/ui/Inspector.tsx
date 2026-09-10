@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FileChange, Revision } from "@ukemi/domain";
+import { fileHistoryRevset } from "@ukemi/domain";
 import { messageFor, useDiffSummary, useJjMutation, useLog, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
@@ -133,7 +134,7 @@ export function Inspector({
   onOpenSheet(mode: HunkSheetMode): void;
   onOpenDiff(path: string): void;
 }) {
-  const { isPinned } = useRepo();
+  const { isPinned, setRevset } = useRepo();
   const files = useDiffSummary(revision?.changeId);
   const log = useLog();
 
@@ -462,6 +463,19 @@ export function Inspector({
                 >
                   {file.path}
                 </span>
+              </button>
+              {/* The file's history is a revset (`files("path")`), so the
+                  graph itself is the history view — no second list to build,
+                  and ⌘1 is the way back. */}
+              <button
+                type="button"
+                className="ter"
+                onClick={() => setRevset(fileHistoryRevset(file.path))}
+                title={t("Show every revision that touched {path}", { path: file.path })}
+                aria-label={t("Show every revision that touched {path}", { path: file.path })}
+                style={{ flexShrink: 0, padding: "0 4px", fontSize: 12 }}
+              >
+                ↺
               </button>
             </div>
           );

@@ -58,6 +58,29 @@ export const BOOKMARK_TEMPLATE = [
   '"}\\n"',
 ].join(" ++ ");
 
+/** One line per tag. Same `present` guard as the bookmark template. */
+export const TAG_TEMPLATE = [
+  '"{"',
+  '"\\"name\\":" ++ json(name)',
+  '",\\"target\\":" ++ if(present, json(normal_target.change_id()), "null")',
+  '"}\\n"',
+].join(" ++ ");
+
+/**
+ * One line per annotated line. `content` is a `ByteString`, which `json()`
+ * renders as an array of bytes; `stringify` turns it back into text first.
+ */
+export const ANNOTATE_TEMPLATE = [
+  '"{"',
+  '"\\"changeId\\":" ++ json(commit.change_id())',
+  '",\\"lineNumber\\":" ++ json(line_number)',
+  '",\\"firstInHunk\\":" ++ json(first_line_in_hunk)',
+  '",\\"author\\":" ++ json(commit.author())',
+  '",\\"subject\\":" ++ json(commit.description().first_line())',
+  '",\\"content\\":" ++ json(stringify(content))',
+  '"}\\n"',
+].join(" ++ ");
+
 /** One line per operation. `attributes()` carries the `args: jj …` string. */
 export const OPERATION_TEMPLATE = [
   '"{"',

@@ -1,4 +1,5 @@
 import type {
+  AnnotationLine,
   Bookmark,
   ChangeId,
   FileChange,
@@ -9,6 +10,7 @@ import type {
   Revision,
   RevsetAlias,
   RevsetFunction,
+  Tag,
   Workspace,
 } from "./types.ts";
 import type { RebaseMode } from "./revset.ts";
@@ -92,6 +94,11 @@ export interface JjPort {
   diff(rev: string, path?: string, opts?: DiffOptions): Promise<string>;
 
   bookmarks(opts?: ReadOptions): Promise<Bookmark[]>;
+
+  tags(opts?: ReadOptions): Promise<Tag[]>;
+
+  /** `jj file annotate`: the change behind each line of `path` as of `rev`. */
+  annotate(rev: string, path: string, opts?: ReadOptions): Promise<AnnotationLine[]>;
 
   workspaces(opts?: ReadOptions): Promise<Workspace[]>;
 

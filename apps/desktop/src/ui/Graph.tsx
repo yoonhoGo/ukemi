@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ChangeId, GraphLayout, GraphRow, PullRequest, Revision } from "@ukemi/domain";
 import { ELIDED_ROW, stackHeads } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
@@ -158,8 +158,11 @@ function Row({
   targetLabel,
   targetBlocked,
   pr,
+  onHover,
 }: {
   revision: Revision;
+  /** Pointer rested on or left the row; `undefined` clears the hover card. */
+  onHover(changeId: ChangeId | undefined, event: React.PointerEvent): void;
   /** The PR whose head is one of this revision's bookmarks. */
   pr: PullRequest | undefined;
   selected: boolean;
@@ -188,8 +191,11 @@ function Row({
       // A drag is a primary-button gesture; the right button belongs to the
       // row menu below, and without this ⌥right-click would arm a rebase.
       onPointerDown={(event) => {
+        onHover(undefined, event);
         if (event.button === 0) onDragStart(revision.changeId, event);
       }}
+      onPointerEnter={(event) => onHover(revision.changeId, event)}
+      onPointerLeave={(event) => onHover(undefined, event)}
       onContextMenu={(event) => {
         // Select first. Every item in that menu fires its own chord and the
         // window's map acts on the *selection*, so a menu opened on a row that
@@ -323,6 +329,99 @@ function Row({
   );
 }
 
+/**
+ * The row shows one line of the description and the inspector needs a click;
+ * resting the pointer is the zero-cost way to read the rest without moving the
+ * selection. One card, owned by `Graph`, so hovering a second row replaces
+ * rather than stacks. Clamped to the viewport by width alone.
+ * ponytail: no flip-above logic — the card is capped in height and nudged up
+ * when it would run off the bottom.
+ */
+function HoverCard({ revision, x, y }: { revision: Revision; x: number; y: number }) {
+  const width = 380;
+  const left = Math.min(x + 14, window.innerWidth - width - 12);
+  const top = Math.min(y + 14, Math.max(12, window.innerHeight - 320));
+  const color = nodeColor(revision);
+  const names = [...revision.bookmarks, ...revision.remoteBookmarks, ...revision.tags];
+  return (
+    <div
+      role="tooltip"
+      style={{
+        position: "fixed",
+        left,
+        top,
+        width,
+        zIndex: 60,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        padding: "10px 12px",
+        borderRadius: "var(--u-radius-lg)",
+        background: "var(--u-bg-raised)",
+        border: "1px solid var(--u-line-strong)",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+        pointerEvents: "none",
+        fontSize: "var(--u-font-size-small)",
+      }}
+    >
+      <div
+        className="u-scroll"
+        style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 200, fontSize: 12.5 }}
+      >
+        {revision.description || <span className="sec">{t("(no description set)")}</span>}
+      </div>
+      {names.length > 0 && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {revision.bookmarks.map((name) => (
+            <span className="pill" data-kind="bookmark" key={name}>
+              {name}
+            </span>
+          ))}
+          {revision.remoteBookmarks.map((name) => (
+            <span className="pill" data-kind="remote-bookmark" key={name}>
+              {name}
+            </span>
+          ))}
+          {revision.tags.map((name) => (
+            <span className="pill" key={name}>
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mono sec" style={{ display: "flex", gap: 10 }}>
+        <span>
+          <span style={{ color, fontWeight: 700 }}>{revision.changeId.slice(0, 2)}</span>
+          {revision.changeId.slice(2, 12)}
+        </span>
+        <span className="ter">{revision.commitId.slice(0, 7)}</span>
+      </div>
+      <div className="sec" style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+        <span
+          className="avatar"
+          style={{
+            background: authorColor(revision.author.email),
+            display: "inline-flex",
+            width: 16,
+            height: 16,
+            fontSize: 8,
+            flexShrink: 0,
+          }}
+        >
+          {authorInitials(revision.author.name, revision.author.email)}
+        </span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {revision.author.name} &lt;{revision.author.email}&gt;
+        </span>
+        <span style={{ flexGrow: 1 }} />
+        <span style={{ flexShrink: 0 }} title={t("Authored")}>
+          {new Date(revision.author.timestamp).toLocaleString()}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function Graph({
   layout,
   selected,
@@ -355,6 +454,22 @@ export function Graph({
   // `App` sets `--u-row-gutter` from the same number, so the lanes drawn here
   // and the rows' first column land on the same width.
   const gutter = gutterWidth(layout.laneCount);
+
+  // Armed on enter, fired after a rest, cleared on leave or press: a card that
+  // flashed on every row the pointer crossed would be noise, not a tooltip.
+  const [hover, setHover] = useState<{ changeId: ChangeId; x: number; y: number } | undefined>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const onHover = (changeId: ChangeId | undefined, event: React.PointerEvent) => {
+    clearTimeout(timer.current);
+    if (changeId === undefined) {
+      setHover(undefined);
+      return;
+    }
+    const { clientX: x, clientY: y } = event;
+    timer.current = setTimeout(() => setHover({ changeId, x, y }), 450);
+  };
+  const hovered = hover && layout.rows.find((row) => row.revision.changeId === hover.changeId);
+
   return (
     <div
       className="u-scroll"
@@ -378,9 +493,11 @@ export function Graph({
             targetLabel={targetLabel ?? t("new parent")}
             targetBlocked={targetBlocked ?? false}
             pr={row.revision.bookmarks.map((b) => pullRequests?.get(b)).find(Boolean)}
+            onHover={onHover}
           />
         ))}
       </div>
+      {hovered && hover && <HoverCard revision={hovered.revision} x={hover.x} y={hover.y} />}
     </div>
   );
 }

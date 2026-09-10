@@ -9,7 +9,8 @@ const GROUPS = [
     items: [
       ["↑ ↓", "Move selection"],
       ["⌘L", "Focus the revset field"],
-      ["⌘1…⌘7", "Saved revsets"],
+      ["⌘1…⌘8", "Saved revsets"],
+      ["⌘F", "Search messages, authors and names"],
       ["⌘,", "Settings"],
       ["⌘R", "Reload from disk"],
       ["⌘⇧W", "Workspace board"],

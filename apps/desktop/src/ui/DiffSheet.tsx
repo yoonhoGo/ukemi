@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { DiffLine, FileDiff, Revision } from "@ukemi/domain";
+import type { AnnotationLine, DiffLine, FileDiff, Revision } from "@ukemi/domain";
 import { pairRows, parseGitDiff } from "@ukemi/domain";
-import { useFileDiff } from "../repo.tsx";
+import { messageFor, useAnnotate, useFileDiff } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
-import { nodeColor } from "./change-color.ts";
+import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
 import { STATUS_MARK } from "./Inspector.tsx";
 import { useModal } from "./modal.ts";
+import { relativeTime } from "./time.ts";
 
 /**
  * The diff reader.
@@ -47,6 +48,13 @@ export function DiffSheet({
   const [context, setContext] = useState<number | undefined>(undefined);
   const [split, setSplit] = useState(false);
   /*
+   * Blame. The one question the diff cannot answer is who touched a line this
+   * change did *not* — and jj already answers it as `jj file annotate`, so this
+   * is a template read like the others, not a blame walk of our own. Read only
+   * while the toggle is on: the sheet's ordinary reading must not pay for it.
+   */
+  const [blame, setBlame] = useState(false);
+  /*
    * One read for the whole revision instead of one per file. The sheet's whole
    * point is walking the change file by file, so the second file must not cost
    * a jj call — and this is `jj diff -r <rev> --git`, the same read the hunk
@@ -71,6 +79,12 @@ export function DiffSheet({
   // the graph selection can still change underneath an open sheet. Falling back
   // to the first file is what keeps the pane from going blank in either case.
   const file = files.find((candidate) => candidate.path === current) ?? files[0];
+  // A removed file has no content at this revision, so there is nothing to annotate.
+  const canBlame = file !== undefined && file.status !== "removed";
+  const annotation = useAnnotate(
+    blame && canBlame ? revision.changeId : undefined,
+    blame && canBlame ? file.path : undefined,
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -177,6 +191,7 @@ export function DiffSheet({
             type="button"
             className="tb-btn"
             aria-pressed={split}
+            disabled={blame}
             title={
               split
                 ? t("Show jj's own one-column diff")
@@ -185,6 +200,20 @@ export function DiffSheet({
             onClick={() => setSplit(!split)}
           >
             {split ? t("Unified") : t("Side by side")}
+          </button>
+          <button
+            type="button"
+            className="tb-btn"
+            aria-pressed={blame}
+            disabled={!canBlame}
+            title={
+              canBlame
+                ? t("Show which change last touched each line (jj file annotate)")
+                : t("A removed file has no lines to annotate")
+            }
+            onClick={() => setBlame(!blame)}
+          >
+            {t("Blame")}
           </button>
           {/* One button through three widths rather than a stepper: the states
               are an order, not a value to dial in, and the label can say which
@@ -281,7 +310,15 @@ export function DiffSheet({
               border: "1px solid var(--u-line)",
             }}
           >
-            {file && <Body file={file} split={split} />}
+            {file && blame && canBlame ? (
+              <BlameBody
+                lines={annotation.data}
+                pending={annotation.isPending}
+                error={annotation.error}
+              />
+            ) : (
+              file && <Body file={file} split={split} />
+            )}
           </div>
         </div>
 
@@ -290,8 +327,11 @@ export function DiffSheet({
             the shape of the thing: `--git` output is a unified diff. */}
         <div className="sec" style={{ padding: "12px 20px 16px", fontSize: 12 }}>
           <span className="mono">
-            jj diff -r {revision.changeId.slice(0, 8)} --git
-            {context === undefined ? "" : ` --context ${context}`}
+            {blame && canBlame
+              ? `jj file annotate -r ${revision.changeId.slice(0, 8)} ${file.path}`
+              : `jj diff -r ${revision.changeId.slice(0, 8)} --git${
+                  context === undefined ? "" : ` --context ${context}`
+                }`}
           </span>
         </div>
       </div>
@@ -357,6 +397,99 @@ function Body({ file, split }: { file: FileDiff; split: boolean }) {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * One file at one revision, each line labelled with the change that wrote it.
+ *
+ * The change column is drawn once per run (`firstInHunk`), the way `git blame`
+ * and Fork do; the run's left border in the change's colour is what holds the
+ * rest of the run to that label.
+ */
+function BlameBody({
+  lines,
+  pending,
+  error,
+}: {
+  lines: readonly AnnotationLine[] | undefined;
+  pending: boolean;
+  error: unknown;
+}) {
+  if (error) {
+    return (
+      <div role="alert" className="mono selectable" style={{ padding: 12, fontSize: 12, color: "var(--u-conflict)", whiteSpace: "pre-wrap" }}>
+        {messageFor(error)}
+      </div>
+    );
+  }
+  if (pending || !lines) {
+    return (
+      <div className="sec" style={{ padding: 12 }}>
+        {t("Loading blame…")}
+      </div>
+    );
+  }
+  return (
+    <div
+      className="mono selectable"
+      style={{ width: "max-content", minWidth: "100%", padding: "6px 0", fontSize: 12 }}
+    >
+      {lines.map((line) => {
+        const color = colorForChange(line.changeId);
+        return (
+          <div
+            key={line.lineNumber}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "44px 260px max-content",
+              alignItems: "center",
+              minHeight: 20,
+              borderLeft: `3px solid ${color}`,
+              whiteSpace: "pre",
+            }}
+          >
+            <span className="ln sec" style={{ textAlign: "right", paddingRight: 8 }}>
+              {line.lineNumber}
+            </span>
+            {line.firstInHunk ? (
+              <span
+                style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, paddingRight: 8 }}
+                title={`${line.subject}\n${line.author.name} <${line.author.email}>`}
+              >
+                <span style={{ color, fontWeight: 700 }}>{line.changeId.slice(0, 2)}</span>
+                <span className="ter">{line.changeId.slice(2, 8)}</span>
+                <span
+                  className="avatar"
+                  style={{
+                    background: authorColor(line.author.email),
+                    display: "inline-flex",
+                    width: 16,
+                    height: 16,
+                    fontSize: 8,
+                    flexShrink: 0,
+                  }}
+                >
+                  {authorInitials(line.author.name, line.author.email)}
+                </span>
+                <span className="sec" style={{ flexShrink: 0 }}>
+                  {relativeTime(line.author.timestamp)}
+                </span>
+                <span
+                  className="sec"
+                  style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+                >
+                  {line.subject}
+                </span>
+              </span>
+            ) : (
+              <span />
+            )}
+            <span>{line.content}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

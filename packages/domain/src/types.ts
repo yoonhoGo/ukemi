@@ -59,6 +59,26 @@ export interface Bookmark {
   readonly hasConflict: boolean;
 }
 
+/** A tag, as `jj tag list` reports it. Local rows only. */
+export interface Tag {
+  readonly name: string;
+  /** Change the tag points at; absent when the tag is conflicted or deleted. */
+  readonly target?: ChangeId | undefined;
+}
+
+/** One line of `jj file annotate`: who last touched it, and with what. */
+export interface AnnotationLine {
+  readonly changeId: ChangeId;
+  readonly lineNumber: number;
+  /** False when the line above came from the same change — the row draws no header. */
+  readonly firstInHunk: boolean;
+  readonly author: Signature;
+  /** First line of the change's description. */
+  readonly subject: string;
+  /** Line content, newline stripped. */
+  readonly content: string;
+}
+
 export interface Operation {
   readonly id: OperationId;
   readonly description: string;

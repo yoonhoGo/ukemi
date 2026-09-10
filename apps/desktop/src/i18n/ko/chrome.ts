@@ -10,6 +10,8 @@ export const chrome: Record<string, string> = {
   Push: "푸시",
   "Pushing…": "푸시 중…",
   New: "새 체인지",
+  Search: "검색",
+  "Search messages, authors and names": "메시지·작성자·이름 검색",
 
   // ── Sidebar ────────────────────────────────────────────────────────────
   Bookmarks: "북마크",
@@ -17,6 +19,7 @@ export const chrome: Record<string, string> = {
   local: "로컬",
   Track: "추적",
   "Track {name} to get a local bookmark for it": "{name}을(를) 추적해 로컬 북마크로 가져옵니다",
+  Tags: "태그",
   Workspaces: "워크스페이스",
   Board: "보드",
   "Workspace board (⌘⇧W)": "워크스페이스 보드 (⌘⇧W)",
@@ -32,6 +35,7 @@ export const chrome: Record<string, string> = {
   "All bookmarks": "북마크 전체",
   "Empty changes": "빈 체인지",
   Everything: "전부",
+  "All branches": "브랜치 전체",
   // Named revsets the user saved — jj's own `revset-aliases`, repo scope.
   "Name the current revset": "지금 리브셋에 이름 붙이기",
   "Name for this revset": "이 리브셋의 이름",
@@ -54,6 +58,7 @@ export const chrome: Record<string, string> = {
   "Delete the bookmark {name}": "북마크 {name} 지우기",
   "Name for a bookmark on the selected change": "선택한 체인지에 붙일 북마크 이름",
   "{name} here": "{name}을(를) 여기로",
+  Authored: "작성 시각",
 
   // ── Timeline ───────────────────────────────────────────────────────────
   OPERATIONS: "오퍼레이션",

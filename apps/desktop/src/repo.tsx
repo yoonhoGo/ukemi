@@ -14,6 +14,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type {
+  AnnotationLine,
   Bookmark,
   ChangeId,
   CommandRecord,
@@ -28,6 +29,7 @@ import type {
   Revision,
   RevsetAlias,
   RevsetFunction,
+  Tag,
   Workspace,
 } from "@ukemi/domain";
 import {
@@ -197,6 +199,24 @@ export function useBookmarks(): UseQueryResult<Bookmark[]> {
 
 export function useWorkspaces(): UseQueryResult<Workspace[]> {
   return useRepoQuery(["workspaces"], (port, opId) => port.workspaces({ atOp: opId }));
+}
+
+export function useTags(): UseQueryResult<Tag[]> {
+  return useRepoQuery(["tags"], (port, opId) => port.tags({ atOp: opId }));
+}
+
+/** `jj file annotate` for one file at one revision. Off until both are known. */
+export function useAnnotate(
+  rev: string | undefined,
+  path: string | undefined,
+): UseQueryResult<AnnotationLine[]> {
+  const { root, port, opId } = useRepo();
+  return useQuery({
+    queryKey: ["repo", root, opId, "annotate", rev, path],
+    queryFn: () => port.annotate(rev!, path!, { atOp: opId }),
+    enabled: opId !== undefined && rev !== undefined && path !== undefined,
+    staleTime: Infinity,
+  });
 }
 
 /**

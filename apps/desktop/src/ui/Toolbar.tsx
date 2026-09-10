@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { searchRevset } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import { useJjMutation, useRepo } from "../repo.tsx";
-import { FetchIcon, FilterIcon, PlusIcon, PushIcon } from "./icons.tsx";
+import { FetchIcon, FilterIcon, PlusIcon, PushIcon, SearchIcon } from "./icons.tsx";
 import { dragWindowFrom } from "./window-drag.ts";
 
 /**
@@ -89,6 +90,84 @@ function RevsetField() {
         }}
       />
       <span className="key">⌘L</span>
+    </div>
+  );
+}
+
+/**
+ * The search box a Git client has: one field for a message, an author or a
+ * name, no revset syntax required. It does not compete with ⌘L — on Enter it
+ * *writes* the revset it stands for into that field, so the search teaches the
+ * expression rather than hiding it, and clearing the box is the way back to
+ * whatever the window showed before.
+ */
+function SearchField() {
+  const { revset, setRevset } = useRepo();
+  const input = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState("");
+  // The revset the first search replaced, handed back when the box is cleared.
+  const [before, setBefore] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const focus = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "f" && event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        input.current?.select();
+      }
+    };
+    window.addEventListener("keydown", focus);
+    return () => window.removeEventListener("keydown", focus);
+  }, []);
+
+  const run = () => {
+    const query = text.trim();
+    if (!query) {
+      // An emptied box restores the view the search replaced, once.
+      if (before !== undefined) setRevset(before);
+      setBefore(undefined);
+      return;
+    }
+    if (before === undefined) setBefore(revset);
+    setRevset(searchRevset(query));
+  };
+
+  return (
+    <div
+      data-tauri-drag-region="false"
+      onClick={() => input.current?.focus()}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        cursor: "text",
+        gap: 6,
+        width: 180,
+        flexShrink: 0,
+        height: 28,
+        padding: "0 8px",
+        borderRadius: 7,
+        background: "var(--u-bg-raised)",
+        border: "1px solid var(--u-line-strong)",
+        boxShadow: "inset 0 1px 1px rgba(0,0,0,0.04)",
+      }}
+    >
+      <SearchIcon />
+      <input
+        ref={input}
+        className="selectable"
+        value={text}
+        spellCheck={false}
+        placeholder={t("Search")}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") run();
+          if (event.key === "Escape") event.currentTarget.blur();
+          event.stopPropagation();
+        }}
+        aria-label={t("Search messages, authors and names")}
+        title={t("Search messages, authors and names")}
+        style={{ flexGrow: 1, minWidth: 0, background: "transparent", outline: "none" }}
+      />
+      <span className="key">⌘F</span>
     </div>
   );
 }
@@ -279,8 +358,11 @@ export function Toolbar({
       {/* Room for the traffic lights, which the overlay title bar draws over us. */}
       <div style={{ width: 68, flexShrink: 0 }} />
       <RepoSwitcher root={root} recents={recents} onOpenRepo={onOpenRepo} />
-      <div style={{ flexGrow: 1, minWidth: 0, display: "flex", justifyContent: "center" }}>
+      <div
+        style={{ flexGrow: 1, minWidth: 0, display: "flex", justifyContent: "center", gap: 8 }}
+      >
         <RevsetField />
+        <SearchField />
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <button

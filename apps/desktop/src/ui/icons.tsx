@@ -35,6 +35,24 @@ export function CurrentWorkspaceIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+export function TagIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} aria-hidden>
+      <path d="M3.5 10.5V4h6.5l6.5 6.5-6.5 6.5z" />
+      <circle cx="7" cy="7.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function SearchIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size} aria-hidden>
+      <circle cx="9" cy="9" r="5" />
+      <path d="M13 13l3.5 3.5" />
+    </svg>
+  );
+}
+
 export function RevsetIcon({ size = 14 }: { size?: number }) {
   return (
     <svg {...base} width={size} height={size} aria-hidden>
