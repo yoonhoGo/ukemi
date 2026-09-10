@@ -51,6 +51,8 @@ export const editing: Record<string, string> = {
   "Parents ": "부모 ",
   "NEXT STEPS": "다음 단계",
   "Start new change on top": "위에 새 체인지 시작",
+  "Merge with {count} marked": "표시한 {count}개와 머지",
+  "⌘-click another revision to merge with it.": "다른 리비전을 ⌘-클릭하면 머지할 수 있습니다.",
   "Split into two changes": "두 체인지로 분리",
   "Nothing to split": "분리할 게 없습니다",
   "Squash hunks into parent": "헝크를 부모에 스쿼시",

@@ -175,6 +175,7 @@ export const chrome: Record<string, string> = {
   "Open another repository": "다른 저장소 열기",
   "Change the history": "히스토리 고치기",
   "New change on top of the selection": "선택한 것 위에 새 체인지",
+  "Mark an extra parent; ⌘N then makes a merge": "부모를 하나 더 표시; 그다음 ⌘N이 머지를 만듭니다",
   "Edit the selected change": "선택한 체인지 편집",
   "Abandon the selected change": "선택한 체인지 버리기",
   "Split by hunk": "헝크 단위로 분리",

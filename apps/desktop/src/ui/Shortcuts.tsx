@@ -24,6 +24,7 @@ const GROUPS = [
     title: "Change the history",
     items: [
       ["⌘N", "New change on top of the selection"],
+      ["⌘click", "Mark an extra parent; ⌘N then makes a merge"],
       ["⌘E", "Edit the selected change"],
       ["⌘⌫", "Abandon the selected change"],
       ["⌘⇧S", "Split by hunk"],

@@ -163,7 +163,7 @@ export const ROSETTA: readonly RosettaEntry[] = [
   {
     git: "git merge <rev>",
     also: ["merge", "merge commit"],
-    steps: [{ label: "Select both parents, then start a change", shortcut: "⌘N" }],
+    steps: [{ label: "Select one parent, ⌘-click the other, then start a change", shortcut: "⌘N" }],
     runs: ["jj new <rev> <rev>"],
     why:
       "A merge is just a change with two parents, so you make one by starting a change on both instead of running a separate verb from one of them.",

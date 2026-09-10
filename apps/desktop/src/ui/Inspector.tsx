@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FileChange, Revision } from "@ukemi/domain";
+import type { ChangeId, FileChange, Revision } from "@ukemi/domain";
 import { fileHistoryRevset } from "@ukemi/domain";
 import { messageFor, useDiffSummary, useJjMutation, useLog, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
@@ -127,10 +127,16 @@ function Step({
 
 export function Inspector({
   revision,
+  extraParents = [],
+  onStartChange,
   onOpenSheet,
   onOpenDiff,
 }: {
   revision: Revision | undefined;
+  /** Rows ⌘-clicked as extra parents; with any, ⌘N is a merge. */
+  extraParents?: readonly ChangeId[] | undefined;
+  /** The window's ⌘N, so the step and the key do the same thing. */
+  onStartChange?(): void;
   onOpenSheet(mode: HunkSheetMode): void;
   onOpenDiff(path: string): void;
 }) {
@@ -138,7 +144,7 @@ export function Inspector({
   const files = useDiffSummary(revision?.changeId);
   const log = useLog();
 
-  const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
+  const newChange = useJjMutation((port, parents: readonly string[]) => port.newChange(parents));
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
   const abandon = useJjMutation((port, rev: string) => port.abandon([rev]));
   const absorb = useJjMutation((port, rev: string) => port.absorb(rev));
@@ -288,13 +294,24 @@ export function Inspector({
           </div>
         )}
         <Step
-          label={t("Start new change on top")}
+          label={
+            extraParents.length > 0
+              ? t("Merge with {count} marked", { count: String(extraParents.length) })
+              : t("Start new change on top")
+          }
           shortcut="⌘N"
           primary
-          disabled={readOnly}
-          title={readOnlyReason}
-          onRun={() => newChange.mutate(revision.changeId)}
+          disabled={isPinned}
+          title={isPinned ? readOnlyReason : undefined}
+          onRun={
+            onStartChange ?? (() => newChange.mutate([revision.changeId, ...extraParents]))
+          }
         />
+        {extraParents.length === 0 && (
+          <div className="sec" style={{ fontSize: 11.5 }}>
+            {t("⌘-click another revision to merge with it.")}
+          </div>
+        )}
         <Step
           label={t("Split into two changes")}
           shortcut="⌘⇧S"

@@ -49,7 +49,8 @@ export const rosetta: Record<string, string> = {
   "Restore to the parked operation": "세워둔 오퍼레이션으로 복원",
   "Push the stack": "스택 푸시",
   Fetch: "페치",
-  "Select both parents, then start a change": "부모 둘을 고르고 체인지 시작",
+  "Select one parent, ⌘-click the other, then start a change":
+    "부모 하나를 고르고 다른 하나를 ⌘-클릭한 뒤 체인지 시작",
   "Workspace board": "워크스페이스 보드",
   "New workspace": "새 워크스페이스",
   "Forget the workspace": "워크스페이스 잊기",

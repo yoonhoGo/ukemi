@@ -55,6 +55,16 @@ function Window({
   const operations = useOperations(60);
   const client = useQueryClient();
   const [selected, setSelected] = useState<ChangeId | undefined>(undefined);
+  // Extra parents for the next ⌘N, toggled with ⌘-click on a row. A merge is
+  // a change with two parents, so this is the whole of the merge UI: mark the
+  // others, start a change on the selection.
+  const [marked, setMarked] = useState<ReadonlySet<ChangeId>>(new Set());
+  const toggleMark = (changeId: ChangeId) =>
+    setMarked((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(changeId)) next.add(changeId);
+      return next;
+    });
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sheet, setSheet] = useState<HunkSheetMode | undefined>(undefined);
   // The path whose diff is open in the wide sheet, set by a click in the
@@ -95,6 +105,15 @@ function Window({
   const selectedRevision = rows.find(
     (row) => row.revision.changeId === effectiveSelection,
   )?.revision;
+  // Only marks still on screen count, and never the selection itself: a mark
+  // left on a row the revset no longer shows would merge in something unseen.
+  const extraParents = useMemo(
+    () =>
+      rows
+        .map((row) => row.revision.changeId)
+        .filter((id) => marked.has(id) && id !== effectiveSelection),
+    [rows, marked, effectiveSelection],
+  );
 
   const rebase = useJjMutation(
     (port, args: { mode: RebaseMode; rev: string; onto: string }) =>
@@ -126,7 +145,13 @@ function Window({
   );
   const bookmarkDelete = useJjMutation((port, name: string) => port.bookmarkDelete(name));
 
-  const newChange = useJjMutation((port, parent: string) => port.newChange([parent]));
+  const newChange = useJjMutation((port, parents: readonly string[]) => port.newChange(parents));
+  const startChange = () => {
+    if (isPinned || !effectiveSelection) return;
+    newChange.mutate([effectiveSelection, ...extraParents], {
+      onSuccess: () => setMarked(new Set()),
+    });
+  };
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
   const abandon = useJjMutation((port, rev: string) => port.abandon([rev]));
   const undo = useJjMutation((port) => port.undo());
@@ -271,7 +296,7 @@ function Window({
         if (!isPinned) undo.mutate(undefined);
       } else if (key === "n") {
         event.preventDefault();
-        if (!isPinned && effectiveSelection) newChange.mutate(effectiveSelection);
+        startChange();
       } else if (key === "e") {
         event.preventDefault();
         if (!isPinned && effectiveSelection) edit.mutate(effectiveSelection);
@@ -330,7 +355,7 @@ function Window({
     root,
     undo,
     effectiveSelection,
-    newChange,
+    startChange,
     edit,
     abandon,
     fetch,
@@ -591,6 +616,8 @@ function Window({
               pullRequests={prsByBranch}
               selected={effectiveSelection}
               onSelect={setSelected}
+              marked={marked}
+              onToggleMark={toggleMark}
               onDragStart={startDrag}
               onBookmarkDragStart={startBookmarkDrag}
               onBookmarkDelete={(name) => {
@@ -662,6 +689,8 @@ function Window({
         </main>
         <Inspector
           revision={selectedRevision}
+          extraParents={extraParents}
+          onStartChange={startChange}
           onOpenSheet={setSheet}
           onOpenDiff={setDiffPath}
         />

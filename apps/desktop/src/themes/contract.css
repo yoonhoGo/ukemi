@@ -516,6 +516,11 @@ details > .side-item {
   background: var(--u-accent-soft);
   box-shadow: inset 2px 0 0 var(--u-accent);
 }
+/** An extra parent for the next ⌘N: outlined, not filled, so it reads as
+    "also this" beside the one selected row. */
+.row[data-marked] {
+  box-shadow: inset 0 0 0 1.5px var(--u-accent);
+}
 
 /** A small status chip: bookmark name, conflict, working copy, tag. */
 .pill {

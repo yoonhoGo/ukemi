@@ -149,7 +149,9 @@ function Node({ row }: { row: GraphRow }) {
 function Row({
   revision,
   selected,
+  marked,
   onSelect,
+  onToggleMark,
   onDragStart,
   onBookmarkDragStart,
   onBookmarkDelete,
@@ -166,7 +168,10 @@ function Row({
   /** The PR whose head is one of this revision's bookmarks. */
   pr: PullRequest | undefined;
   selected: boolean;
+  /** An extra parent for the next ⌘N. */
+  marked: boolean;
   onSelect(changeId: ChangeId): void;
+  onToggleMark(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
   onBookmarkDragStart(name: string, from: ChangeId, event: React.PointerEvent): void;
   onBookmarkDelete(name: string): void;
@@ -183,11 +188,18 @@ function Row({
       className="row"
       role="option"
       aria-selected={selected}
+      data-marked={marked || undefined}
       // The pointer is mapped back to a revision through this attribute during
       // a drag; per-row enter events do not fire once the source row has
       // implicit pointer capture.
       {...{ [ROW_ATTRIBUTE]: revision.changeId }}
-      onClick={() => onSelect(revision.changeId)}
+      // ⌘-click marks an extra parent rather than moving the selection, the
+      // way ⌘-click adds to a selection in every list on this platform.
+      onClick={(event) =>
+        event.metaKey || event.ctrlKey
+          ? onToggleMark(revision.changeId)
+          : onSelect(revision.changeId)
+      }
       // A drag is a primary-button gesture; the right button belongs to the
       // row menu below, and without this ⌥right-click would arm a rebase.
       onPointerDown={(event) => {
@@ -425,7 +437,9 @@ function HoverCard({ revision, x, y }: { revision: Revision; x: number; y: numbe
 export function Graph({
   layout,
   selected,
+  marked,
   onSelect,
+  onToggleMark,
   onDragStart,
   onBookmarkDragStart,
   onBookmarkDelete,
@@ -439,7 +453,10 @@ export function Graph({
   /** PRs by head branch; a revision shows the one on its bookmark. */
   pullRequests?: ReadonlyMap<string, PullRequest> | undefined;
   selected: ChangeId | undefined;
+  /** Extra parents for the next ⌘N, toggled by ⌘-click. */
+  marked?: ReadonlySet<ChangeId> | undefined;
   onSelect(changeId: ChangeId): void;
+  onToggleMark?(changeId: ChangeId): void;
   onDragStart(changeId: ChangeId, event: React.PointerEvent): void;
   onBookmarkDragStart(name: string, from: ChangeId, event: React.PointerEvent): void;
   onBookmarkDelete(name: string): void;
@@ -484,7 +501,9 @@ export function Graph({
             key={row.revision.changeId}
             revision={row.revision}
             selected={row.revision.changeId === selected}
+            marked={marked?.has(row.revision.changeId) ?? false}
             onSelect={onSelect}
+            onToggleMark={onToggleMark ?? onSelect}
             onDragStart={onDragStart}
             onBookmarkDragStart={onBookmarkDragStart}
             onBookmarkDelete={onBookmarkDelete}
