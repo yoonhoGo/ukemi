@@ -238,9 +238,26 @@ test("every saved revset in the sidebar is valid jj syntax", async () => {
   // These are domain constants, but only jj can say whether they parse and
   // what they mean. A sidebar button bound to a broken revset is a dead button,
   // so the constants are verified here rather than trusted.
-  const { CONFLICTS_REVSET, DEFAULT_REVSET, REACHABLE_REVSET, UNPUSHED_REVSET } =
-    await import("@ukemi/domain");
-  for (const revset of [DEFAULT_REVSET, CONFLICTS_REVSET, UNPUSHED_REVSET, REACHABLE_REVSET]) {
+  const {
+    BOOKMARKS_REVSET,
+    CONFLICTS_REVSET,
+    DEFAULT_REVSET,
+    EMPTY_REVSET,
+    REACHABLE_REVSET,
+    TAGS_REVSET,
+    UNPUSHED_REVSET,
+    WORKSPACES_REVSET,
+  } = await import("@ukemi/domain");
+  for (const revset of [
+    DEFAULT_REVSET,
+    CONFLICTS_REVSET,
+    UNPUSHED_REVSET,
+    REACHABLE_REVSET,
+    BOOKMARKS_REVSET,
+    TAGS_REVSET,
+    WORKSPACES_REVSET,
+    EMPTY_REVSET,
+  ]) {
     await assert.doesNotReject(() => jj.log(revset), `revset failed: ${revset}`);
   }
 });

@@ -51,6 +51,18 @@ search teaches the revset it stands for; and a file's history is
 `jj file annotate` through a template, so the adapter reads it and nothing
 here computes it.
 
+**The sidebar is a taxonomy of revsets, not a list of lists.**
+Each section is one kind — work, bookmarks, tags, workspaces, the repository,
+your own names — and a row is a member of that kind. Three built-ins *are* a
+kind and became their section's heading: Recent work (⌘1), All bookmarks (⌘5),
+Everything (⌘7); clicking a heading's name filters to the kind, the chevron
+folds it. Nesting bookmarks and tags *under* "Saved revsets" was considered and
+refused: those rows carry repository state (ahead/behind, Track) and change on
+every fetch, while a saved name is a query the user owns and hand-orders. Only
+"My revsets" is hand-ordered; bookmarks sort trunk-first then naturally, tags
+sort newest-version-first because a tag's name is its place in time and a
+bookmark's is not. The ⌘-digits stay with the built-in, not with the position.
+
 **Package layout — three packages, not four.**
 The draft listed a separate `packages/jj-port`. A package holding one interface
 with one implementation is not worth its own boundary, so the port lives in

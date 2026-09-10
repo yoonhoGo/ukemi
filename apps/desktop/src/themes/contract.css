@@ -472,6 +472,11 @@ summary.side-head::-webkit-details-marker {
 details:not([open]) > .side-head > .chev {
   transform: rotate(-90deg);
 }
+/* A heading that is itself a revset lights up like a row when it is the one
+   the graph is showing. */
+summary.side-head[aria-current="true"] {
+  color: var(--u-text);
+}
 
 /**
  * One revision row in the graph.

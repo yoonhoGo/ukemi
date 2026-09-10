@@ -85,3 +85,25 @@ export function reorder(ids: readonly string[], from: string, to: string): strin
   without.splice(target, 0, from);
   return without;
 }
+
+/** `v1.10` after `v1.9`: numeric runs compare as numbers, case is ignored. */
+export function naturalCompare(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+}
+
+/** Newest version first — a tag's name is its place in time, so the name sorts. */
+export function sortTags<T extends { readonly name: string }>(tags: readonly T[]): T[] {
+  return [...tags].sort((a, b) => naturalCompare(b.name, a.name));
+}
+
+/** Trunk pinned first; the rest have no order in their names, so alphabetical. */
+export function sortBookmarks<T extends { readonly name: string }>(
+  bookmarks: readonly T[],
+  trunk: string | undefined,
+): T[] {
+  return [...bookmarks].sort((a, b) => {
+    if (a.name === trunk) return -1;
+    if (b.name === trunk) return 1;
+    return naturalCompare(a.name, b.name);
+  });
+}

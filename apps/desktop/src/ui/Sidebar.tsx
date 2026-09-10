@@ -11,7 +11,9 @@ import {
   REACHABLE_REVSET,
   stackRevset,
   tagRevset,
+  TAGS_REVSET,
   UNPUSHED_REVSET,
+  WORKSPACES_REVSET,
 } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import {
@@ -25,6 +27,7 @@ import {
   useRevsetAliases,
   useSaveRevsetAlias,
   useTags,
+  useTrunkBookmark,
   useWorkspaces,
 } from "../repo.tsx";
 import { TransitionStrip } from "./Coach.tsx";
@@ -41,14 +44,16 @@ import {
   reorder,
   setCollapsed,
   setRevsetOrder,
+  sortBookmarks,
+  sortTags,
   useSidebarState,
 } from "./sidebar-state.ts";
 
 /**
- * Saved revsets, bound to ⌘1…⌘8 by position *in this list*. Handled in `App`'s
- * key map and the View menu too. The sidebar can show them in another order —
- * the key stays with the row, so a chord does not change meaning because a row
- * was dragged.
+ * Built-in revsets, bound to ⌘1…⌘8 by position *in this list*. Handled in
+ * `App`'s key map and the View menu too. The sidebar files each under the kind
+ * of revset it is — three of them as a section heading — but the key stays with
+ * the revset, so where a row sits never changes what a chord means.
  */
 export const SAVED_REVSETS = [
   { label: "Recent work", revset: DEFAULT_REVSET, key: "⌘1" },
@@ -63,38 +68,73 @@ export const SAVED_REVSETS = [
   { label: "All branches", revset: REACHABLE_REVSET, key: "⌘8" },
 ] as const;
 
+type Preset = (typeof SAVED_REVSETS)[number];
+
+/** The built-in with this label; the labels are the list's own identifiers. */
+function preset(label: Preset["label"]): Preset {
+  return SAVED_REVSETS.find((saved) => saved.label === label)!;
+}
+
 /**
- * A foldable section. Native `<details>`: the fold, the keyboard toggle and the
- * open state are the browser's, and only which sections are folded is ours.
- * Controls in the heading stop the click so pressing ＋ does not also fold the
- * list it adds to.
+ * A section is a kind of revset; its rows are members of that kind.
+ *
+ * The heading is two controls. The chevron folds — native `<details>`, so the
+ * fold and its keyboard handling are the browser's and only *which* sections
+ * are folded is ours. The name, when the section stands for a revset, filters
+ * the graph to the whole kind, and the ⌘-digit on it is the built-in that
+ * revset already was. A button inside a `<summary>` fires its own click and
+ * stops the fold, which is what lets one heading carry both.
  */
 function Section({
   id,
   title,
   icon,
+  revset,
+  shortcut,
   actions,
   children,
 }: {
   id: string;
   title: string;
   icon?: ReactNode;
+  /** What the whole section resolves to; absent for a list that is not a kind. */
+  revset?: string | undefined;
+  shortcut?: string | undefined;
   actions?: ReactNode;
   children: ReactNode;
 }) {
   const { collapsed } = useSidebarState();
+  const { revset: current, setRevset } = useRepo();
   return (
     <details
       open={!collapsed.includes(id)}
       onToggle={(event) => setCollapsed(id, !event.currentTarget.open)}
     >
-      <summary className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <summary
+        className="side-head"
+        aria-current={revset !== undefined && current === revset}
+        style={{ display: "flex", alignItems: "center", gap: 6 }}
+      >
         <span className="chev" aria-hidden>
           ▾
         </span>
         {icon}
-        {title}
-        <span style={{ flexGrow: 1 }} />
+        {revset === undefined ? (
+          <span style={{ flexGrow: 1 }}>{title}</span>
+        ) : (
+          <button
+            type="button"
+            title={t("Show {revset}", { revset })}
+            onClick={(event) => {
+              event.preventDefault();
+              setRevset(revset);
+            }}
+            style={{ flexGrow: 1, textAlign: "left", font: "inherit", color: "inherit" }}
+          >
+            {title}
+          </button>
+        )}
+        {shortcut && <span className="key">{shortcut}</span>}
         {actions && <span onClick={(event) => event.preventDefault()}>{actions}</span>}
       </summary>
       {children}
@@ -102,20 +142,27 @@ function Section({
   );
 }
 
-/** A built-in or a user alias, as one row of the saved list. */
-interface RevsetRow {
-  /** A built-in's label or an alias's name; also what the stored order names. */
-  readonly id: string;
-  readonly label: string;
-  readonly target: string;
-  readonly key?: string | undefined;
-  readonly detail?: string | undefined;
-  readonly alias: boolean;
+/** One built-in row: label, its key, and the revset it applies. */
+function PresetRow({ label }: { label: Preset["label"] }) {
+  const { revset, setRevset } = useRepo();
+  const saved = preset(label);
+  return (
+    <button
+      type="button"
+      className="side-item"
+      aria-current={revset === saved.revset}
+      onClick={() => setRevset(saved.revset)}
+    >
+      <RevsetIcon />
+      <span style={{ flexGrow: 1 }}>{t(saved.label)}</span>
+      <span className="key">{saved.key}</span>
+    </button>
+  );
 }
 
 /**
- * The eight built-in revsets and the user's own named ones, in one list the
- * user can drag into any order, plus the field that adds to it.
+ * The user's own named revsets, in the order they left them, and the field
+ * that adds to the list.
  *
  * A row sets the revset to the *name*, not the expression it stands for: the
  * ⌘L field then reads `my-stack`, which is exactly what the same query is
@@ -123,7 +170,7 @@ interface RevsetRow {
  * of storing these as jj aliases rather than app state is that the short name
  * is real everywhere.
  */
-function SavedRevsets() {
+function MyRevsets() {
   const { revset, setRevset } = useRepo();
   const aliases = useRevsetAliases();
   const save = useSaveRevsetAlias();
@@ -135,27 +182,7 @@ function SavedRevsets() {
 
   const taken = aliases.data?.some((alias) => alias.name === draft) ?? false;
   const valid = isAliasName(draft);
-
-  const rows = orderRows<RevsetRow>(
-    [
-      ...SAVED_REVSETS.map((saved) => ({
-        id: saved.label,
-        label: t(saved.label),
-        target: saved.revset,
-        key: saved.key,
-        alias: false,
-      })),
-      ...(aliases.data ?? []).map((alias) => ({
-        id: alias.name,
-        label: alias.name,
-        target: alias.name,
-        detail: alias.revset,
-        alias: true,
-      })),
-    ],
-    (row) => row.id,
-    revsetOrder,
-  );
+  const rows = orderRows(aliases.data ?? [], (alias) => alias.name, revsetOrder);
 
   const commit = () => {
     if (!valid) return;
@@ -169,8 +196,8 @@ function SavedRevsets() {
 
   return (
     <Section
-      id="revsets"
-      title={t("Saved revsets")}
+      id="mine"
+      title={t("My revsets")}
       actions={
         <button
           type="button"
@@ -230,44 +257,50 @@ function SavedRevsets() {
           {t("Replaces the revset {name} already stands for.", { name: draft })}
         </div>
       )}
+      {!naming && rows.length === 0 && (
+        <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
+          {t("None yet.")}
+        </div>
+      )}
 
       {/* HTML5 drag, which needs `dragDropEnabled: false` on the Tauri window
           (see tauri.conf.json) or the shell eats the events as a file drop. The
           dropped row takes the target's place; the stored order is the whole
-          list, so a new alias lands at the end rather than anywhere. */}
-      {rows.map((row) => (
+          list, so a new alias lands at the end rather than anywhere. Only this
+          list is hand-ordered: the other sections sort by a rule. */}
+      {rows.map((alias) => (
         <div
           className="side-item"
-          key={row.id}
-          aria-current={revset === row.target}
-          title={row.detail}
+          key={alias.name}
+          aria-current={revset === alias.name}
+          title={alias.revset}
           draggable
           onDragStart={(event) => {
-            setDragging(row.id);
+            setDragging(alias.name);
             event.dataTransfer.effectAllowed = "move";
           }}
           onDragEnd={() => setDragging(undefined)}
           onDragOver={(event) => {
-            if (dragging !== undefined && dragging !== row.id) event.preventDefault();
+            if (dragging !== undefined && dragging !== alias.name) event.preventDefault();
           }}
           onDrop={(event) => {
             event.preventDefault();
             if (dragging === undefined) return;
             setRevsetOrder(
               reorder(
-                rows.map((each) => each.id),
+                rows.map((each) => each.name),
                 dragging,
-                row.id,
+                alias.name,
               ),
             );
             setDragging(undefined);
           }}
-          style={{ cursor: "grab", ...(dragging === row.id ? { opacity: 0.4 } : {}) }}
+          style={{ cursor: "grab", ...(dragging === alias.name ? { opacity: 0.4 } : {}) }}
         >
           <RevsetIcon />
           <button
             type="button"
-            onClick={() => setRevset(row.target)}
+            onClick={() => setRevset(alias.name)}
             style={{
               flexGrow: 1,
               minWidth: 0,
@@ -277,25 +310,22 @@ function SavedRevsets() {
               textAlign: "left",
             }}
           >
-            {row.label}
+            {alias.name}
           </button>
-          {row.key && <span className="key">{row.key}</span>}
           {/* No confirmation sheet: the row is one line of repo config, the
               expression it removes is in the tooltip beside it, and `jj config
               set` puts it back. ponytail: if a longer expression starts being
               hard to retype, undo belongs here rather than a dialog. */}
-          {row.alias && (
-            <button
-              type="button"
-              className="ter"
-              onClick={() => remove.mutate(row.id)}
-              title={t("Forget {name}", { name: row.id })}
-              aria-label={t("Forget {name}", { name: row.id })}
-              style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
-            >
-              ×
-            </button>
-          )}
+          <button
+            type="button"
+            className="ter"
+            onClick={() => remove.mutate(alias.name)}
+            title={t("Forget {name}", { name: alias.name })}
+            aria-label={t("Forget {name}", { name: alias.name })}
+            style={{ flexShrink: 0, padding: "0 2px", fontSize: 13 }}
+          >
+            ×
+          </button>
         </div>
       ))}
     </Section>
@@ -350,6 +380,14 @@ function untrackedRemotes(
   );
 }
 
+/**
+ * The sidebar: a taxonomy of revsets. Each section is one kind — the changes
+ * you are working on, the bookmarks, the tags, the workspaces, the repository
+ * as a whole, and the queries you named yourself — and every row in it is a
+ * member of that kind. Three of the built-ins *are* a kind and sit as that
+ * section's heading rather than as a row under it, which is why "All bookmarks"
+ * is not listed twice.
+ */
 export function Sidebar({
   view,
   onToggleBoard,
@@ -363,6 +401,7 @@ export function Sidebar({
 }) {
   const { revset, setRevset, isPinned } = useRepo();
   const bookmarks = useBookmarks();
+  const trunk = useTrunkBookmark();
   const tags = useTags();
   const workspaces = useWorkspaces();
   const track = useJjMutation((port, args: { name: string; remote: string }) =>
@@ -384,17 +423,35 @@ export function Sidebar({
         borderRight: "1px solid var(--u-line)",
       }}
     >
+      <Section
+        id="work"
+        title={t("Work")}
+        revset={preset("Recent work").revset}
+        shortcut={preset("Recent work").key}
+      >
+        <PresetRow label="Mine, unpushed" />
+        <PresetRow label="Conflicts" />
+        <PresetRow label="Current stack" />
+        <PresetRow label="Empty changes" />
+      </Section>
+
       {/* One icon for the section, not one per row: a column of the same glyph
           repeated says nothing the heading has not, and it was the only thing
           between the row's left edge and the name. */}
-      <Section id="bookmarks" title={t("Bookmarks")} icon={<BookmarkIcon />}>
+      <Section
+        id="bookmarks"
+        title={t("Bookmarks")}
+        icon={<BookmarkIcon />}
+        revset={preset("All bookmarks").revset}
+        shortcut={preset("All bookmarks").key}
+      >
         {bookmarks.data?.length === 0 && (
           <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
             {t("None yet.")}
           </div>
         )}
         {bookmarks.data &&
-          localBookmarks(bookmarks.data).map((bookmark) => {
+          sortBookmarks(localBookmarks(bookmarks.data), trunk).map((bookmark) => {
             const target = bookmarkRevset(bookmark.name);
             return (
               <button
@@ -500,9 +557,46 @@ export function Sidebar({
         )}
       </Section>
 
+      {/* Only when there are some: most jj repos have none, and a heading whose
+          revset is empty is a dead button. Newest first — a tag's name is its
+          place in time, which is the one thing a bookmark name is not. */}
+      {(tags.data?.length ?? 0) > 0 && (
+        <Section id="tags" title={t("Tags")} icon={<TagIcon />} revset={TAGS_REVSET}>
+          {sortTags(tags.data ?? []).map((tag) => {
+            const target = tagRevset(tag.name);
+            return (
+              <button
+                type="button"
+                className="side-item"
+                key={tag.name}
+                aria-current={revset === target}
+                onClick={() => setRevset(target)}
+              >
+                <span
+                  style={{
+                    flexGrow: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {tag.name}
+                </span>
+                {tag.target && (
+                  <span className="mono ter" style={{ fontSize: 11 }}>
+                    {tag.target.slice(0, 4)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </Section>
+      )}
+
       <Section
         id="workspaces"
         title={t("Workspaces")}
+        revset={WORKSPACES_REVSET}
         actions={
           <>
             <button
@@ -588,43 +682,16 @@ export function Sidebar({
         )}
       </Section>
 
-      <SavedRevsets />
+      <Section
+        id="repository"
+        title={t("Repository")}
+        revset={preset("Everything").revset}
+        shortcut={preset("Everything").key}
+      >
+        <PresetRow label="All branches" />
+      </Section>
 
-      {/* Last, and only when there are some: most jj repos have none, a tag is
-          immutable by default so there is nothing to do to one here but look at
-          it, and the sections above are the ones the day's work touches. */}
-      {(tags.data?.length ?? 0) > 0 && (
-        <Section id="tags" title={t("Tags")} icon={<TagIcon />}>
-          {tags.data?.map((tag) => {
-            const target = tagRevset(tag.name);
-            return (
-              <button
-                type="button"
-                className="side-item"
-                key={tag.name}
-                aria-current={revset === target}
-                onClick={() => setRevset(target)}
-              >
-                <span
-                  style={{
-                    flexGrow: 1,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {tag.name}
-                </span>
-                {tag.target && (
-                  <span className="mono ter" style={{ fontSize: 11 }}>
-                    {tag.target.slice(0, 4)}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </Section>
-      )}
+      <MyRevsets />
 
       {/* The theme and language pickers used to sit under this strip. They are
           the user's settings, not this repository's, so they moved behind ⌘,

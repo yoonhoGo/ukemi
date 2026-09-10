@@ -39,6 +39,12 @@ export const UNPUSHED_REVSET = "mine() & mutable() & ~::remote_bookmarks()";
 /** Every revision a bookmark points at, local and remote. */
 export const BOOKMARKS_REVSET = "bookmarks() | remote_bookmarks()";
 
+/** Every revision a tag points at. */
+export const TAGS_REVSET = "tags()";
+
+/** Every workspace's working copy. */
+export const WORKSPACES_REVSET = "working_copies()";
+
 /** Your own mutable changes with nothing in them — the abandon pile. */
 export const EMPTY_REVSET = "empty() & mutable() & mine()";
 
