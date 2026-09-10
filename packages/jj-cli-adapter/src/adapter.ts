@@ -550,5 +550,13 @@ function normaliseRevision(raw: RawRevision): Revision {
     // jj keeps the trailing newline on a description; nothing downstream wants it.
     description: raw.description.replace(/\n+$/, ""),
     parents: raw.parents,
+    // jj's `bookmarks` folds away a *tracked* remote that agrees with its
+    // local, but keeps an untracked one — so `main@origin` arrives beside a
+    // local `main` on this very revision. Sitting on the same revision is the
+    // agreement, tracking or not, and one name said twice is not a drift worth
+    // a second pill.
+    remoteBookmarks: raw.remoteBookmarks.filter(
+      (name) => !raw.bookmarks.includes(name.slice(0, name.lastIndexOf("@"))),
+    ),
   };
 }

@@ -221,16 +221,23 @@ function localBookmarks(bookmarks: readonly Bookmark[]): Bookmark[] {
  * rows out, since those are tracked by construction, and it keeps a bookmark
  * deleted locally but still tracked out, since its counts are still numbers.
  *
- * Deliberately *not* also filtered on "no local row of that name": a local
- * `foo` and an untracked `foo@origin` can coexist — a name pushed by someone
- * else, or a remote untracked by hand — and that is exactly the case where the
- * two want connecting.
+ * Filtered on target as well, because a local `foo` and an untracked
+ * `foo@origin` can coexist and the two cases read differently: at the same
+ * target they are one thing said twice, and the local row above already stands
+ * for it, so a second row only asks the user to reconcile what agrees. At
+ * different targets — a name pushed by someone else, or a remote untracked by
+ * hand — the two really are apart, and that is the row worth offering.
  */
 function untrackedRemotes(
   bookmarks: readonly Bookmark[],
 ): { name: string; remote: string }[] {
+  const locals = bookmarks.filter((bookmark) => bookmark.remote === undefined);
   return bookmarks.flatMap((bookmark) =>
-    bookmark.remote !== undefined && bookmark.ahead === undefined
+    bookmark.remote !== undefined &&
+    bookmark.ahead === undefined &&
+    !locals.some(
+      (local) => local.name === bookmark.name && local.target === bookmark.target,
+    )
       ? [{ name: bookmark.name, remote: bookmark.remote }]
       : [],
   );
@@ -269,7 +276,13 @@ export function Sidebar({
         borderRight: "1px solid var(--u-line)",
       }}
     >
-      <div className="side-head">{t("Bookmarks")}</div>
+      {/* One icon for the section, not one per row: a column of the same glyph
+          repeated says nothing the heading has not, and it was the only thing
+          between the row's left edge and the name. */}
+      <div className="side-head" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <BookmarkIcon />
+        {t("Bookmarks")}
+      </div>
       {bookmarks.data?.length === 0 && (
         <div className="sec" style={{ padding: "0 8px", fontSize: 12 }}>
           {t("None yet.")}
@@ -286,7 +299,6 @@ export function Sidebar({
               aria-current={revset === target}
               onClick={() => setRevset(target)}
             >
-              <BookmarkIcon />
               <span
                 style={{
                   flexGrow: 1,
@@ -346,7 +358,6 @@ export function Sidebar({
                   })
             }
           >
-            <BookmarkIcon />
             <span
               className="ter"
               style={{

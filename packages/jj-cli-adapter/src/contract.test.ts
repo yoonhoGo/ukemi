@@ -420,6 +420,20 @@ test("tracking a remote-only bookmark mints the local one", async () => {
     !drifted[0]!.bookmarks.includes("shared"),
     "the remote row must not arrive as a bare local name",
   );
+
+  // The state the user's own repo is in: an *untracked* remote sitting on the
+  // same change as its local. jj's own folding does not cover this one — it
+  // only drops a tracked remote — so the adapter has to, or the graph draws
+  // `shared` and `shared@origin` on the same revision.
+  raw("bookmark", "untrack", "shared@origin");
+  raw("bookmark", "set", "shared", "-r", "trunk", "--allow-backwards");
+  const reunited = await carrying("shared", (r) => r.bookmarks);
+  assert.equal(reunited.length, 1);
+  assert.deepEqual(
+    reunited[0]!.remoteBookmarks,
+    [],
+    "an untracked remote on the local's own revision is the local, not a second name",
+  );
 });
 
 test("the observer sees each invocation with its argv and exit code", async () => {
