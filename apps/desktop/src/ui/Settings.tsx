@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { t } from "../i18n/i18n.ts";
 import { LanguagePicker } from "./LanguagePicker.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
+import { FontPicker } from "./FontPicker.tsx";
 import { useModal } from "./modal.ts";
 
 /**
@@ -69,6 +70,9 @@ export function Settings({ onClose }: { onClose(): void }) {
           <ThemePicker />
           <LanguagePicker />
         </div>
+        {/* Full width below: two text fields want the room, and this one is
+            about the letters rather than the colours. */}
+        <FontPicker />
       </div>
     </div>
   );

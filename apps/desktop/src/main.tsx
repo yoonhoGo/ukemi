@@ -28,6 +28,7 @@ import {
 import { Welcome } from "./ui/Welcome.tsx";
 import { progressSnapshot, subscribeProgress } from "./ui/onboarding.ts";
 import { applyTheme, THEMES } from "./themes/themes.ts";
+import { applyFonts, rememberedFonts } from "./themes/fonts.ts";
 import { applyLocale, currentLocale, initialLocale, subscribeLocale, t, tParts } from "./i18n/i18n.ts";
 
 const client = new QueryClient({
@@ -388,6 +389,7 @@ function Root() {
 
   useEffect(() => {
     applyTheme(rememberedTheme());
+    applyFonts(rememberedFonts());
     applyLocale(initialLocale());
   }, []);
 

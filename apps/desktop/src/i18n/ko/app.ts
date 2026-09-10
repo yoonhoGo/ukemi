@@ -84,4 +84,8 @@ export const app: Record<string, string> = {
   "Warm paper, ink rules, one vermilion. Serif descriptions.":
     "따뜻한 종이, 잉크 괘선, 주홍 하나. 설명은 세리프체.",
   Language: "언어",
+  Fonts: "글꼴",
+  Interface: "인터페이스",
+  Code: "코드",
+  "Theme default": "테마 기본값",
 };

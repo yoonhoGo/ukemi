@@ -4,6 +4,14 @@ The classes and custom properties in `contract.css` are a public API. A theme
 written against version *n* must keep working until this file records a
 breaking change and the version is bumped.
 
+## v1.6 — 2026-09-10
+
+Additive. The user can name an interface and a code face in Settings; the
+choice lands as an inline `--u-font` / `--u-font-mono` on the root element and
+so beats a theme's own values. A theme that reads either variable is unaffected;
+one that hardcodes a `font-family` is not overridable, which is the theme's
+call.
+
 ## v1.5 — 2026-09-10
 
 Additive. `.side-item` directly under a `<details>` is indented 28px so rows
