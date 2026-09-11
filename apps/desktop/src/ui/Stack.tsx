@@ -1,7 +1,8 @@
-import type { PullRequest, Revision } from "@ukemi/domain";
+import type { CheckState, PullRequest, Revision } from "@ukemi/domain";
 import { prBaseFor, prHeadFor, pullRequestFor, stackOf, unpushableReason } from "@ukemi/domain";
 import { t } from "../i18n/i18n.ts";
 import {
+  useBookmarks,
   useForge,
   useForgeMutation,
   useJjMutation,
@@ -24,12 +25,30 @@ import { nodeColor } from "./change-color.ts";
  * Without a GitHub remote or `gh`, only the push half shows. That is a normal
  * state, not an error.
  */
-export function StackPanel({ revision }: { revision: Revision }) {
+export function StackPanel({
+  revision,
+  onOpenDiff,
+}: {
+  revision: Revision;
+  /** Opens the diff sheet; with a second argument it compares two patches. */
+  onOpenDiff?(path: string, against?: string): void;
+}) {
   const { isPinned } = useRepo();
   const log = useLog();
   const forge = useForge();
   const prs = usePullRequests();
   const trunk = useTrunkBookmark();
+  /*
+   * Which remote each pushed bookmark lives on, so "since I pushed" can name
+   * the other side exactly instead of guessing `origin`. A row with no remote
+   * entry has never been pushed, and the absence is what hides the button —
+   * no drift calculation needed, and no button that opens an empty sheet.
+   */
+  const bookmarks = useBookmarks();
+  const remoteOf = (name: string) =>
+    bookmarks.data?.find(
+      (bookmark) => bookmark.name === name && bookmark.remote !== undefined,
+    )?.remote;
 
   const stack = log.data ? stackOf(log.data, revision.changeId) : [];
   const pushable = stack.filter((r) => unpushableReason(r) === undefined);
@@ -140,6 +159,31 @@ export function StackPanel({ revision }: { revision: Revision }) {
                 {t(reason)}
               </span>
             )}
+            {(() => {
+              // jj's own help gives this exact pair as the reason interdiff
+              // exists: `--from name@origin --to name` is "how has this change
+              // changed since the last push". `jj diff --from/--to` cannot
+              // answer it — the two sides have different parents, so it would
+              // fold in everything between those as well.
+              const remote = head === undefined ? undefined : remoteOf(head);
+              if (!onOpenDiff || head === undefined || remote === undefined) return null;
+              return (
+                <button
+                  type="button"
+                  className="tb-btn"
+                  style={{ height: 20, fontSize: 11, flexShrink: 0 }}
+                  title={t("What changed since {ref} was pushed", {
+                    ref: `${head}@${remote}`,
+                  })}
+                  aria-label={t("What changed since {ref} was pushed", {
+                    ref: `${head}@${remote}`,
+                  })}
+                  onClick={() => onOpenDiff("", `${head}@${remote}`)}
+                >
+                  {t("since push")}
+                </button>
+              );
+            })()}
             {pr ? (
               <button
                 type="button"
@@ -195,6 +239,21 @@ export function StackPanel({ revision }: { revision: Revision }) {
   );
 }
 
+/**
+ * CI in one character, or nothing at all.
+ *
+ * A glyph rather than a word: the chip already carries a number and a state,
+ * and the row is 26px. Colour is not the only signal — the three marks differ
+ * in shape too — and the title spells the state out for anything colour cannot
+ * reach. A merged or closed PR gets none of it: its checks are history.
+ */
+const CHECK_MARK: Record<CheckState, { glyph: string; color: string; label: string } | undefined> = {
+  passing: { glyph: "✓", color: "var(--u-added)", label: "checks passing" },
+  failing: { glyph: "✕", color: "var(--u-conflict)", label: "checks failing" },
+  pending: { glyph: "•", color: "var(--u-text-secondary)", label: "checks running" },
+  none: undefined,
+};
+
 /** `#12 open` / `#12 draft` / `#12 merged` / `#12 ✓` when approved. */
 export function PrLabel({ pr }: { pr: PullRequest }) {
   const status =
@@ -207,9 +266,16 @@ export function PrLabel({ pr }: { pr: PullRequest }) {
           : pr.reviewDecision === "CHANGES_REQUESTED"
             ? "changes"
             : "open";
+  const check = pr.state === "open" ? CHECK_MARK[pr.checks] : undefined;
   return (
     <>
       #{pr.number} <span style={{ fontWeight: 400 }}>{t(status)}</span>
+      {check && (
+        <span style={{ color: check.color, fontWeight: 700 }} title={t(check.label)}>
+          {" "}
+          {check.glyph}
+        </span>
+      )}
     </>
   );
 }

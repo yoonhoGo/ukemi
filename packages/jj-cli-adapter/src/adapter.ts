@@ -234,6 +234,23 @@ export class JjCliAdapter implements JjPort {
     return parseNdjson<RawRevision>(out).map(normaliseRevision);
   }
 
+  async interdiff(
+    args: { readonly from: string; readonly to: string },
+    opts?: DiffOptions,
+  ): Promise<string> {
+    const argv = [
+      ...this.readBase(opts),
+      "interdiff",
+      "--from",
+      args.from,
+      "--to",
+      args.to,
+      "--git",
+    ];
+    if (opts?.context !== undefined) argv.push("--context", String(opts.context));
+    return this.run(argv);
+  }
+
   async bookmarks(opts?: ReadOptions): Promise<Bookmark[]> {
     const out = await this.run([
       ...this.readBase(opts),
@@ -440,6 +457,10 @@ export class JjCliAdapter implements JjPort {
 
   bookmarkTrack(name: string, remote: string): Promise<WriteResult> {
     return this.write(["bookmark", "track", `${name}@${remote}`]);
+  }
+
+  addRemote(name: string, url: string): Promise<WriteResult> {
+    return this.write(["git", "remote", "add", name, url]);
   }
 
   fetch(remote?: string): Promise<WriteResult> {

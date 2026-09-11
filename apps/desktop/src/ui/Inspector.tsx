@@ -251,7 +251,8 @@ export function Inspector({
   /** The window's ⌘N, so the step and the key do the same thing. */
   onStartChange?(): void;
   onOpenSheet(mode: HunkSheetMode): void;
-  onOpenDiff(path: string): void;
+  /** `against` opens the sheet comparing this revision's patch with that one's. */
+  onOpenDiff(path: string, against?: string): void;
 }) {
   const { isPinned, setRevset } = useRepo();
   const files = useDiffSummary(revision?.changeId);
@@ -504,7 +505,9 @@ export function Inspector({
         <Conflicts revision={revision} onShowRevision={() => onOpenSheet("split")} />
       )}
 
-      {!revision.isImmutable && <StackPanel revision={revision} />}
+      {!revision.isImmutable && (
+        <StackPanel revision={revision} onOpenDiff={onOpenDiff} />
+      )}
 
       <div
         style={{

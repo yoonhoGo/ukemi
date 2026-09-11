@@ -75,6 +75,10 @@ function Window({
   // inspector's file list. The revision is the selected one, so this is the
   // whole of the sheet's state that the window has to hold.
   const [diffPath, setDiffPath] = useState<string | undefined>(undefined);
+  // The pushed side, when the sheet was opened to compare rather than to read.
+  // Held beside the path rather than inside it: closing is still one setter,
+  // and every existing caller of `onOpenDiff` keeps its one argument.
+  const [diffAgainst, setDiffAgainst] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   // The bookmark name being typed, or `undefined` when the strip is closed.
   // An empty string is the open-but-blank state, which is why this is not a
@@ -242,7 +246,10 @@ function Window({
         // and the rest still work while a diff is up, so the thing on top
         // closes first — and before the pin, which is the window's state
         // rather than something covering it.
-        else if (diffPath) setDiffPath(undefined);
+        else if (diffPath) {
+          setDiffPath(undefined);
+          setDiffAgainst(undefined);
+        }
         // The naming strip is not a sheet and does not cover anything, so it
         // comes after them — but before the pin, because a half-typed name is
         // the more recent thing the user wants out of.
@@ -724,7 +731,10 @@ function Window({
           extraParents={extraParents}
           onStartChange={startChange}
           onOpenSheet={setSheet}
-          onOpenDiff={setDiffPath}
+          onOpenDiff={(path, against) => {
+            setDiffPath(path);
+            setDiffAgainst(against);
+          }}
         />
       </div>
 
@@ -766,7 +776,11 @@ function Window({
         <DiffSheet
           revision={selectedRevision}
           path={diffPath}
-          onClose={() => setDiffPath(undefined)}
+          against={diffAgainst}
+          onClose={() => {
+            setDiffPath(undefined);
+            setDiffAgainst(undefined);
+          }}
         />
       )}
       {showShortcuts && <Shortcuts onClose={() => setShowShortcuts(false)} />}

@@ -78,10 +78,6 @@ and being right about the result.
 this window draws. Fork and Sublime Merge sell a bisect UI; here the canvas for
 marking good and bad already exists.
 
-**`jj interdiff`.** The stack panel pushes and opens PRs, so "what changed since
-I last pushed" is the question it raises and cannot answer. `interdiff` is that
-answer.
-
 **Signing.** `jj sign` / `jj unsign`, plus a badge on a signed row. The template
 can report it; nothing reads that field yet.
 
@@ -89,15 +85,8 @@ can report it; nothing reads that field yet.
 down a stack. `jj sparse` has no UI. `jj op abandon` is how an operation log
 gets pruned, and the timeline is the only place that would show it.
 
-**`jj git remote add`.** Onboarding takes a folder all the way to a jj repo and
-stops there: a repository with no remote cannot be given one from inside the
-window, which makes the stack panel unreachable for exactly the repos that were
-created here.
+From the commercial Git clients, three things worth taking:
 
-From the commercial Git clients, four things worth taking:
-
-- **PR check status.** `gh.ts` reads `reviewDecision` but not `gh pr checks`, so
-  the stack panel knows a PR was approved and not whether it is green.
 - **A search that writes a revset.** Author, date and path are three fields that
   compose into `author(…) & files(…)`; ⌘K already establishes the pattern of a
   sheet that drafts into the ⌘L field rather than replacing it.

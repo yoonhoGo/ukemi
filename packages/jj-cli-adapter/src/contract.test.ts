@@ -202,6 +202,56 @@ test("diffSummary and diff read one revision's files", async () => {
   assert.match(text, /^\+b$/m);
 });
 
+test("interdiff compares patches, not contents, across different parents", async () => {
+  // The point of the command, as jj's own help puts it: two changes that *do*
+  // the same thing on different bases have no interdiff, even though their
+  // trees differ by everything the bases differ by.
+  raw("new", "trunk", "-m", "inter-base");
+  writeFileSync(join(repo, "inter-base.txt"), "base only\n");
+  raw("status");
+  const base = (await jj.log("@"))[0]!;
+
+  // The same description on both, because jj counts a description change as
+  // part of the interdiff and emits it as a synthetic `JJ-COMMIT-DESCRIPTION`
+  // file. That is wanted in the window — "what changed since I pushed"
+  // includes the message — but it would muddy the claim this line is making.
+  raw("new", "trunk", "-m", "inter-same");
+  writeFileSync(join(repo, "inter-feat.txt"), "hello\n");
+  raw("status");
+  const a = (await jj.log("@"))[0]!;
+
+  raw("new", base.changeId, "-m", "inter-same");
+  writeFileSync(join(repo, "inter-feat.txt"), "hello\n");
+  raw("status");
+  const b = (await jj.log("@"))[0]!;
+
+  assert.equal(
+    (await jj.interdiff({ from: a.changeId, to: b.changeId })).trim(),
+    "",
+    "same patch and same description on different parents is no interdiff at all",
+  );
+
+  // And the description *is* part of it when it differs.
+  raw("describe", "-r", b.changeId, "-m", "inter-renamed");
+  assert.match(
+    await jj.interdiff({ from: a.changeId, to: b.changeId }),
+    /JJ-COMMIT-DESCRIPTION/,
+  );
+  raw("describe", "-r", b.changeId, "-m", "inter-same");
+
+  // Change what B does, and the interdiff is exactly that.
+  writeFileSync(join(repo, "inter-feat.txt"), "hello, world\n");
+  raw("status");
+  const changed = await jj.interdiff({ from: a.changeId, to: b.changeId });
+  assert.match(changed, /inter-feat\.txt/);
+  assert.match(changed, /^\+hello, world$/m);
+  // `inter-base.txt` is the difference between the two *parents*, which is
+  // what `jj diff --from --to` would have dragged in and interdiff must not.
+  assert.doesNotMatch(changed, /inter-base\.txt/);
+
+  raw("abandon", "-r", `${a.changeId} | ${b.changeId} | ${base.changeId}`);
+});
+
 test("reads are pinned by --at-operation and ignore later writes", async () => {
   const before = await jj.currentOperation();
   const countBefore = (await jj.log("all()")).length;
@@ -415,6 +465,21 @@ test("gitInfo sees the colocated .git and the committer field parses", async () 
   assert.ok(Array.isArray(info.remotes));
   const [head] = await jj.log("@");
   assert.ok(head!.committer.timestamp.length > 0);
+});
+
+test("a remote can be added from inside, and gitInfo sees it", async () => {
+  const before = (await jj.gitInfo()).remotes.map((remote) => remote.name);
+  assert.equal(before.includes("extra"), false);
+
+  await jj.addRemote("extra", "https://example.invalid/o/r.git");
+
+  const after = (await jj.gitInfo()).remotes;
+  const added = after.find((remote) => remote.name === "extra");
+  assert.ok(added, `expected an "extra" remote, got ${after.map((r) => r.name).join(", ")}`);
+  assert.equal(added.url, "https://example.invalid/o/r.git");
+
+  // Removed again: later tests count the remotes this repo has.
+  raw("git", "remote", "remove", "extra");
 });
 
 test("absorb moves a line edit into the ancestor that last touched it", async () => {

@@ -107,6 +107,22 @@ export interface JjPort {
    */
   evolog(rev: string, opts?: ReadOptions): Promise<Revision[]>;
 
+  /**
+   * How one revision's patch differs from another's (`jj interdiff`).
+   *
+   * Not `diff --from A --to B`, which compares file *contents* and so drags in
+   * everything between the two parents. This compares what the two changes
+   * *do*, by rebasing `from` onto `to`'s parents first — so with
+   * `from: "name@origin"` and `to: "name"` it answers the one question the
+   * stack panel raises and could not answer: what changed since I pushed.
+   *
+   * Git format, like `diff`, because the same parser and the same sheet read it.
+   */
+  interdiff(
+    args: { readonly from: string; readonly to: string },
+    opts?: DiffOptions,
+  ): Promise<string>;
+
   bookmarks(opts?: ReadOptions): Promise<Bookmark[]>;
 
   tags(opts?: ReadOptions): Promise<Tag[]>;
@@ -188,6 +204,16 @@ export interface JjPort {
 
   /** Track `name@remote`, which is what mints the local bookmark for it. */
   bookmarkTrack(name: string, remote: string): Promise<WriteResult>;
+
+  /**
+   * Add a Git remote (`jj git remote add`).
+   *
+   * The one thing onboarding could not do: a repository created through the
+   * welcome screen had no way to be given a remote from inside the window, so
+   * push, fetch and the whole stack panel stayed permanently out of reach for
+   * exactly the repos this app made.
+   */
+  addRemote(name: string, url: string): Promise<WriteResult>;
 
   /** Fetch from `remote`, or every configured remote when omitted. */
   fetch(remote?: string): Promise<WriteResult>;

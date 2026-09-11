@@ -18,8 +18,10 @@ import {
 import { t } from "../i18n/i18n.ts";
 import {
   messageFor,
+  useAddRemote,
   useAddWorkspace,
   useBookmarks,
+  useGitInfo,
   useDeleteRevsetAlias,
   useForgetWorkspace,
   useJjMutation,
@@ -129,6 +131,168 @@ function Section({
       </summary>
       {children}
     </details>
+  );
+}
+
+/**
+ * The repository itself: its two widest revsets, and its Git remotes.
+ *
+ * The remotes are here because this is the section whose kind is "the
+ * repository", and because until now there was nowhere at all to add one —
+ * onboarding takes a folder all the way to a jj repo and stopped, leaving
+ * push, fetch and the stack panel permanently out of reach for exactly the
+ * repositories this app created. The rows themselves are read-only; removing
+ * a remote also forgets its bookmarks, which is a different and much larger
+ * button than ＋.
+ */
+function Repository() {
+  const { isPinned } = useRepo();
+  const git = useGitInfo();
+  const add = useAddRemote();
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("origin");
+  const [url, setUrl] = useState("");
+
+  const taken = git.data?.remotes.some((remote) => remote.name === name.trim()) === true;
+  // A remote name reaches jj as a bare argument and comes back inside
+  // `name@remote`, so it is held to the same shape a bookmark alias is.
+  const valid = isAliasName(name.trim()) && url.trim().length > 0 && !taken;
+
+  const commit = () => {
+    if (!valid || isPinned) return;
+    add.mutate(
+      { name: name.trim(), url: url.trim() },
+      {
+        onSuccess: () => {
+          setAdding(false);
+          setUrl("");
+        },
+      },
+    );
+  };
+
+  return (
+    <Section
+      id="repository"
+      title={t("Repository")}
+      icon={<BranchIcon />}
+      actions={
+        <button
+          type="button"
+          className="tb-btn"
+          style={{ height: 18, fontSize: 10.5, padding: "0 6px" }}
+          aria-pressed={adding}
+          disabled={isPinned}
+          onClick={() => setAdding((open) => !open)}
+          title={t("Add a Git remote")}
+          aria-label={t("Add a Git remote")}
+        >
+          ＋
+        </button>
+      }
+    >
+      <PresetRow label="Everything" />
+      <PresetRow label="All branches" />
+
+      {adding && (
+        <>
+          <div className="side-item" style={{ gap: 6 }}>
+            <BranchIcon />
+            <input
+              className="mono selectable"
+              autoFocus
+              value={name}
+              spellCheck={false}
+              aria-label={t("Remote name")}
+              aria-invalid={name.length > 0 && !isAliasName(name.trim())}
+              placeholder={t("Remote name")}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") commit();
+                if (event.key === "Escape") setAdding(false);
+                event.stopPropagation();
+              }}
+              style={{
+                width: 80,
+                flexShrink: 0,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+              }}
+            />
+            <input
+              className="mono selectable"
+              value={url}
+              spellCheck={false}
+              aria-label={t("Remote URL")}
+              placeholder={t("URL")}
+              onChange={(event) => setUrl(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") commit();
+                if (event.key === "Escape") setAdding(false);
+                event.stopPropagation();
+              }}
+              style={{
+                flexGrow: 1,
+                minWidth: 0,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+              }}
+            />
+            <span className="key">⏎</span>
+          </div>
+          {name.trim().length > 0 && !isAliasName(name.trim()) && (
+            <div className="ter" style={{ padding: "0 8px 2px 28px", fontSize: 11 }}>
+              {t("A letter, then letters, digits, - or _.")}
+            </div>
+          )}
+          {taken && (
+            <div className="ter" style={{ padding: "0 8px 2px 28px", fontSize: 11 }}>
+              {t("{name} is already a remote here.", { name: name.trim() })}
+            </div>
+          )}
+        </>
+      )}
+
+      {git.data?.remotes.map((remote) => (
+        <div className="side-item" key={remote.name} title={remote.url}>
+          <BranchIcon />
+          <span style={{ flexShrink: 0 }}>{remote.name}</span>
+          {/* The URL is cut at the front: the tail — owner and repo — is the
+              part that tells two remotes apart. */}
+          <span
+            className="ter mono"
+            style={{
+              flexGrow: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              direction: "rtl",
+              textAlign: "left",
+              fontSize: 11,
+            }}
+          >
+            {remote.url}
+          </span>
+        </div>
+      ))}
+      {git.data && git.data.remotes.length === 0 && !adding && (
+        <div className="sec" style={{ padding: "0 8px 0 28px", fontSize: 12 }}>
+          {t("No remote yet — ＋ adds one.")}
+        </div>
+      )}
+      {add.error && (
+        <div
+          role="alert"
+          className="mono selectable"
+          style={{ padding: "2px 8px 2px 28px", fontSize: 11, color: "var(--u-conflict)" }}
+        >
+          {messageFor(add.error)}
+        </div>
+      )}
+    </Section>
   );
 }
 
@@ -693,10 +857,7 @@ export function Sidebar({
         )}
       </Section>
 
-      <Section id="repository" title={t("Repository")} icon={<BranchIcon />}>
-        <PresetRow label="Everything" />
-        <PresetRow label="All branches" />
-      </Section>
+      <Repository />
 
       <MyRevsets />
 

@@ -66,6 +66,21 @@ export const chrome: Record<string, string> = {
   "{name} here": "{name}을(를) 여기로",
   Authored: "작성 시각",
 
+  // ── Repository 섹션 — Git 리모트 ────────────────────────────────────────
+  "Add a Git remote": "Git 리모트 추가",
+  "Remote name": "리모트 이름",
+  "Remote URL": "리모트 URL",
+  URL: "URL",
+  "{name} is already a remote here.": "{name}은(는) 이미 여기 리모트입니다.",
+  "No remote yet — ＋ adds one.": "아직 리모트가 없습니다 — ＋로 추가합니다.",
+
+  // ── Stack panel — 푸시 이후 비교와 CI 상태 ──────────────────────────────
+  "since push": "푸시 이후",
+  "What changed since {ref} was pushed": "{ref}을(를) 푸시한 뒤로 바뀐 것",
+  "checks passing": "체크 통과",
+  "checks failing": "체크 실패",
+  "checks running": "체크 진행 중",
+
   // ── Timeline ───────────────────────────────────────────────────────────
   OPERATIONS: "오퍼레이션",
   "Viewing a past state. Nothing has changed yet.":

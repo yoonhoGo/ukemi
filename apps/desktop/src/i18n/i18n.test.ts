@@ -60,6 +60,20 @@ test("the prose in the data tables is translated too", () => {
   );
 });
 
+test("the check-state labels are translated", () => {
+  // `CHECK_MARK` in Stack.tsx is read as `t(mark.label)`, so the literal scan
+  // above cannot see it — and the file is `.tsx`, which `node --test` will not
+  // import. Read as text, the way the theme registry below is, and for the
+  // same reason.
+  const source = readFileSync(join(SRC, "ui/Stack.tsx"), "utf8");
+  const labels = [...source.matchAll(/label: "([^"]+)"/g)].map((match) => match[1]!);
+  assert.ok(labels.length > 0, "the regex should still find the check labels");
+  assert.deepEqual(
+    labels.filter((line) => !(line in ko)),
+    [],
+  );
+});
+
 test("theme names and notes are translated", () => {
   // themes.ts imports a stylesheet, so it is read as text rather than imported.
   const source = readFileSync(join(SRC, "themes/themes.ts"), "utf8");

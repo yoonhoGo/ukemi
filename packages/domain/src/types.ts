@@ -184,6 +184,17 @@ export interface GitInfo {
 
 export type PullRequestState = "open" | "merged" | "closed";
 
+/**
+ * Every check on a PR's head, rolled into one word.
+ *
+ * One word rather than the list: the panel has a 26px row and the question it
+ * is answering is "can this merge". A failure outranks anything still running,
+ * because a red run is settled and a pending one is not news. `none` covers a
+ * repo with no CI at all as well as a PR whose checks have not been created
+ * yet — indistinguishable from outside, and the badge says nothing either way.
+ */
+export type CheckState = "passing" | "failing" | "pending" | "none";
+
 /** A pull request on the forge, matched to a revision through its head branch. */
 export interface PullRequest {
   readonly number: number;
@@ -196,6 +207,8 @@ export interface PullRequest {
   readonly isDraft: boolean;
   /** `APPROVED`, `CHANGES_REQUESTED`, `REVIEW_REQUIRED` or empty. */
   readonly reviewDecision: string;
+  /** CI on the head commit, rolled up. */
+  readonly checks: CheckState;
 }
 
 /** One CLI invocation the app made, for the transparency panel. */

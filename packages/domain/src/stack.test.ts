@@ -92,7 +92,7 @@ test("PR bases chain through the stack and land on trunk at the bottom", () => {
 test("an open PR wins over a merged one on the same bookmark", () => {
   const merged: PullRequest = {
     number: 1, title: "old", state: "merged", url: "", headBranch: "push-a",
-    baseBranch: "main", isDraft: false, reviewDecision: "",
+    baseBranch: "main", isDraft: false, reviewDecision: "", checks: "none",
   };
   const open: PullRequest = { ...merged, number: 2, state: "open" };
   assert.equal(pullRequestFor(a, [merged, open])?.number, 2);

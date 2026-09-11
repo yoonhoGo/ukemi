@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { AnnotationLine, DiffLine, FileDiff, Revision, WordSpan } from "@ukemi/domain";
 import { pairRows, pairedWords, parseGitDiff } from "@ukemi/domain";
-import { messageFor, useAnnotate, useFileDiff } from "../repo.tsx";
+import { messageFor, useAnnotate, useFileDiff, useInterdiff } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
 import { STATUS_MARK } from "./Inspector.tsx";
@@ -31,10 +31,22 @@ import { relativeTime } from "./time.ts";
 export function DiffSheet({
   revision,
   path,
+  against,
   onClose,
 }: {
   revision: Revision;
   path: string;
+  /**
+   * A revset to compare this revision's *patch* against — the pushed side of a
+   * bookmark, in the only case that sends one. Absent is the ordinary reading:
+   * what this revision does to its parent.
+   *
+   * jj counts the description as part of an interdiff and emits it as a
+   * synthetic `JJ-COMMIT-DESCRIPTION` file, so the file list can hold a row
+   * that is not a file. Left as jj sends it: "the message changed too" is part
+   * of the answer to "what changed since I pushed".
+   */
+  against?: string | undefined;
   onClose(): void;
 }) {
   /*
@@ -67,7 +79,14 @@ export function DiffSheet({
    * line, so the wide view — where a wrong number is legible — shows the true
    * ones, and the parser is the one already trusted to rewrite commits.
    */
-  const diff = useFileDiff(revision.changeId, undefined, context);
+  /*
+   * Two reads, one of them always off. Hooks cannot be called conditionally, and
+   * both are `enabled`-gated on an argument being present, so the disabled one
+   * costs nothing and neither branch needs its own component.
+   */
+  const plain = useFileDiff(against === undefined ? revision.changeId : undefined, undefined, context);
+  const compared = useInterdiff(against, against === undefined ? undefined : revision.changeId, context);
+  const diff = against === undefined ? plain : compared;
   const files = useMemo(() => parseGitDiff(diff.data ?? ""), [diff.data]);
   const [current, setCurrent] = useState(path);
   // Done is the only control besides the file list, so it is where focus lands
@@ -180,6 +199,11 @@ export function DiffSheet({
               them: `jj diff --summary` prints no counts, so the adapter leaves
               them absent. The parsed lines are the only place the numbers
               exist, and they are already in hand. */}
+          {against !== undefined && (
+            <span className="pill" style={{ flexShrink: 0 }}>
+              {t("since {ref}", { ref: against })}
+            </span>
+          )}
           {tally && (
             <span className="mono" style={{ flexShrink: 0, fontSize: 12 }}>
               <span style={{ color: "var(--u-added)" }}>+{tally.additions}</span>{" "}
@@ -329,9 +353,11 @@ export function DiffSheet({
           <span className="mono">
             {blame && canBlame
               ? `jj file annotate -r ${revision.changeId.slice(0, 8)} ${file.path}`
-              : `jj diff -r ${revision.changeId.slice(0, 8)} --git${
-                  context === undefined ? "" : ` --context ${context}`
-                }`}
+              : `${
+                  against === undefined
+                    ? `jj diff -r ${revision.changeId.slice(0, 8)}`
+                    : `jj interdiff --from ${against} --to ${revision.changeId.slice(0, 8)}`
+                } --git${context === undefined ? "" : ` --context ${context}`}`}
           </span>
         </div>
       </div>

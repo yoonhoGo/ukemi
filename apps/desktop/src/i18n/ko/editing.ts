@@ -10,6 +10,9 @@ export const editing: Record<string, string> = {
   "Reading the change's history…": "체인지 이력을 읽는 중…",
   "This change has only ever been itself.": "이 체인지는 늘 지금 모습이었습니다.",
 
+  // DiffSheet — 패치끼리 비교 (jj interdiff)
+  "since {ref}": "{ref} 이후",
+
   // HunkSheet — 헝크 편집 시트
   "Split {change} into two changes": "{change}를 두 체인지로 분리",
   "Squash part of {change} into its parent": "{change}의 일부를 부모에 스쿼시",

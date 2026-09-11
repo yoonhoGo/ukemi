@@ -1,4 +1,4 @@
-import type { ForgePort, PullRequest, PullRequestState } from "@ukemi/domain";
+import type { CheckState, ForgePort, PullRequest, PullRequestState } from "@ukemi/domain";
 import { JjError, observed, type CommandObserver, type JjExec } from "./exec.ts";
 
 /**
@@ -24,6 +24,12 @@ export class GhCliAdapter implements ForgePort {
     return result.stdout;
   }
 
+  /**
+   * ponytail: `statusCheckRollup` is asked for on all 200 PRs, closed ones
+   * included, because `gh pr list --json` has no way to ask per row. On a repo
+   * with a wide CI matrix that is a few MB of JSON, parsed once a minute at
+   * worst. Narrow the `--state`/`--limit` if it ever shows up.
+   */
   async pullRequests(): Promise<PullRequest[]> {
     const out = await this.run([
       "pr",
@@ -35,7 +41,7 @@ export class GhCliAdapter implements ForgePort {
       "--limit",
       "200",
       "--json",
-      "number,title,state,url,headRefName,baseRefName,isDraft,reviewDecision",
+      "number,title,state,url,headRefName,baseRefName,isDraft,reviewDecision,statusCheckRollup",
     ]);
     const raw = JSON.parse(out) as {
       number: number;
@@ -46,6 +52,7 @@ export class GhCliAdapter implements ForgePort {
       baseRefName: string;
       isDraft: boolean;
       reviewDecision: string;
+      statusCheckRollup: RawCheck[] | null;
     }[];
     return raw.map((pr) => ({
       number: pr.number,
@@ -56,6 +63,7 @@ export class GhCliAdapter implements ForgePort {
       baseBranch: pr.baseRefName,
       isDraft: pr.isDraft,
       reviewDecision: pr.reviewDecision ?? "",
+      checks: rollUpChecks(pr.statusCheckRollup),
     }));
   }
 
@@ -86,6 +94,55 @@ export class GhCliAdapter implements ForgePort {
     // gh already knows how to open a browser; no URL-opening plugin needed.
     await this.run(["pr", "view", String(number), "-R", this.slug, "--web"]);
   }
+}
+
+/**
+ * One entry of `statusCheckRollup`, in either of the two shapes GitHub returns.
+ *
+ * A `CheckRun` is an Actions job and carries `status` plus `conclusion`; a
+ * `StatusContext` is the older commit-status API and carries one `state`. Both
+ * arrive in the same array, which is why neither field can be assumed present.
+ */
+interface RawCheck {
+  __typename?: string;
+  status?: string;
+  conclusion?: string | null;
+  state?: string;
+}
+
+/** Conclusions that mean the check said no, as opposed to said nothing. */
+const FAILED = new Set([
+  "FAILURE",
+  "TIMED_OUT",
+  "CANCELLED",
+  "ACTION_REQUIRED",
+  "STARTUP_FAILURE",
+  "ERROR",
+]);
+
+/**
+ * Every check on a PR, as one word.
+ *
+ * `SKIPPED` and `NEUTRAL` are deliberately not failures: a job that opted out
+ * of running is not a job that said no, and counting it red would paint most
+ * monorepo PRs red forever. Anything not yet `COMPLETED` is pending, and a
+ * single failure outranks any number of pending ones.
+ *
+ * Exported for its own test: this is the only place in the adapter that turns
+ * a list into a verdict, so it is the only place a wrong rule would hide.
+ */
+export function rollUpChecks(checks: readonly RawCheck[] | null | undefined): CheckState {
+  if (!checks || checks.length === 0) return "none";
+  let pending = false;
+  for (const check of checks) {
+    const verdict = check.conclusion ?? check.state ?? "";
+    if (FAILED.has(verdict)) return "failing";
+    // A CheckRun says so through `status`; a StatusContext through `state`.
+    if (check.status !== undefined ? check.status !== "COMPLETED" : verdict === "PENDING") {
+      pending = true;
+    }
+  }
+  return pending ? "pending" : "passing";
 }
 
 /**

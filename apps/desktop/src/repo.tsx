@@ -368,6 +368,48 @@ export function useFileDiff(
 }
 
 /**
+ * How one revision's patch differs from another's (`jj interdiff`).
+ *
+ * Off until both sides are known, so the diff sheet can call this and the
+ * ordinary read side by side and let the disabled one cost nothing. Keyed the
+ * same way, `context` included, for the same reason `useFileDiff` is.
+ */
+export function useInterdiff(
+  from: string | undefined,
+  to: string | undefined,
+  context?: number,
+): UseQueryResult<string> {
+  const { root, port, opId } = useRepo();
+  return useQuery({
+    queryKey: ["repo", root, opId, "interdiff", from, to, context],
+    queryFn: () => port.interdiff({ from: from!, to: to! }, { atOp: opId, context }),
+    enabled: opId !== undefined && from !== undefined && to !== undefined,
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Add a Git remote.
+ *
+ * Its own mutation rather than `useJjMutation` because the remote list is not
+ * keyed on the operation: `useGitInfo` is about the repository, not a point in
+ * it, so the head invalidation every other write relies on would leave the
+ * sidebar showing the remotes from before this one existed.
+ */
+export function useAddRemote() {
+  const { root, port, pin } = useRepo();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { name: string; url: string }) => port.addRemote(args.name, args.url),
+    onSuccess: () => {
+      pin(undefined);
+      void client.invalidateQueries({ queryKey: ["op-head", root] });
+      void client.invalidateQueries({ queryKey: ["git-info", root] });
+    },
+  });
+}
+
+/**
  * The one place a failure is turned into a line of text.
  *
  * `JjError` carries jj's own stderr as its `message`, so everything that
