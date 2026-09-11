@@ -269,6 +269,10 @@ export function Inspector({
   const splitFiles = useJjMutation((port, args: { rev: string; paths: readonly string[] }) =>
     port.split(args),
   );
+  const sign = useJjMutation((port, args: { rev: string; signed: boolean }) =>
+    port.sign(args.rev, args.signed),
+  );
+  const fix = useJjMutation((port, rev: string) => port.fix(rev));
   const takeAuthorship = useJjMutation((port, rev: string) => port.takeAuthorship(rev));
   const parallelize = useJjMutation((port, revs: readonly string[]) => port.parallelize(revs));
   const simplifyParents = useJjMutation((port, rev: string) => port.simplifyParents(rev));
@@ -334,6 +338,15 @@ export function Inspector({
           {revision.hasConflict && (
             <span className="pill" data-kind="conflict">
               {t("conflict")}
+            </span>
+          )}
+          {/* That there *is* a signature, not that it verifies: checking a
+              signature needs the backend the repo may not have configured,
+              and a badge saying "signed" about one nobody checked would be
+              worse than no badge. */}
+          {revision.isSigned && (
+            <span className="pill" title={t("This revision carries a signature.")}>
+              {t("signed")}
             </span>
           )}
           <span style={{ flexGrow: 1 }} />
@@ -544,13 +557,49 @@ export function Inspector({
           }
           onRun={() => takeAuthorship.mutate(revision.changeId)}
         />
-        {(takeAuthorship.error ?? parallelize.error ?? simplifyParents.error) && (
+        <Step
+          label={revision.isSigned ? t("Remove the signature") : t("Sign this change")}
+          disabled={readOnly || sign.isPending}
+          title={
+            readOnlyReason ??
+            t("Needs a signing backend in the repo's config; jj says so if there is none.")
+          }
+          onRun={() => sign.mutate({ rev: revision.changeId, signed: !revision.isSigned })}
+        />
+        <Step
+          label={t("Format this change and its descendants")}
+          disabled={readOnly || fix.isPending}
+          title={
+            readOnlyReason ??
+            t(
+              "Run the formatters from fix.tools over the changed files (jj fix). Descendants come along — jj offers no narrower selector.",
+            )
+          }
+          onRun={() => fix.mutate(revision.changeId)}
+        />
+        {fix.data?.message && (
+          <div
+            className="mono selectable"
+            style={{
+              fontSize: 11,
+              padding: "6px 8px",
+              borderRadius: 6,
+              background: "var(--u-accent-soft)",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {fix.data.message}
+          </div>
+        )}
+        {(takeAuthorship.error ?? parallelize.error ?? simplifyParents.error ?? sign.error ?? fix.error) && (
           <div
             role="alert"
             className="mono selectable"
             style={{ fontSize: 11, color: "var(--u-conflict)", whiteSpace: "pre-wrap" }}
           >
-            {messageFor(takeAuthorship.error ?? parallelize.error ?? simplifyParents.error)}
+            {messageFor(
+              takeAuthorship.error ?? parallelize.error ?? simplifyParents.error ?? sign.error ?? fix.error,
+            )}
           </div>
         )}
       </div>

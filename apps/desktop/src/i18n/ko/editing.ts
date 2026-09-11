@@ -1,5 +1,16 @@
 /** 헝크 편집기, 인스펙터, 디프 시트, 충돌 패널의 문자열. */
 export const editing: Record<string, string> = {
+  // Inspector — 서명과 포맷
+  signed: "서명됨",
+  "This revision carries a signature.": "이 리비전에는 서명이 있습니다.",
+  "Sign this change": "이 체인지에 서명",
+  "Remove the signature": "서명 지우기",
+  "Needs a signing backend in the repo's config; jj says so if there is none.":
+    "저장소 설정에 서명 백엔드가 필요합니다. 없으면 jj가 그렇게 말해줍니다.",
+  "Format this change and its descendants": "이 체인지와 자손을 포맷",
+  "Run the formatters from fix.tools over the changed files (jj fix). Descendants come along — jj offers no narrower selector.":
+    "fix.tools의 포매터를 바뀐 파일에 돌립니다 (jj fix). 자손까지 함께 갑니다 — jj에 더 좁은 선택자가 없습니다.",
+
   // Inspector — 내용이 아니라 위상·메타데이터를 바꾸는 동사들
   "Make {count} marked siblings of this one": "표시한 {count}개를 이것의 형제로",
   "Turn a chain into siblings so they no longer sit on top of each other (jj parallelize). jj refuses if they are not connected.":

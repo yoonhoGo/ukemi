@@ -8,6 +8,7 @@ const GROUPS = [
     title: "Navigate",
     items: [
       ["↑ ↓", "Move selection"],
+      ["⌘↑ ⌘↓", "Move the working copy to the parent or the child"],
       ["⌘L", "Focus the revset field"],
       ["⌘1…⌘8", "Saved revsets"],
       ["⌘F", "Search messages, authors and names"],

@@ -390,6 +390,36 @@ export interface JjPort {
    */
   forgetWorkspace(name: string): Promise<WriteResult>;
 
+  /**
+   * Sign or unsign a revision (`jj sign` / `jj unsign`).
+   *
+   * Needs a signing backend in the repo's config. There is no check for one
+   * here: jj's refusal — "No signing backend configured", with a link — says
+   * it better than a greyed-out button could, and the error strip already
+   * shows jj's own prose.
+   */
+  sign(rev: string, signed: boolean): Promise<WriteResult>;
+
+  /**
+   * Run the configured formatters over a revision and its descendants
+   * (`jj fix`).
+   *
+   * Descendants come along because jj's `--source` is the only selector it
+   * offers; the step that calls this says so. Unconfigured is again jj's
+   * error to report, not a state read ahead of time.
+   */
+  fix(rev: string): Promise<WriteResult>;
+
+  /**
+   * Move the working copy to a child or a parent (`jj next --edit` /
+   * `jj prev --edit`).
+   *
+   * `--edit`, so this lands *on* the neighbour rather than making an empty
+   * change beside it — the same thing ⌘E means everywhere else in the window.
+   * Ambiguity (several children) is jj's to refuse.
+   */
+  moveWorkingCopy(direction: "child" | "parent"): Promise<WriteResult>;
+
   /** Undo one operation (`jj undo`). */
   undo(): Promise<WriteResult>;
 

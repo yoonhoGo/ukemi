@@ -167,6 +167,12 @@ function Window({
   // and "here" is what a Git user reaching for either of these means.
   const duplicate = useJjMutation((port, rev: string) => port.duplicate(rev, "@"));
   const revert = useJjMutation((port, rev: string) => port.revert(rev, "@"));
+  // ⌘↓/⌘↑ move the working copy; the same arrows without ⌘ move the selection.
+  // The pairing is the point: one walks the eye down the graph, the other
+  // walks you.
+  const walk = useJjMutation((port, direction: "child" | "parent") =>
+    port.moveWorkingCopy(direction),
+  );
   const undo = useJjMutation((port) => port.undo());
   const redo = useJjMutation((port) => port.redo());
   const restore = useJjMutation((port, id: string) => port.restoreOperation(id));
@@ -301,6 +307,11 @@ function Window({
         reachMilestone("workspaces");
         return;
       }
+      if (meta && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+        event.preventDefault();
+        if (!isPinned) walk.mutate(event.key === "ArrowDown" ? "child" : "parent");
+        return;
+      }
       if (!meta) {
         if (event.key === "ArrowDown") {
           event.preventDefault();
@@ -404,6 +415,7 @@ function Window({
     abandon,
     duplicate,
     revert,
+    walk,
     fetch,
     push,
     absorb,
@@ -431,6 +443,7 @@ function Window({
     abandon,
     duplicate,
     revert,
+    walk,
     undo,
     redo,
     restore,

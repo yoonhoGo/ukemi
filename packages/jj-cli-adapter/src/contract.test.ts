@@ -80,6 +80,9 @@ test("log parses every revision field", async () => {
   assert.equal(base.hasConflict, false);
   assert.equal(typeof base.isEmpty, "boolean");
   assert.equal(typeof base.isImmutable, "boolean");
+  // `signature` is an Option the template cannot `json()`, so the field is
+  // built with `if`; a shape change there would arrive here as a string.
+  assert.equal(base.isSigned, false);
 });
 
 test("descriptions carry no trailing newline", async () => {
@@ -369,6 +372,50 @@ test("authorship, parallelize and simplify-parents change metadata and topology 
   assert.equal(claimed.description, before!.description, "metaedit leaves the description alone");
 
   raw("abandon", "-r", `${a.changeId} | ${b.changeId} | ${merge.changeId}`);
+});
+
+test("the working copy walks to a child and back to a parent", async () => {
+  raw("new", "trunk", "-m", "walk-base");
+  const base = (await jj.log("@"))[0]!;
+  raw("new", "-m", "walk-child");
+  const child = (await jj.log("@"))[0]!;
+
+  await jj.moveWorkingCopy("parent");
+  assert.equal((await jj.log("@"))[0]!.changeId, base.changeId);
+  await jj.moveWorkingCopy("child");
+  // `--edit` lands *on* the neighbour rather than making an empty change
+  // beside it, which is what ⌘E means everywhere else in the window.
+  assert.equal((await jj.log("@"))[0]!.changeId, child.changeId);
+
+  // Off the pair before abandoning it. Not `edit trunk`: by now an earlier
+  // test has pushed trunk, so it is immutable and jj rightly refuses.
+  raw("new", "trunk");
+  raw("abandon", "-r", `${base.changeId} | ${child.changeId}`);
+});
+
+test("signing without a backend fails as jj's own message, not silently", async () => {
+  const head = (await jj.log("@"))[0]!;
+  await assert.rejects(
+    () => jj.sign(head.changeId, true),
+    (error: unknown) => {
+      assert.ok(error instanceof JjError);
+      // The window shows this verbatim; a greyed-out button could not say it.
+      assert.match(error.message, /signing backend/i);
+      return true;
+    },
+  );
+});
+
+test("fix without configured tools fails as jj's own message", async () => {
+  const head = (await jj.log("@"))[0]!;
+  await assert.rejects(
+    () => jj.fix(head.changeId),
+    (error: unknown) => {
+      assert.ok(error instanceof JjError);
+      assert.match(error.message, /fix\.tools/);
+      return true;
+    },
+  );
 });
 
 test("a bad revset fails as JjError carrying jj's own message", async () => {

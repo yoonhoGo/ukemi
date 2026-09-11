@@ -45,6 +45,14 @@ export interface Revision {
   /** Immutable per the repo's `revset-aliases.immutable_heads()`. */
   readonly isImmutable: boolean;
   readonly isDivergent: boolean;
+  /**
+   * Whether the commit carries a cryptographic signature at all.
+   *
+   * Not who signed it or whether the key is trusted: verifying that needs the
+   * signing backend the repo may not have configured, and a badge that said
+   * "signed" about a signature nobody checked would be worse than no badge.
+   */
+  readonly isSigned: boolean;
 }
 
 export interface Bookmark {

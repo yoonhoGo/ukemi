@@ -178,6 +178,10 @@ function changeMenu(): SubmenuOptions & Required<Pick<SubmenuOptions, "items">> 
     items: [
       item({ label: "New change on top of the selection", key: "n", accelerator: "CmdOrCtrl+N" }),
       item({ label: "Edit the selected change", key: "e", accelerator: "CmdOrCtrl+E" }),
+      // No accelerators: ⌘↑/⌘↓ are line-scroll in a text field, and an
+      // accelerator would take them there too. Same trade as ⌘Z's.
+      item({ label: "Move the working copy to the child", key: "ArrowDown" }),
+      item({ label: "Move the working copy to the parent", key: "ArrowUp" }),
       item({
         label: "Abandon the selected change",
         key: "Backspace",

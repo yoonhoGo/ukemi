@@ -44,6 +44,10 @@ function revisionTemplate(commit: string): string {
     `",\\"hasConflict\\":" ++ json(${commit}.conflict())`,
     `",\\"isImmutable\\":" ++ json(${commit}.immutable())`,
     `",\\"isDivergent\\":" ++ json(${commit}.divergent())`,
+    // `signature` is an `Option<CryptographicSignature>`, which `json()`
+    // refuses; the question the row asks is only whether there is one, and
+    // `if` answers it as bare JSON the way the bookmark template's counts do.
+    `",\\"isSigned\\":" ++ if(${commit}.signature(), "true", "false")`,
     '"}\\n"',
   ].join(" ++ ");
 }

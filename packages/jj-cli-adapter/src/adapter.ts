@@ -652,6 +652,19 @@ export class JjCliAdapter implements JjPort {
     return this.write(args);
   }
 
+  sign(rev: string, signed: boolean): Promise<WriteResult> {
+    return this.write([signed ? "sign" : "unsign", "-r", rev]);
+  }
+
+  fix(rev: string): Promise<WriteResult> {
+    // `-s` is the only selector `jj fix` has: the revision and its descendants.
+    return this.write(["fix", "-s", rev]);
+  }
+
+  moveWorkingCopy(direction: "child" | "parent"): Promise<WriteResult> {
+    return this.write([direction === "child" ? "next" : "prev", "--edit"]);
+  }
+
   undo(): Promise<WriteResult> {
     return this.write(["undo"]);
   }

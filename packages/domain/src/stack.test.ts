@@ -24,6 +24,7 @@ function rev(
     hasConflict: false,
     isImmutable: false,
     isDivergent: false,
+    isSigned: false,
     ...extra,
   };
 }

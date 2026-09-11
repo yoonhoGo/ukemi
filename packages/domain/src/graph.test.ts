@@ -20,6 +20,7 @@ function rev(changeId: string, parents: string[] = []): Revision {
     hasConflict: false,
     isImmutable: false,
     isDivergent: false,
+    isSigned: false,
   };
 }
 
