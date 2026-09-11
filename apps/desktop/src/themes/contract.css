@@ -669,6 +669,19 @@ details > .side-item {
   text-align: right;
   color: var(--u-text-tertiary);
 }
+/** The part of a rewritten line that actually changed.
+ *
+ * No token of its own: the emphasis is the row's own colour at more strength,
+ * and the row has already set that as `color`. `color-mix` on `currentColor`
+ * therefore reads green inside an addition and red inside a deletion, in every
+ * theme, without any of them naming a fifth diff colour. The flat declaration
+ * above it is the fallback for an engine without `color-mix`. */
+.diff-line mark {
+  background: var(--u-bg-selected);
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
 
 /** A thin overlay scrollbar for inner scroll regions. */
 .u-scroll {

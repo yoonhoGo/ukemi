@@ -4,6 +4,18 @@ The classes and custom properties in `contract.css` are a public API. A theme
 written against version *n* must keep working until this file records a
 breaking change and the version is bumped.
 
+## v1.7 — 2026-09-11
+
+Additive. One new element: `.diff-line mark` — the span of a rewritten line
+that actually changed, painted inside the row the diff sheet already draws. It
+carries no token, because the emphasis wanted is the row's own colour at more
+strength and the row has already set that as `color`; the rule mixes
+`currentColor` into the background, so it reads green in an addition and red in
+a deletion in every theme without any of them naming a fifth diff colour. A
+theme that restyles `.diff-line` keeps working — the mark inherits `color` from
+whatever the theme set. One that wants its own emphasis overrides
+`.diff-line mark`, and one that wants none sets `background: transparent` on it.
+
 ## v1.6 — 2026-09-10
 
 Additive. The user can name an interface and a code face in Settings; the

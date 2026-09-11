@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { AnnotationLine, DiffLine, FileDiff, Revision } from "@ukemi/domain";
-import { pairRows, parseGitDiff } from "@ukemi/domain";
+import type { AnnotationLine, DiffLine, FileDiff, Revision, WordSpan } from "@ukemi/domain";
+import { pairRows, pairedWords, parseGitDiff } from "@ukemi/domain";
 import { messageFor, useAnnotate, useFileDiff } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
@@ -340,6 +340,61 @@ export function DiffSheet({
 }
 
 /**
+ * Word spans for every rewritten line in the file, in one map.
+ *
+ * Built per file rather than per hunk so both readings share one computation
+ * and one identity: `pairedWords` keys on the `DiffLine` object itself, and
+ * unified and side-by-side render the very same objects.
+ */
+function useWordSpans(file: FileDiff | undefined): Map<DiffLine, readonly WordSpan[]> {
+  return useMemo(() => {
+    const spans = new Map<DiffLine, readonly WordSpan[]>();
+    for (const hunk of file?.hunks ?? []) {
+      for (const [line, words] of pairedWords(hunk.lines)) spans.set(line, words);
+    }
+    return spans;
+  }, [file]);
+}
+
+/**
+ * One diff line's text, with the part that actually changed marked.
+ *
+ * The +/− marker is part of the text so the column stays aligned whether or
+ * not a line got spans. Without spans this renders exactly what it always did:
+ * a line with no partner, or one whose partner shares nothing with it, is a
+ * whole-line claim and the row's tint is already making it.
+ */
+function LineText({
+  line,
+  spans,
+}: {
+  line: DiffLine;
+  spans: readonly WordSpan[] | undefined;
+}) {
+  const marker = line.kind === "add" ? "+" : line.kind === "del" ? "-" : " ";
+  if (!spans) {
+    return (
+      <>
+        {marker}
+        {line.text}
+      </>
+    );
+  }
+  return (
+    <>
+      {marker}
+      {spans.map((span, index) =>
+        span.changed ? (
+          <mark key={index}>{span.text}</mark>
+        ) : (
+          <Fragment key={index}>{span.text}</Fragment>
+        ),
+      )}
+    </>
+  );
+}
+
+/**
  * One file's diff, as wide as its widest line.
  *
  * `.diff-line` wraps (`pre-wrap`, `break-all`), which is right in a 372px
@@ -349,6 +404,7 @@ export function DiffSheet({
  * still span the full width.
  */
 function Body({ file, split }: { file: FileDiff; split: boolean }) {
+  const words = useWordSpans(file);
   if (file.isBinary) {
     return (
       <div className="sec" style={{ padding: 12 }}>
@@ -366,7 +422,7 @@ function Body({ file, split }: { file: FileDiff; split: boolean }) {
     );
   }
 
-  if (split) return <SplitBody file={file} />;
+  if (split) return <SplitBody file={file} words={words} />;
 
   return (
     <div
@@ -390,8 +446,7 @@ function Body({ file, split }: { file: FileDiff; split: boolean }) {
               <span className="ln">{line.oldLine ?? ""}</span>
               <span className="ln">{line.newLine ?? ""}</span>
               <span>
-                {line.kind === "add" ? "+" : line.kind === "del" ? "-" : " "}
-                {line.text}
+                <LineText line={line} spans={words.get(line)} />
               </span>
             </div>
           ))}
@@ -515,7 +570,13 @@ const ROW: React.CSSProperties = {
  * any file with one long line — a side-by-side view whose second side has to be
  * scrolled to is not one. Unified is still there for a true measure.
  */
-function SplitBody({ file }: { file: FileDiff }) {
+function SplitBody({
+  file,
+  words,
+}: {
+  file: FileDiff;
+  words: Map<DiffLine, readonly WordSpan[]>;
+}) {
   return (
     <div
       className="mono selectable"
@@ -537,8 +598,8 @@ function SplitBody({ file }: { file: FileDiff }) {
           </div>
           {pairRows(hunk.lines).map((row, rowIndex) => (
             <Fragment key={rowIndex}>
-              <Half line={row.left} side="old" />
-              <Half line={row.right} side="new" />
+              <Half line={row.left} side="old" words={words} />
+              <Half line={row.right} side="new" words={words} />
             </Fragment>
           ))}
         </Fragment>
@@ -555,7 +616,15 @@ function SplitBody({ file }: { file: FileDiff }) {
  * is, because colour is the other thing saying it and colour alone is not a
  * label.
  */
-function Half({ line, side }: { line: DiffLine | undefined; side: "old" | "new" }) {
+function Half({
+  line,
+  side,
+  words,
+}: {
+  line: DiffLine | undefined;
+  side: "old" | "new";
+  words: Map<DiffLine, readonly WordSpan[]>;
+}) {
   const kind = line === undefined || line.kind === "context" ? undefined : line.kind;
   return (
     <div
@@ -568,9 +637,7 @@ function Half({ line, side }: { line: DiffLine | undefined; side: "old" | "new" 
     >
       <span className="ln">{(side === "old" ? line?.oldLine : line?.newLine) ?? ""}</span>
       <span>
-        {line === undefined
-          ? ""
-          : `${line.kind === "add" ? "+" : line.kind === "del" ? "-" : " "}${line.text}`}
+        {line === undefined ? "" : <LineText line={line} spans={words.get(line)} />}
       </span>
     </div>
   );

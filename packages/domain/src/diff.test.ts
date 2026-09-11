@@ -4,8 +4,10 @@ import {
   allGroups,
   applySelectedGroups,
   pairRows,
+  pairedWords,
   parseGitDiff,
   verifyRoundTrip,
+  wordSpans,
 } from "./diff.ts";
 
 /** Build a unified diff the way `jj diff --git` does, for a fixture. */
@@ -268,4 +270,95 @@ diff --git a/a.txt b/a.txt
     rows.filter((row) => row.right?.kind === "add").length,
     lines.filter((line) => line.kind === "add").length,
   );
+});
+
+/** The invariant the renderer stands on: the spans put the line back together. */
+function joined(spans: readonly { text: string }[]): string {
+  return spans.map((span) => span.text).join("");
+}
+
+test("word spans narrow a rewrite to the part that moved", () => {
+  const spans = wordSpans("const total = price * 2;", "const total = price * 3;");
+  assert.ok(spans);
+  assert.equal(joined(spans.old), "const total = price * 2;");
+  assert.equal(joined(spans.new), "const total = price * 3;");
+  assert.deepEqual(
+    spans.old.filter((span) => span.changed).map((span) => span.text),
+    ["2"],
+  );
+  assert.deepEqual(
+    spans.new.filter((span) => span.changed).map((span) => span.text),
+    ["3"],
+  );
+});
+
+test("a shared opening alone is enough, and so is a shared ending", () => {
+  const grown = wordSpans("fn(a)", "fn(a, b)")!;
+  assert.equal(joined(grown.old), "fn(a)");
+  assert.equal(joined(grown.new), "fn(a, b)");
+  // Nothing was deleted, so the old side has no changed span to paint.
+  assert.deepEqual(grown.old.filter((span) => span.changed), []);
+  assert.deepEqual(
+    grown.new.filter((span) => span.changed).map((span) => span.text),
+    [", b"],
+  );
+
+  const prefixed = wordSpans("  return x;", "      return x;")!;
+  assert.deepEqual(
+    prefixed.new.filter((span) => span.changed).map((span) => span.text),
+    ["      "],
+  );
+});
+
+test("two lines with nothing in common get no word diff at all", () => {
+  // The row's own tint already says "this line was replaced"; painting every
+  // character on top of it adds a second claim that says nothing.
+  assert.equal(wordSpans("alpha beta", "gamma delta"), undefined);
+});
+
+test("Hangul narrows per character, since there are no word gaps to split on", () => {
+  const spans = wordSpans("사과를 먹었다", "사과를 먹는다")!;
+  assert.equal(joined(spans.old), "사과를 먹었다");
+  assert.equal(joined(spans.new), "사과를 먹는다");
+  assert.deepEqual(
+    spans.old.filter((span) => span.changed).map((span) => span.text),
+    ["었"],
+  );
+});
+
+test("paired words follow pairRows, and skip a line with no partner", () => {
+  const file = parseGitDiff(
+    gitDiff(`
+diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1,3 +1,4 @@
+ keep
+-value = 1
++value = 2
++brand new line
+ tail
+`),
+  )[0]!;
+  const lines = file.hunks[0]!.lines;
+  const spans = pairedWords(lines);
+
+  const del = lines.find((line) => line.kind === "del")!;
+  const rewritten = lines.find((line) => line.text === "value = 2")!;
+  const orphan = lines.find((line) => line.text === "brand new line")!;
+
+  assert.deepEqual(
+    spans.get(del)!.filter((span) => span.changed).map((span) => span.text),
+    ["1"],
+  );
+  assert.deepEqual(
+    spans.get(rewritten)!.filter((span) => span.changed).map((span) => span.text),
+    ["2"],
+  );
+  // An addition `pairRows` left unpartnered has no other version to compare to.
+  assert.equal(spans.get(orphan), undefined);
+  // Context lines never carry spans.
+  for (const line of lines.filter((candidate) => candidate.kind === "context")) {
+    assert.equal(spans.get(line), undefined);
+  }
 });

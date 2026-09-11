@@ -415,3 +415,98 @@ export function verifyRoundTrip(
   }
   return { ok: true };
 }
+
+/**
+ * A run of text inside one diff line, flagged when it is the part that moved.
+ *
+ * Concatenating every `text` in order reproduces the line exactly — that is the
+ * invariant the renderer relies on and the one the tests check, because a word
+ * highlighter that drops or duplicates a character is showing a line the commit
+ * does not contain.
+ */
+export interface WordSpan {
+  readonly text: string;
+  readonly changed: boolean;
+}
+
+/**
+ * Words, whitespace runs and single punctuation marks.
+ *
+ * `\w` is ASCII, so Hangul and CJK fall to the `[^\s\w]` arm and tokenise one
+ * character at a time. That is the right granularity for a script with no
+ * spaces between words, and it costs nothing to get for free.
+ */
+function tokenise(text: string): string[] {
+  return text.match(/\w+|\s+|[^\s\w]/gu) ?? [];
+}
+
+/**
+ * Which part of a rewritten line actually changed.
+ *
+ * A unified diff says "this line went away, this one arrived" and leaves the
+ * reader to find the one word that differs — which is the whole reason the
+ * sheet has a side-by-side mode at all. This narrows the claim to the span
+ * between the shared opening and the shared ending.
+ *
+ * ponytail: common prefix and suffix only, no LCS in the middle. Two separate
+ * edits on one line are reported as one span covering both and everything
+ * between them — wider than the truth, never wrong about *containing* it. A
+ * token LCS is the upgrade if that reads badly on real code; it would also need
+ * a length cap, because a minified line is thousands of tokens.
+ *
+ * `undefined` when the two lines share no edge at all: highlighting the whole
+ * line says nothing the row's own tint does not already say.
+ */
+export function wordSpans(
+  oldText: string,
+  newText: string,
+): { readonly old: readonly WordSpan[]; readonly new: readonly WordSpan[] } | undefined {
+  const before = tokenise(oldText);
+  const after = tokenise(newText);
+  const shortest = Math.min(before.length, after.length);
+
+  let prefix = 0;
+  while (prefix < shortest && before[prefix] === after[prefix]) prefix += 1;
+
+  let suffix = 0;
+  while (
+    suffix < shortest - prefix &&
+    before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+
+  if (prefix === 0 && suffix === 0) return undefined;
+
+  const side = (tokens: readonly string[]): WordSpan[] =>
+    [
+      { text: tokens.slice(0, prefix).join(""), changed: false },
+      { text: tokens.slice(prefix, tokens.length - suffix).join(""), changed: true },
+      { text: tokens.slice(tokens.length - suffix).join(""), changed: false },
+    ].filter((span) => span.text.length > 0);
+
+  return { old: side(before), new: side(after) };
+}
+
+/**
+ * Word spans for every rewritten line in a hunk, keyed by the line itself.
+ *
+ * Pairing is `pairRows`', so the unified and side-by-side readings highlight
+ * the same pairs — a line that reads as a rewrite in one column cannot read as
+ * a wholesale replacement in the other. A deletion or addition with no partner
+ * is absent from the map: there is no other version of it to compare against.
+ */
+export function pairedWords(
+  lines: readonly DiffLine[],
+): Map<DiffLine, readonly WordSpan[]> {
+  const spans = new Map<DiffLine, readonly WordSpan[]>();
+  for (const row of pairRows(lines)) {
+    const { left, right } = row;
+    if (!left || !right || left.kind !== "del" || right.kind !== "add") continue;
+    const words = wordSpans(left.text, right.text);
+    if (!words) continue;
+    spans.set(left, words.old);
+    spans.set(right, words.new);
+  }
+  return spans;
+}
