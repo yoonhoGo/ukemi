@@ -825,6 +825,48 @@ repositories this app created. The rows are read-only — removing a remote also
 forgets its bookmarks, which is a much larger button than ＋ and has not been
 asked for.
 
+**Cherry-pick and revert land on `@`, and the Rosetta rows now have steps.**
+The ⌘G table has printed `jj duplicate <rev> --onto @` and
+`jj revert -r <rev> --onto @` since it existed, so the window was teaching two
+commands it could not run. Both are chords now (⌘D, ⌘⇧V) with `@` as the fixed
+destination: a chord cannot carry a second revision, and "here" is what a Git
+user reaching for either of these means. A drag variant that picks the
+destination was considered and dropped — the rebase HUD's "moving N revisions"
+preview is computed by `rebaseSetRevset` per mode and would be the wrong number
+for a duplicate, and fixing that is a separate job from making the verb exist.
+⌘⇧V takes no accelerator, for the reason `editMenu` gives about ⌘Z: an
+accelerator is consumed before the web view sees it, and ⌘⇧V means something in
+a text field.
+
+**Signing says there is a signature, not that it verifies.**
+`signature` is an `Option<CryptographicSignature>` that `json()` refuses, so the
+template answers the only question the row asks with `if`, the way the bookmark
+template's counts do. Verifying would need the signing backend the repo may not
+have, and a badge reading "signed" about a signature nobody checked is worse
+than no badge. Nor is the sign button greyed out on a missing backend: jj's own
+refusal names the problem and links the documentation, which no disabled button
+could.
+
+**`jj fix` takes the descendants with it, and the step says so.**
+`-s` is the only selector `jj fix` offers. Rather than hide that or refuse the
+verb, the step's label is "Format this change and its descendants". An
+unconfigured `fix.tools` is again jj's error to show, not a config read done
+ahead of time to grey out a button.
+
+**⌘↑/⌘↓ move the working copy; the bare arrows move the selection.**
+`jj prev --edit` and `jj next --edit`. The pairing is the point — one walks the
+eye down the graph, the other walks you — and `--edit` is what makes it land
+*on* the neighbour instead of making an empty change beside it, which is what
+⌘E already means everywhere else. No accelerators: ⌘↑/⌘↓ are line-scroll in a
+text field.
+
+**The rewriting verbs with no chord are Inspector steps.**
+`parallelize`, `simplify-parents` and `metaedit --update-author` change topology
+or metadata and never content, and none is reached often enough to spend a
+chord on. Whole-file squash and split already established that a verb can live
+as a step with no key and no menu item; the menu bar is not poorer for it,
+because a step is not hidden.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
@@ -906,6 +948,27 @@ graph renderer is layer 3 and is not in the contract, so Jelly as CSS would be
 the gummy shell without the physics, which is the part that made it worth
 picking. It waits on layer 3, which waits on the Worker/OffscreenCanvas
 question above.
+
+No pruning of the operation log. `jj op abandon` takes an operation *range*
+(`..<id>`), which a timeline with one playhead cannot express, and it discards
+unreachable predecessors along with the operations — so it would delete the
+evolog history the inspector just learned to show. A one-click "shrink the
+history" button in the app whose premise is that you can always go back is the
+wrong affordance even when the command is right. `jj op abandon` at a terminal
+remains the way.
+
+No sparse-checkout UI. `jj sparse` is a real command with a real panel behind
+it — a pattern list, an editor, a preview of what leaves the working copy — and
+nobody has asked. It is the clearest case in this file of a feature that should
+wait for its first user.
+
+No image or binary preview in the diff sheet. Blocked at the seam rather than
+declined: `ExecResult.stdout` is a `String` filled by `String::from_utf8_lossy`,
+so a PNG cannot survive the trip from jj. The upgrade is a bytes channel — a
+Rust command returning `tauri::ipc::Response` and an optional read capability on
+the adapter, the way `PlanPreparer` is optional — plus object-URL lifecycle and
+a CSP that allows `blob:`. That is a diff viewer's worth of new surface for one
+file type, and none of it can be checked without a window.
 
 No three-way merge editor. The conflict panel offers "take a side"; anything
 finer is a hunk edit, and that editor already exists. A second merge UI would

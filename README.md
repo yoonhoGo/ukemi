@@ -57,48 +57,39 @@ pushes.
 ## What jj does that Ukemi does not
 
 The adapter covers the verbs the window has a place for. jj 0.43 has more, and
-none of the following is a decision *against* the feature — the ones this repo
-has actually ruled out live in `DECISIONS.md` under "Deliberately not built
-yet". This is the backlog, with the reason each one is still on it.
-
-**Rewriting.** `jj revert` and `jj duplicate --onto` are the awkward pair: the
-⌘G table already teaches both, in jj's exact spelling (`ui/rosetta.ts`), so the
-window tells you a command it cannot run. They belong on the graph's row menu.
-`jj metaedit` (author and timestamp), `jj parallelize` and `jj simplify-parents`
-are one port method and one step each. `jj fix` runs a formatter across a
-revset, which wants a preview more than it wants a button.
+what is left is left for a reason — each one below says which. The features
+this repo has ruled out on their own merits live in `DECISIONS.md` under
+"Deliberately not built yet".
 
 **`jj arrange`.** "Interactively arrange the commit graph" — the one jj command
 whose natural surface is a GUI, and `ui/drag-rebase.tsx` is half of it already.
-The cost is that jj ships it as a TUI with no non-interactive form, so this is
-not a shell-out: it means rebuilding the operation out of `rebase` primitives
-and being right about the result.
+Blocked rather than merely unstarted: jj ships it as a TUI with no
+non-interactive form, so there is nothing to shell out to. Doing it means
+rebuilding the operation out of `rebase` primitives and being right about the
+result, which is a release of its own.
 
 **`jj bisect run`.** Native since 0.43 and revset-shaped, which is exactly what
-this window draws. Fork and Sublime Merge sell a bisect UI; here the canvas for
-marking good and bad already exists.
+this window draws. What stops it is not jj: bisect takes a *command* from the
+user, edits the working copy once per step, and runs for minutes. The app has
+no model for a long-running foreground job — no progress, no abort, no way to
+say which revision it is on — and driving repeated working-copy edits without
+one would be the worst possible first version.
 
-**Signing.** `jj sign` / `jj unsign`, plus a badge on a signed row. The template
-can report it; nothing reads that field yet.
+**Image and binary preview.** Blocked at the seam. `ExecResult.stdout` is a
+`String` and the Rust side fills it with `String::from_utf8_lossy`, so a PNG
+cannot survive the trip. The fix is a second channel that returns bytes
+(`tauri::ipc::Response`) plus an optional read capability on the adapter, the
+way `PlanPreparer` is optional today — not hard, but more than a diff viewer's
+worth of new surface, and untestable without a window.
 
-**Navigation and plumbing.** `jj next` / `jj prev` are a keyboard walk up and
-down a stack. `jj sparse` has no UI. `jj op abandon` is how an operation log
-gets pruned, and the timeline is the only place that would show it.
-
-From the commercial Git clients, three things worth taking:
-
-- **A search that writes a revset.** Author, date and path are three fields that
-  compose into `author(…) & files(…)`; ⌘K already establishes the pattern of a
-  sheet that drafts into the ⌘L field rather than replacing it.
-- **More than one repository.** One window, one repo, no memory of the others
-  beyond the picker's recents.
-- **Image and binary preview.** The diff sheet says "Binary file — no text diff
-  to show" and stops.
+**More than one repository.** One window, one repo, no memory of the others
+beyond the picker's recents. A second repo means window management, a second
+query client and a second menu owner; it is a structural change, not a feature.
 
 Syntax highlighting is the one every client has and this one should probably
 not take: a highlighter is either a dependency, against the five-runtime-deps
-rule, or a per-language debt that grows forever. Word-level diff was the part of
-that value available for a pure function and no dependency, and it is in.
+rule, or a per-language debt that grows forever. Word-level diff was the part
+of that value available for a pure function and no dependency, and it is in.
 
 ## Versioning
 
