@@ -523,6 +523,25 @@ export class JjCliAdapter implements JjPort {
     );
   }
 
+  // `async` so the guard below rejects rather than throwing synchronously: the
+  // port promises a promise, and a caller that only awaits should not have to
+  // also wrap the call.
+  async restoreFiles(args: {
+    readonly rev: string;
+    readonly paths: readonly string[];
+  }): Promise<WriteResult> {
+    // Refused here rather than left to jj: `jj restore -c <rev>` with no paths
+    // restores all of them, so an empty list is not a no-op — it is the whole
+    // revision. Better a thrown error than a command that did far more than
+    // the caller asked, even with undo one key away.
+    if (args.paths.length === 0) {
+      throw new Error("restoreFiles needs at least one path");
+    }
+    // `-c` is "undo what this revision did", which is the file-level verb the
+    // inspector offers. `--` so a path that looks like a flag stays a path.
+    return this.write(["restore", "-c", args.rev, "--", ...args.paths]);
+  }
+
   async fileContent(rev: string, path: string, opts?: ReadOptions): Promise<string> {
     // `--` so a path that looks like a flag is still a path.
     return this.run([...this.readBase(opts), "file", "show", "-r", rev, "--", path]);

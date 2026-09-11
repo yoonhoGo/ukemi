@@ -471,6 +471,33 @@ test("squash and split move whole files between revisions", async () => {
   );
 });
 
+test("restore takes one file back to the parent and leaves the rest alone", async () => {
+  raw("new", "trunk", "-m", "two files, one to keep");
+  writeFileSync(join(repo, "keep.txt"), "keep\n");
+  writeFileSync(join(repo, "drop.txt"), "drop\n");
+  // Adapter reads carry `--ignore-working-copy`, so nothing on disk is in the
+  // change until some command snapshots it.
+  raw("status");
+  const rev = (await jj.log("@"))[0]!;
+  assert.equal((await jj.diffSummary(rev.changeId)).length, 2);
+
+  await jj.restoreFiles({ rev: rev.changeId, paths: ["drop.txt"] });
+
+  const left = await jj.diffSummary(rev.changeId);
+  assert.deepEqual(left.map((file) => file.path), ["keep.txt"]);
+  // The change itself survives: same ID, same description, one file lighter.
+  const after = (await jj.show(rev.changeId))!;
+  assert.equal(after.description, "two files, one to keep");
+  assert.equal(existsSync(join(repo, "drop.txt")), false);
+  assert.equal(existsSync(join(repo, "keep.txt")), true);
+
+  // An empty path list is the whole revision, so the adapter refuses it before
+  // jj ever sees the argv.
+  await assert.rejects(() => jj.restoreFiles({ rev: rev.changeId, paths: [] }));
+
+  raw("abandon", "-r", rev.changeId);
+});
+
 test("tracking a remote-only bookmark mints the local one", async () => {
   // The state a fetch leaves behind for someone else's bookmark: jj's default
   // `git.auto-local-bookmark = false` imports the remote ref without making a

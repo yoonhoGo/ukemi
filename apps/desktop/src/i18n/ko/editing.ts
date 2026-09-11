@@ -1,5 +1,10 @@
 /** 헝크 편집기, 인스펙터, 디프 시트, 충돌 패널의 문자열. */
 export const editing: Record<string, string> = {
+  // Inspector — 체크한 파일에 대한 세 번째 동사
+  "Discard changes to {count} files": "파일 {count}개의 변경 버리기",
+  "Put the checked files back the way the parent has them (jj restore). One ⌘Z takes it back.":
+    "체크한 파일을 부모가 가진 모습으로 되돌립니다 (jj restore). ⌘Z 한 번이면 되돌아옵니다.",
+
   // Inspector — 체인지 진화 이력 (jj evolog)
   "HOW THIS CHANGE EVOLVED": "이 체인지가 걸어온 길",
   "Reading the change's history…": "체인지 이력을 읽는 중…",

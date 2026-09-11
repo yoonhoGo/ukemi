@@ -268,6 +268,9 @@ export function Inspector({
   const splitFiles = useJjMutation((port, args: { rev: string; paths: readonly string[] }) =>
     port.split(args),
   );
+  const restoreFiles = useJjMutation(
+    (port, args: { rev: string; paths: readonly string[] }) => port.restoreFiles(args),
+  );
 
   // Which files the two whole-file verbs below act on. Cleared when the
   // selection moves, or the last revision's checks would carry over onto the
@@ -663,7 +666,28 @@ export function Inspector({
                 );
               }}
             />
-            {(squashFiles.error ?? splitFiles.error) && (
+            {/* Squash moves the work, split parks it, and this throws it
+                away — the one thing a Git client offers on a file that jj's
+                inspector had no button for. Destructive in the ordinary sense
+                and not in this one: it is an operation like any other, so the
+                title says where the way back is. */}
+            <Step
+              label={t("Discard changes to {count} files", { count: picks.length })}
+              disabled={readOnly || restoreFiles.isPending}
+              title={
+                readOnlyReason ??
+                t(
+                  "Put the checked files back the way the parent has them (jj restore). One ⌘Z takes it back.",
+                )
+              }
+              onRun={() =>
+                restoreFiles.mutate(
+                  { rev: revision.changeId, paths: picks },
+                  { onSuccess: () => setPicked(new Set()) },
+                )
+              }
+            />
+            {(squashFiles.error ?? splitFiles.error ?? restoreFiles.error) && (
               <div
                 role="alert"
                 className="mono selectable"
@@ -673,7 +697,7 @@ export function Inspector({
                   whiteSpace: "pre-wrap",
                 }}
               >
-                {messageFor(squashFiles.error ?? splitFiles.error)}
+                {messageFor(squashFiles.error ?? splitFiles.error ?? restoreFiles.error)}
               </div>
             )}
           </div>

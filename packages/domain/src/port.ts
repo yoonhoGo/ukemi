@@ -256,6 +256,23 @@ export interface JjPort {
     readonly keep: readonly PlanFile[];
   }): Promise<WriteResult>;
 
+  /**
+   * Throw away what a revision did to these files (`jj restore --changes-in`).
+   *
+   * The revision keeps its description, its change ID and every other file —
+   * only the named paths go back to what the parents had. On the working copy
+   * that is the "discard my edits to this file" every Git client has and jj
+   * spells `jj restore`; anywhere else it is the same idea one commit deep.
+   *
+   * `paths` may not be empty. jj reads no paths as *every* path, which would
+   * quietly empty the revision — a different and much larger command than the
+   * one this method's name promises.
+   */
+  restoreFiles(args: {
+    readonly rev: string;
+    readonly paths: readonly string[];
+  }): Promise<WriteResult>;
+
   /** Raw content of one file at one revision, for computing partial trees. */
   fileContent(rev: string, path: string, opts?: ReadOptions): Promise<string>;
 
