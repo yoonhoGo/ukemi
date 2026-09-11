@@ -27,6 +27,8 @@ const GROUPS = [
       ["⌘click", "Mark an extra parent; ⌘N then makes a merge"],
       ["⌘E", "Edit the selected change"],
       ["⌘⌫", "Abandon the selected change"],
+      ["⌘D", "Duplicate onto the working copy"],
+      ["⌘⇧V", "Revert onto the working copy"],
       ["⌘⇧S", "Split by hunk"],
       ["⌘⇧K", "Squash hunks into the parent"],
       ["⌘⇧A", "Absorb into the ancestors that last touched each line"],

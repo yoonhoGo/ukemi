@@ -198,6 +198,52 @@ export interface JjPort {
 
   abandon(revs: readonly string[]): Promise<WriteResult>;
 
+  /**
+   * Copy a revision onto another (`jj duplicate … --onto`).
+   *
+   * Git's cherry-pick, and the ⌘G table has promised this exact spelling since
+   * the table existed. The copy gets its own change ID, so the original and the
+   * copy stay distinguishable in the graph instead of being two commits that
+   * merely look alike.
+   */
+  duplicate(rev: string, onto: string): Promise<WriteResult>;
+
+  /**
+   * Make a new change that undoes an old one (`jj revert`).
+   *
+   * `--onto` is required by jj and the ⌘G table names `@`, so the destination
+   * is a parameter rather than a default hidden in the adapter. This is not
+   * ⌘Z: undo takes back the last *operation*, this writes a new commit.
+   */
+  revert(rev: string, onto: string): Promise<WriteResult>;
+
+  /**
+   * Take over authorship of a revision (`jj metaedit --update-author`).
+   *
+   * The content does not move; only the author name and email become the
+   * configured user's. What it is for is the copy `duplicate` just made, and
+   * the change committed under a wrong git identity.
+   */
+  takeAuthorship(rev: string): Promise<WriteResult>;
+
+  /**
+   * Make a chain of revisions siblings instead (`jj parallelize`).
+   *
+   * Wants two or more, and they have to be connected — jj refuses otherwise,
+   * and its refusal is the error worth showing rather than a rule restated
+   * here.
+   */
+  parallelize(revs: readonly string[]): Promise<WriteResult>;
+
+  /**
+   * Drop parent edges that another parent already reaches
+   * (`jj simplify-parents`).
+   *
+   * Only ever changes topology, never content — a merge whose second parent was
+   * already an ancestor through the first stops drawing a second line.
+   */
+  simplifyParents(rev: string): Promise<WriteResult>;
+
   bookmarkSet(name: string, rev: string): Promise<WriteResult>;
 
   bookmarkDelete(name: string): Promise<WriteResult>;

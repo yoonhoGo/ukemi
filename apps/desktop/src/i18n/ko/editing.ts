@@ -1,5 +1,16 @@
 /** 헝크 편집기, 인스펙터, 디프 시트, 충돌 패널의 문자열. */
 export const editing: Record<string, string> = {
+  // Inspector — 내용이 아니라 위상·메타데이터를 바꾸는 동사들
+  "Make {count} marked siblings of this one": "표시한 {count}개를 이것의 형제로",
+  "Turn a chain into siblings so they no longer sit on top of each other (jj parallelize). jj refuses if they are not connected.":
+    "사슬을 형제로 바꿔 서로 위에 얹히지 않게 합니다 (jj parallelize). 이어져 있지 않으면 jj가 거절합니다.",
+  "Simplify the parent edges": "부모 간선 정리",
+  "Drop any parent the other parents already reach (jj simplify-parents). Topology only — the content does not move.":
+    "다른 부모가 이미 닿는 부모를 떼어냅니다 (jj simplify-parents). 위상만 바뀌고 내용은 그대로입니다.",
+  "Make this change mine": "이 체인지를 내 것으로",
+  "Put your name and email on it as the author (jj metaedit --update-author). The content does not change.":
+    "작성자를 당신의 이름과 메일로 바꿉니다 (jj metaedit --update-author). 내용은 바뀌지 않습니다.",
+
   // Inspector — 체크한 파일에 대한 세 번째 동사
   "Discard changes to {count} files": "파일 {count}개의 변경 버리기",
   "Put the checked files back the way the parent has them (jj restore). One ⌘Z takes it back.":

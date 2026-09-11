@@ -162,6 +162,11 @@ function Window({
   };
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
   const abandon = useJjMutation((port, rev: string) => port.abandon([rev]));
+  // Both land on `@`, which is the destination the ⌘G table has always named
+  // for Git's cherry-pick and revert. A chord cannot carry a second revision,
+  // and "here" is what a Git user reaching for either of these means.
+  const duplicate = useJjMutation((port, rev: string) => port.duplicate(rev, "@"));
+  const revert = useJjMutation((port, rev: string) => port.revert(rev, "@"));
   const undo = useJjMutation((port) => port.undo());
   const redo = useJjMutation((port) => port.redo());
   const restore = useJjMutation((port, id: string) => port.restoreOperation(id));
@@ -335,6 +340,12 @@ function Window({
       } else if (event.key === "Backspace") {
         event.preventDefault();
         if (!isPinned && effectiveSelection) abandon.mutate(effectiveSelection);
+      } else if (key === "d") {
+        event.preventDefault();
+        if (!isPinned && effectiveSelection) duplicate.mutate(effectiveSelection);
+      } else if (key === "v" && event.shiftKey) {
+        event.preventDefault();
+        if (!isPinned && effectiveSelection) revert.mutate(effectiveSelection);
       } else if (key === "s" && event.shiftKey) {
         event.preventDefault();
         if (!isPinned && selectedRevision) setSheet("split");
@@ -391,6 +402,8 @@ function Window({
     startChange,
     edit,
     abandon,
+    duplicate,
+    revert,
     fetch,
     push,
     absorb,
@@ -416,6 +429,8 @@ function Window({
     newChange,
     edit,
     abandon,
+    duplicate,
+    revert,
     undo,
     redo,
     restore,

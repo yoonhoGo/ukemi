@@ -205,6 +205,8 @@ export const chrome: Record<string, string> = {
   "Squash hunks into the parent": "헝크를 부모에 스쿼시",
   "Absorb into the ancestors that last touched each line":
     "각 줄을 마지막으로 건드린 조상에 absorb",
+  "Duplicate onto the working copy": "워킹 카피 위로 복제",
+  "Revert onto the working copy": "워킹 카피 위에서 되돌리기",
   "Set a bookmark on the selection": "선택한 것에 북마크 붙이기",
   "Save the description / run the sheet": "설명 저장 / 시트 실행",
   "Move history": "히스토리 옮기기",

@@ -316,6 +316,61 @@ test("op restore rewinds the repo to an earlier operation", async () => {
   assert.equal((await jj.log("all()")).length, countBefore);
 });
 
+test("duplicate and revert land on the working copy, as the ⌘G table promises", async () => {
+  raw("new", "trunk", "-m", "dup-source");
+  writeFileSync(join(repo, "dup.txt"), "copied\n");
+  raw("status");
+  const source = (await jj.log("@"))[0]!;
+  raw("new", "trunk", "-m", "dup-landing");
+  const landing = (await jj.log("@"))[0]!;
+
+  await jj.duplicate(source.changeId, "@");
+  const copy = (await jj.log(`children(${landing.changeId})`))[0]!;
+  // Its own change ID, so the graph keeps the two distinguishable — the whole
+  // reason the Rosetta row says this is not `git cherry-pick`'s equal.
+  assert.notEqual(copy.changeId, source.changeId);
+  assert.equal(copy.description, "dup-source");
+  assert.equal(await jj.fileContent(copy.changeId, "dup.txt"), "copied\n");
+
+  // Revert the copy onto itself, and the reversal removes the file again.
+  await jj.revert(copy.changeId, copy.changeId);
+  const undone = (await jj.log(`children(${copy.changeId})`))[0]!;
+  assert.deepEqual(
+    (await jj.diffSummary(undone.changeId)).map((file) => [file.path, file.status]),
+    [["dup.txt", "removed"]],
+  );
+
+  raw("abandon", "-r", `${source.changeId} | ${landing.changeId}::`);
+});
+
+test("authorship, parallelize and simplify-parents change metadata and topology only", async () => {
+  raw("new", "trunk", "-m", "meta-a");
+  const a = (await jj.log("@"))[0]!;
+  raw("new", "-m", "meta-b");
+  const b = (await jj.log("@"))[0]!;
+
+  // A chain, then siblings: b stops being a's child and joins it on trunk.
+  await jj.parallelize([a.changeId, b.changeId]);
+  const afterA = (await jj.show(a.changeId))!;
+  const afterB = (await jj.show(b.changeId))!;
+  assert.deepEqual(afterB.parents, afterA.parents, "siblings share their parents");
+
+  // A merge whose second parent the first already reaches loses that edge.
+  raw("new", a.changeId, b.changeId, "-m", "meta-merge");
+  const merge = (await jj.log("@"))[0]!;
+  assert.equal(merge.parents.length, 2);
+  await jj.simplifyParents(merge.changeId);
+  assert.equal((await jj.show(merge.changeId))!.parents.length, 2, "neither parent reaches the other");
+
+  const before = await jj.show(a.changeId);
+  await jj.takeAuthorship(a.changeId);
+  const claimed = (await jj.show(a.changeId))!;
+  assert.equal(claimed.author.email, "test@ukemi.dev");
+  assert.equal(claimed.description, before!.description, "metaedit leaves the description alone");
+
+  raw("abandon", "-r", `${a.changeId} | ${b.changeId} | ${merge.changeId}`);
+});
+
 test("a bad revset fails as JjError carrying jj's own message", async () => {
   await assert.rejects(
     () => jj.log("no_such_function()"),

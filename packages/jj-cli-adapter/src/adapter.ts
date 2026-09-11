@@ -435,6 +435,28 @@ export class JjCliAdapter implements JjPort {
     return this.write(["abandon", "-r", ...revs]);
   }
 
+  duplicate(rev: string, onto: string): Promise<WriteResult> {
+    // Positional revset, `--onto` for the destination — the spelling the ⌘G
+    // table prints, which DECISIONS requires the adapter to match exactly.
+    return this.write(["duplicate", rev, "--onto", onto]);
+  }
+
+  revert(rev: string, onto: string): Promise<WriteResult> {
+    return this.write(["revert", "-r", rev, "--onto", onto]);
+  }
+
+  takeAuthorship(rev: string): Promise<WriteResult> {
+    return this.write(["metaedit", "-r", rev, "--update-author"]);
+  }
+
+  parallelize(revs: readonly string[]): Promise<WriteResult> {
+    return this.write(["parallelize", ...revs]);
+  }
+
+  simplifyParents(rev: string): Promise<WriteResult> {
+    return this.write(["simplify-parents", "-r", rev]);
+  }
+
   bookmarkSet(name: string, rev: string): Promise<WriteResult> {
     // `set --allow-backwards` covers both create and move, so the UI needs one verb.
     return this.write(["bookmark", "set", name, "-r", rev, "--allow-backwards"]);

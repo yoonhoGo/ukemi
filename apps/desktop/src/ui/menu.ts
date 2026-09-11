@@ -183,6 +183,11 @@ function changeMenu(): SubmenuOptions & Required<Pick<SubmenuOptions, "items">> 
         key: "Backspace",
         accelerator: "CmdOrCtrl+Backspace",
       }),
+      item({ label: "Duplicate onto the working copy", key: "d", accelerator: "CmdOrCtrl+D" }),
+      // No accelerator, for the reason `editMenu` gives: ⌘⇧V is a text command
+      // in some fields, and an accelerator is consumed before the web view
+      // sees it. The item still fires the chord, and so does the keyboard.
+      item({ label: "Revert onto the working copy", key: "v", shift: true }),
       SEPARATOR,
       item({ label: "Split by hunk", key: "s", shift: true, accelerator: "CmdOrCtrl+Shift+S" }),
       item({

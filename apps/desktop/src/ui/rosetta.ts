@@ -171,7 +171,7 @@ export const ROSETTA: readonly RosettaEntry[] = [
   {
     git: "git cherry-pick <rev>",
     also: ["cherry-pick", "pick"],
-    steps: [],
+    steps: [{ label: "Duplicate onto the working copy", shortcut: "⌘D" }],
     runs: ["jj duplicate <rev> --onto @"],
     why:
       "The copy is a new change with its own change ID, so the original and the copy stay distinguishable in the graph rather than being two commits that merely look alike.",
@@ -179,7 +179,7 @@ export const ROSETTA: readonly RosettaEntry[] = [
   {
     git: "git revert <rev>",
     also: ["revert", "undo a commit"],
-    steps: [],
+    steps: [{ label: "Revert onto the working copy", shortcut: "⌘⇧V" }],
     runs: ["jj revert -r <rev> --onto @"],
     why:
       "Reverting makes a new change that undoes the old one, exactly as in Git. Do not reach for ⌘Z here: that would undo your last operation, not the commit.",

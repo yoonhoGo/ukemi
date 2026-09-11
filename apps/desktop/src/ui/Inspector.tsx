@@ -269,6 +269,9 @@ export function Inspector({
   const splitFiles = useJjMutation((port, args: { rev: string; paths: readonly string[] }) =>
     port.split(args),
   );
+  const takeAuthorship = useJjMutation((port, rev: string) => port.takeAuthorship(rev));
+  const parallelize = useJjMutation((port, revs: readonly string[]) => port.parallelize(revs));
+  const simplifyParents = useJjMutation((port, rev: string) => port.simplifyParents(rev));
   const restoreFiles = useJjMutation(
     (port, args: { rev: string; paths: readonly string[] }) => port.restoreFiles(args),
   );
@@ -499,6 +502,57 @@ export function Inspector({
           title={readOnlyReason}
           onRun={() => abandon.mutate(revision.changeId)}
         />
+        {/* The three below change topology or metadata, never content, and
+            none is reached often enough to earn a chord — the same reason the
+            whole-file squash and split below have none. */}
+        {extraParents.length > 0 && (
+          <Step
+            label={t("Make {count} marked siblings of this one", {
+              count: String(extraParents.length),
+            })}
+            disabled={readOnly || parallelize.isPending}
+            title={
+              readOnlyReason ??
+              t(
+                "Turn a chain into siblings so they no longer sit on top of each other (jj parallelize). jj refuses if they are not connected.",
+              )
+            }
+            onRun={() => parallelize.mutate([revision.changeId, ...extraParents])}
+          />
+        )}
+        {revision.parents.length > 1 && (
+          <Step
+            label={t("Simplify the parent edges")}
+            disabled={readOnly || simplifyParents.isPending}
+            title={
+              readOnlyReason ??
+              t(
+                "Drop any parent the other parents already reach (jj simplify-parents). Topology only — the content does not move.",
+              )
+            }
+            onRun={() => simplifyParents.mutate(revision.changeId)}
+          />
+        )}
+        <Step
+          label={t("Make this change mine")}
+          disabled={readOnly || takeAuthorship.isPending}
+          title={
+            readOnlyReason ??
+            t(
+              "Put your name and email on it as the author (jj metaedit --update-author). The content does not change.",
+            )
+          }
+          onRun={() => takeAuthorship.mutate(revision.changeId)}
+        />
+        {(takeAuthorship.error ?? parallelize.error ?? simplifyParents.error) && (
+          <div
+            role="alert"
+            className="mono selectable"
+            style={{ fontSize: 11, color: "var(--u-conflict)", whiteSpace: "pre-wrap" }}
+          >
+            {messageFor(takeAuthorship.error ?? parallelize.error ?? simplifyParents.error)}
+          </div>
+        )}
       </div>
 
       {revision.hasConflict && (
