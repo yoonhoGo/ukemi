@@ -275,6 +275,18 @@ export interface JjPort {
   /** Undo one operation (`jj undo`). */
   undo(): Promise<WriteResult>;
 
+  /**
+   * Redo the operation the last `undo` took back (`jj redo`).
+   *
+   * jj's own docs call this the natural counterpart of undo — repeated undo
+   * and redo behave like a text editor's, which is the promise the window
+   * makes by binding ⌘Z at all. Redoing when nothing was undone is jj's
+   * error to report, not a state this side tracks: the op log is the only
+   * honest record of what is redoable, and mirroring it here would be a second
+   * one that can drift.
+   */
+  redo(): Promise<WriteResult>;
+
   /** Restore the repo to the state at `opId` (`jj op restore`). */
   restoreOperation(opId: OperationId): Promise<WriteResult>;
 }

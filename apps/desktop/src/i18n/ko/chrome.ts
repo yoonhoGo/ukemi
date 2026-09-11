@@ -76,6 +76,9 @@ export const chrome: Record<string, string> = {
   "Return to now to undo": "되돌리려면 지금으로 돌아오세요",
   Undo: "되돌리기",
   "Undo the last operation": "마지막 오퍼레이션 되돌리기",
+  Redo: "다시 하기",
+  "Redo the last undone operation": "되돌린 오퍼레이션 다시 하기",
+  "Return to now to redo": "다시 하려면 지금으로 돌아오세요",
   "Restore here": "여기로 복원",
   "Restore the repository to this operation": "저장소를 이 오퍼레이션으로 복원",
   "Park the playhead on a past operation first":

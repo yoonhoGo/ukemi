@@ -291,6 +291,7 @@ function operationsMenu(): SubmenuOptions {
     items: [
       // Discoverable, deliberately not bound — see the note on `editMenu`.
       item({ label: "Undo the last operation", key: "z" }),
+      item({ label: "Redo the last undone operation", key: "z", shift: true }),
       item({
         label: "Restore to the parked operation",
         key: "r",

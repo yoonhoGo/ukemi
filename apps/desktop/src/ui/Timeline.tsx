@@ -20,6 +20,7 @@ export function Timeline() {
   const { pinnedOpId, isPinned, pin } = useRepo();
   const operations = useOperations(60);
   const undo = useJjMutation((port) => port.undo());
+  const redo = useJjMutation((port) => port.redo());
   const restore = useJjMutation((port, opId: string) => port.restoreOperation(opId));
 
   // Oldest on the left, so the axis runs the way time does.
@@ -87,6 +88,20 @@ export function Timeline() {
           onClick={() => undo.mutate(undefined)}
         >
           {t("Undo")} <span className="key">⌘Z</span>
+        </button>
+        {/* Undo without redo is a one-way door, and jj's own docs call the
+            pair a text editor's. Never disabled on "is there anything to
+            redo": only the op log knows, and a button greyed out on a guess
+            is worse than one that reports jj's answer. */}
+        <button
+          type="button"
+          className="tb-btn"
+          style={btn}
+          disabled={isPinned || redo.isPending}
+          title={isPinned ? t("Return to now to redo") : t("Redo the last undone operation")}
+          onClick={() => redo.mutate(undefined)}
+        >
+          {t("Redo")} <span className="key">⌘⇧Z</span>
         </button>
         <button
           type="button"

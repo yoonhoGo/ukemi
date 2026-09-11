@@ -48,6 +48,7 @@ const GROUPS = [
     items: [
       ["← →", "Move the operation playhead"],
       ["⌘Z", "Undo the last operation"],
+      ["⌘⇧Z", "Redo the last undone operation"],
       ["⌘⇧R", "Restore to the parked operation"],
       ["Esc", "Back to now"],
     ],

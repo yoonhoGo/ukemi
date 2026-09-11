@@ -572,6 +572,10 @@ export class JjCliAdapter implements JjPort {
     return this.write(["undo"]);
   }
 
+  redo(): Promise<WriteResult> {
+    return this.write(["redo"]);
+  }
+
   restoreOperation(opId: OperationId): Promise<WriteResult> {
     return this.write(["op", "restore", opId]);
   }

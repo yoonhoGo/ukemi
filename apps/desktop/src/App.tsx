@@ -159,6 +159,7 @@ function Window({
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
   const abandon = useJjMutation((port, rev: string) => port.abandon([rev]));
   const undo = useJjMutation((port) => port.undo());
+  const redo = useJjMutation((port) => port.redo());
   const restore = useJjMutation((port, id: string) => port.restoreOperation(id));
   const fetch = useJjMutation((port) => port.fetch());
   /**
@@ -312,6 +313,9 @@ function Window({
       } else if (key === "r") {
         event.preventDefault();
         void client.invalidateQueries({ queryKey: ["op-head", root] });
+      } else if (key === "z" && event.shiftKey) {
+        event.preventDefault();
+        if (!isPinned) redo.mutate(undefined);
       } else if (key === "z") {
         event.preventDefault();
         if (!isPinned) undo.mutate(undefined);
@@ -375,6 +379,7 @@ function Window({
     client,
     root,
     undo,
+    redo,
     effectiveSelection,
     startChange,
     edit,
@@ -405,6 +410,7 @@ function Window({
     edit,
     abandon,
     undo,
+    redo,
     restore,
     fetch,
     push,
