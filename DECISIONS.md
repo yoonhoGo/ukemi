@@ -867,6 +867,27 @@ chord on. Whole-file squash and split already established that a verb can live
 as a step with no key and no menu item; the menu bar is not poorer for it,
 because a step is not hidden.
 
+**⌘N lands on the change it made, and a merge conflict is resolved by side.**
+Two halves of one report: merge two revisions, and no conflict could be found
+to resolve. The first half is why nothing was visible at all — the selection
+stayed on the parent the merge was started from, so the window was looking at a
+clean revision while the conflict sat one row away on the new working copy.
+`jj new` does not report the change id it created, so ⌘N drops the selection
+instead of naming one and the existing "no selection → the working copy"
+fallback lands on the merge. That is right for a plain ⌘N too: starting a
+change on top and then being shown its parent was never the intent.
+
+The second half is why the panel's own escape hatch led nowhere. A merge is a
+change with two parents and nothing of its own: `isEmpty` is true and
+`jj diff -r <merge>` is empty, because the conflict is in the tree, not in a
+patch. "Edit by hunk" therefore opened on no hunks. It is greyed out for an
+empty conflicted change and says so; "take ours"/"take theirs" is the whole
+answer there, and a finer resolution is made in the change you build on top.
+A rebase conflict is unaffected — it does carry the markers in its own diff,
+which is the case that button was written for. `contract-p1.test.ts` pins both
+shapes so a future jj that starts giving merges a diff is caught rather than
+silently re-enabling a dead button.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
@@ -971,8 +992,10 @@ a CSP that allows `blob:`. That is a diff viewer's worth of new surface for one
 file type, and none of it can be checked without a window.
 
 No three-way merge editor. The conflict panel offers "take a side"; anything
-finer is a hunk edit, and that editor already exists. A second merge UI would
-be a second thing to keep correct for no new capability.
+finer is a hunk edit, and that editor already exists — for a rebase conflict,
+which carries the markers in its own diff. It does not exist for a *merge*
+conflict, and the entry above says why that is a gap rather than a bug to fix
+here.
 
 No Run button in the ⌘G panel. For most rows the answer *is* a keystroke in
 this window, and the rest are one-liners to copy; a Run that worked for some

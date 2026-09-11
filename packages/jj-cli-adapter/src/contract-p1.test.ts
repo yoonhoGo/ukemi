@@ -310,6 +310,44 @@ test("conflicts are listed and can be resolved by taking a side", async () => {
   assert.equal((await jj.conflicts(conflicted.changeId)).length, 0);
 });
 
+/**
+ * The merge case, which is not the rebase case: `jj new a b` records the
+ * conflict in a change that has no patch of its own, so `isEmpty` is true and
+ * the diff is empty while `conflicts()` still names the file.
+ *
+ * The inspector reads exactly this: it offers "take a side" from the conflict
+ * list and greys out "edit by hunk", because a hunk editor opened on an empty
+ * diff shows nothing to resolve.
+ */
+test("a merge records its conflict with no diff of its own", async () => {
+  writeFileSync(join(repo, "a.txt"), "base\n");
+  raw("describe", "-m", "base");
+  raw("bookmark", "create", "trunk", "-r", "@");
+  raw("new", "-m", "ours");
+  writeFileSync(join(repo, "a.txt"), "ours\n");
+  raw("new", "trunk", "-m", "theirs");
+  writeFileSync(join(repo, "a.txt"), "theirs\n");
+  raw("status");
+
+  await jj.newChange([await idOf("ours"), await idOf("theirs")]);
+
+  const merge = (await jj.log("all()")).find((r) => r.hasConflict);
+  assert.ok(merge, "merging the two sides should have produced a conflict");
+  assert.equal(merge.parents.length, 2);
+  assert.equal(merge.isEmpty, true, "a merge carries no change of its own");
+  assert.deepEqual(await jj.diffSummary(merge.changeId), []);
+
+  const files = await jj.conflicts(merge.changeId);
+  assert.deepEqual(
+    files.map((f) => f.path),
+    ["a.txt"],
+    "the conflict is listed even though the diff is empty",
+  );
+
+  await jj.resolveTakingSide(merge.changeId, "a.txt", "theirs");
+  assert.equal(readFileSync(join(repo, "a.txt"), "utf8"), "theirs\n");
+});
+
 // ------------------------------------------- round-trip on real jj diffs ----
 
 test("round-trip holds for a spread of real edits jj produced", async () => {

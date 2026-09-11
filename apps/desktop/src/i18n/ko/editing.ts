@@ -150,6 +150,8 @@ export const editing: Record<string, string> = {
   "Keep the second side (jj's :theirs)": "두 번째 쪽을 남깁니다 (jj의 :theirs)",
   "Take theirs": "theirs 선택",
   "Edit the conflict markers by hunk instead": "대신 충돌 표시를 헝크 단위로 편집합니다",
+  "This change has no diff of its own — take a side, or resolve it in the change you make on top.":
+    "이 체인지는 자기 변경이 없습니다 — 한쪽을 선택하거나, 위에 만드는 체인지에서 푸십시오.",
   "Edit by hunk": "헝크 단위로 편집",
   "1 conflict": "충돌 1개",
   "{count} conflicts": "충돌 {count}개",

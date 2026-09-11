@@ -109,11 +109,21 @@ export function Conflicts({
               {t("Take theirs")}
             </button>
             <span style={{ flexGrow: 1 }} />
+            {/* A merge is a change with two parents and nothing of its own, so
+                its diff is empty — the conflict lives in the tree, not in a
+                patch — and the hunk editor would open on no hunks at all. A
+                rebase conflict does carry the markers in its own diff, which is
+                the case this button is for. */}
             <button
               type="button"
               className="tb-btn"
               style={{ height: 22, fontSize: 11.5 }}
-              title={t("Edit the conflict markers by hunk instead")}
+              disabled={revision.isEmpty}
+              title={
+                revision.isEmpty
+                  ? t("This change has no diff of its own — take a side, or resolve it in the change you make on top.")
+                  : t("Edit the conflict markers by hunk instead")
+              }
               onClick={() => onShowRevision(revision.changeId)}
             >
               {t("Edit by hunk")} <span className="key">⌘⇧S</span>

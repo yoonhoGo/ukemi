@@ -157,7 +157,16 @@ function Window({
   const startChange = () => {
     if (isPinned || !effectiveSelection) return;
     newChange.mutate([effectiveSelection, ...extraParents], {
-      onSuccess: () => setMarked(new Set()),
+      // Land on the change ⌘N just made, not the one it was made from. The
+      // selection is dropped rather than named because `jj new` does not
+      // report the change id it created, and the fallback below is the working
+      // copy — which is exactly the new change. Without this a merge left the
+      // window on a parent, so the conflict it had just created was on a row
+      // nobody was looking at and the conflict panel never appeared.
+      onSuccess: () => {
+        setMarked(new Set());
+        setSelected(undefined);
+      },
     });
   };
   const edit = useJjMutation((port, rev: string) => port.edit(rev));
