@@ -8,35 +8,51 @@
  * a future jj gets caught rather than silently mis-parsed.
  */
 
-/** One line per revision. Field names match `Revision` exactly. */
-export const REVISION_TEMPLATE = [
-  '"{"',
-  '"\\"changeId\\":" ++ json(change_id)',
-  '",\\"commitId\\":" ++ json(commit_id)',
-  '",\\"description\\":" ++ json(description)',
-  '",\\"author\\":" ++ json(author)',
-  '",\\"committer\\":" ++ json(committer)',
-  // Parent *change* IDs: topology that survives a rebase.
-  '",\\"parents\\":" ++ json(parents.map(|c| c.change_id()))',
-  // Local names only: `bookmarks` also carries a remote-tracking row whose
-  // target has drifted from the local one, and `b.name()` drops the `@origin`
-  // that tells them apart — two identical pills on two different rows. The
-  // split keeps this field the one the push and PR code already reads.
-  '",\\"bookmarks\\":" ++ json(local_bookmarks.map(|b| b.name()))',
-  // The drifted remote rows, as jj names them. `bookmarks` has done most of
-  // the folding — a *tracked* remote at the same target, `@git` included, is
-  // not in it — but an untracked one survives even at the same target, so
-  // `normaliseRevision` drops those against the field above. `stringify`
-  // because a `++` of strings is a template, which `json` will not serialize.
-  '",\\"remoteBookmarks\\":" ++ json(bookmarks.filter(|b| b.remote()).map(|b| stringify(b.name() ++ "@" ++ b.remote())))',
-  '",\\"tags\\":" ++ json(tags.map(|t| t.name()))',
-  '",\\"isWorkingCopy\\":" ++ json(current_working_copy)',
-  '",\\"isEmpty\\":" ++ json(empty)',
-  '",\\"hasConflict\\":" ++ json(conflict)',
-  '",\\"isImmutable\\":" ++ json(immutable)',
-  '",\\"isDivergent\\":" ++ json(divergent)',
-  '"}\\n"',
-].join(" ++ ");
+/**
+ * One line per revision, over whatever expression yields the commit.
+ *
+ * Parameterised because `jj evolog` renders a `CommitEvolutionEntry`, not a
+ * `Commit`: its keywords live behind `commit.`, and a bare `change_id` is a
+ * parse error there. `self.` is the same thing spelled out in a `jj log`
+ * context, so one body serves both and the two readings of a revision cannot
+ * drift into disagreeing about what a revision is.
+ */
+function revisionTemplate(commit: string): string {
+  return [
+    '"{"',
+    `"\\"changeId\\":" ++ json(${commit}.change_id())`,
+    `",\\"commitId\\":" ++ json(${commit}.commit_id())`,
+    `",\\"description\\":" ++ json(${commit}.description())`,
+    `",\\"author\\":" ++ json(${commit}.author())`,
+    `",\\"committer\\":" ++ json(${commit}.committer())`,
+    // Parent *change* IDs: topology that survives a rebase.
+    `",\\"parents\\":" ++ json(${commit}.parents().map(|c| c.change_id()))`,
+    // Local names only: `bookmarks` also carries a remote-tracking row whose
+    // target has drifted from the local one, and `b.name()` drops the `@origin`
+    // that tells them apart — two identical pills on two different rows. The
+    // split keeps this field the one the push and PR code already reads.
+    `",\\"bookmarks\\":" ++ json(${commit}.local_bookmarks().map(|b| b.name()))`,
+    // The drifted remote rows, as jj names them. `bookmarks` has done most of
+    // the folding — a *tracked* remote at the same target, `@git` included, is
+    // not in it — but an untracked one survives even at the same target, so
+    // `normaliseRevision` drops those against the field above. `stringify`
+    // because a `++` of strings is a template, which `json` will not serialize.
+    `",\\"remoteBookmarks\\":" ++ json(${commit}.bookmarks().filter(|b| b.remote()).map(|b| stringify(b.name() ++ "@" ++ b.remote())))`,
+    `",\\"tags\\":" ++ json(${commit}.tags().map(|t| t.name()))`,
+    `",\\"isWorkingCopy\\":" ++ json(${commit}.current_working_copy())`,
+    `",\\"isEmpty\\":" ++ json(${commit}.empty())`,
+    `",\\"hasConflict\\":" ++ json(${commit}.conflict())`,
+    `",\\"isImmutable\\":" ++ json(${commit}.immutable())`,
+    `",\\"isDivergent\\":" ++ json(${commit}.divergent())`,
+    '"}\\n"',
+  ].join(" ++ ");
+}
+
+/** `jj log`, where the row *is* the commit. */
+export const REVISION_TEMPLATE = revisionTemplate("self");
+
+/** `jj evolog`, where the row is an evolution entry wrapping one. */
+export const EVOLOG_TEMPLATE = revisionTemplate("commit");
 
 /**
  * One line per bookmark row (one per local name, plus one per remote).

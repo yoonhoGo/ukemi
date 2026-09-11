@@ -136,6 +136,31 @@ test("operations parse, and exactly one is current", async () => {
   assert.ok(withArgs.args!.startsWith("jj "), withArgs.args);
 });
 
+test("evolog reads a change's own history through the same revision shape", async () => {
+  const before = (await jj.log("all()")).find((r) => r.description === "second head")!;
+  await jj.describe(before.changeId, "second head, renamed");
+
+  const history = await jj.evolog(before.changeId);
+  // Newest first, and every entry is the same change wearing a different commit.
+  assert.ok(history.length >= 2, `expected at least two versions, got ${history.length}`);
+  assert.equal(history[0]!.description, "second head, renamed");
+  assert.ok(
+    history.some((entry) => entry.description === "second head"),
+    "the pre-describe version must still be readable",
+  );
+  for (const entry of history) assert.equal(entry.changeId, before.changeId);
+  assert.equal(new Set(history.map((entry) => entry.commitId)).size, history.length);
+  // The template is `REVISION_TEMPLATE`'s body behind `commit.`, so every field
+  // the log parses has to parse here too — that is the point of sharing it.
+  assert.match(history[0]!.commitId, /^[0-9a-f]{40}$/);
+  assert.equal(history[0]!.author.email, "test@ukemi.dev");
+  assert.equal(typeof history[0]!.isEmpty, "boolean");
+  assert.equal(typeof history[0]!.isImmutable, "boolean");
+  assert.deepEqual(history[0]!.parents, before.parents);
+
+  await jj.undo();
+});
+
 test("workspaces list the default workspace", async () => {
   const workspaces = await jj.workspaces();
   assert.deepEqual(

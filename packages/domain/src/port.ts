@@ -93,6 +93,20 @@ export interface JjPort {
   /** Unified diff text for one file, or the whole revision when `path` is omitted. */
   diff(rev: string, path?: string, opts?: DiffOptions): Promise<string>;
 
+  /**
+   * Every version this change has been, newest first (`jj evolog`).
+   *
+   * The operation log is the repository's history; this is one change's own.
+   * They answer different questions — "what did I run at 3pm" against "what
+   * did this change look like before I squashed into it" — and only the second
+   * survives the change being rebased into a different operation's shadow.
+   *
+   * The entries are past commits of one change ID, so they are `Revision`s
+   * whose `commitId` differs and whose `changeId` does not. All but the first
+   * are hidden commits: real, reachable by ID, and not in any revset.
+   */
+  evolog(rev: string, opts?: ReadOptions): Promise<Revision[]>;
+
   bookmarks(opts?: ReadOptions): Promise<Bookmark[]>;
 
   tags(opts?: ReadOptions): Promise<Tag[]>;

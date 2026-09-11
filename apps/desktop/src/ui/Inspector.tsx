@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
 import type { ChangeId, FileChange, Revision } from "@ukemi/domain";
 import { fileHistoryRevset } from "@ukemi/domain";
-import { messageFor, useDiffSummary, useJjMutation, useLog, useRepo } from "../repo.tsx";
+import {
+  messageFor,
+  useDiffSummary,
+  useEvolog,
+  useJjMutation,
+  useLog,
+  useRepo,
+} from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
-import { authorColor, authorInitials, nodeColor } from "./change-color.ts";
+import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
 import type { HunkSheetMode } from "./HunkSheet.tsx";
 import { Conflicts } from "./Conflicts.tsx";
+import { ChevronIcon } from "./icons.tsx";
 import { StackPanel } from "./Stack.tsx";
 
 /** Exported because the diff sheet lists the same files with the same marks. */
@@ -122,6 +130,111 @@ function Step({
       <span>{label}</span>
       {shortcut && <span className="key">{shortcut}</span>}
     </button>
+  );
+}
+
+/**
+ * Every version this change has been — differentiator #1, per change.
+ *
+ * The timeline below the window is the *repository's* history; this is one
+ * change's. Git has no equivalent at all: an amended commit's previous self is
+ * reachable only through the reflog, by SHA, and only until it is collected.
+ * Here the change ID is stable and every version it has worn is still there.
+ *
+ * Folded shut, and the read is wired to the fold rather than the selection —
+ * walking the graph must not run a second jj command per row for a panel
+ * nobody opened.
+ */
+function Evolution({ revision }: { revision: Revision }) {
+  const [open, setOpen] = useState(false);
+  const history = useEvolog(open ? revision.changeId : undefined);
+  // The head of the list is the version on screen; the older ones are what the
+  // panel exists for, so a change that has only ever been itself says so.
+  const past = (history.data ?? []).slice(1);
+
+  return (
+    <details
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      style={{ padding: "10px 16px 8px", borderTop: "1px solid var(--u-line-faint)" }}
+    >
+      <summary
+        className="side-head"
+        style={{ display: "flex", alignItems: "center", gap: 6, padding: 0 }}
+      >
+        <span className="chev" aria-hidden>
+          <ChevronIcon />
+        </span>
+        {t("HOW THIS CHANGE EVOLVED")}
+      </summary>
+      <div style={{ paddingTop: 6 }}>
+        {history.error && (
+          <div
+            role="alert"
+            className="mono selectable"
+            style={{ fontSize: 11, color: "var(--u-conflict)", whiteSpace: "pre-wrap" }}
+          >
+            {messageFor(history.error)}
+          </div>
+        )}
+        {!history.error && history.isPending && (
+          <div className="sec" style={{ fontSize: 11.5 }}>
+            {t("Reading the change's history…")}
+          </div>
+        )}
+        {!history.error && history.data && past.length === 0 && (
+          <div className="sec" style={{ fontSize: 11.5 }}>
+            {t("This change has only ever been itself.")}
+          </div>
+        )}
+        {past.map((entry) => (
+          <div
+            key={entry.commitId}
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 8,
+              minHeight: 22,
+              paddingLeft: 8,
+              borderLeft: `3px solid ${colorForChange(entry.commitId)}`,
+            }}
+          >
+            {/* The commit ID, not the change ID: the change ID is the same on
+                every row here, and the commit ID is the only thing that tells
+                two versions apart — it is also what `jj show` takes. */}
+            <span className="mono ter selectable" style={{ fontSize: 11, flexShrink: 0 }}>
+              {entry.commitId.slice(0, 8)}
+            </span>
+            <span
+              style={{
+                flexGrow: 1,
+                minWidth: 0,
+                fontSize: 11.5,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+              title={entry.description || undefined}
+            >
+              {entry.description.split("\n")[0] || t("(no description set)")}
+            </span>
+            {entry.hasConflict && (
+              <span className="pill" data-kind="conflict">
+                {t("conflict")}
+              </span>
+            )}
+            <span className="sec" style={{ fontSize: 11, flexShrink: 0 }}>
+              {relativeTime(entry.committer.timestamp)}
+            </span>
+          </div>
+        ))}
+        {past.length > 0 && (
+          <div className="mono ter" style={{ fontSize: 11, paddingTop: 6 }}>
+            {`jj evolog -r ${revision.changeId.slice(0, 8)}`}
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -567,6 +680,7 @@ export function Inspector({
         )}
       </div>
 
+      <Evolution revision={revision} />
     </aside>
   );
 }

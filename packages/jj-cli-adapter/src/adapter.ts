@@ -29,6 +29,7 @@ import {
   ANNOTATE_TEMPLATE,
   BOOKMARK_TEMPLATE,
   CONFIG_TEMPLATE,
+  EVOLOG_TEMPLATE,
   OPERATION_TEMPLATE,
   REVISION_TEMPLATE,
   TAG_TEMPLATE,
@@ -218,6 +219,19 @@ export class JjCliAdapter implements JjPort {
     // `--` keeps a path that looks like a flag from being read as one.
     if (path !== undefined) args.push("--", path);
     return this.run(args);
+  }
+
+  async evolog(rev: string, opts?: ReadOptions): Promise<Revision[]> {
+    const out = await this.run([
+      ...this.readBase(opts),
+      "evolog",
+      "--no-graph",
+      "-r",
+      rev,
+      "-T",
+      EVOLOG_TEMPLATE,
+    ]);
+    return parseNdjson<RawRevision>(out).map(normaliseRevision);
   }
 
   async bookmarks(opts?: ReadOptions): Promise<Bookmark[]> {

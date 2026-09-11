@@ -218,6 +218,23 @@ export function useTags(): UseQueryResult<Tag[]> {
   return useRepoQuery(["tags"], (port, opId) => port.tags({ atOp: opId }));
 }
 
+/**
+ * Every version one change has been (`jj evolog`).
+ *
+ * Off until a revision is passed, which is how the inspector's fold pays for
+ * nothing while it is closed. Keyed like every other read: at a given
+ * operation, a change's evolution is settled.
+ */
+export function useEvolog(rev: ChangeId | undefined): UseQueryResult<Revision[]> {
+  const { root, port, opId } = useRepo();
+  return useQuery({
+    queryKey: ["repo", root, opId, "evolog", rev],
+    queryFn: () => port.evolog(rev!, { atOp: opId }),
+    enabled: opId !== undefined && rev !== undefined,
+    staleTime: Infinity,
+  });
+}
+
 /** `jj file annotate` for one file at one revision. Off until both are known. */
 export function useAnnotate(
   rev: string | undefined,
