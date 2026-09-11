@@ -11,6 +11,7 @@ import {
   useJjMutation,
   useOperations,
   usePullRequests,
+  useAutoFetch,
   useRebasePreview,
   useRepo,
 } from "./repo.tsx";
@@ -56,6 +57,7 @@ function Window({
   const { layout, query } = useGraph();
   const operations = useOperations(60);
   const client = useQueryClient();
+  useAutoFetch();
   const [selected, setSelected] = useState<ChangeId | undefined>(undefined);
   // Extra parents for the next ⌘N, toggled with ⌘-click on a row. A merge is
   // a change with two parents, so this is the whole of the merge UI: mark the
@@ -579,6 +581,11 @@ function Window({
               display: "flex",
               flexDirection: "column",
               background: "var(--u-bg-window)",
+              // Dimmed while the answer on screen is the *previous* revset's:
+              // the graph stays legible and in place across a revset change,
+              // but it has to read as not-yet-the-thing-you-asked-for.
+              opacity: query.isPlaceholderData ? 0.5 : 1,
+              transition: "opacity 120ms",
               // The gutter widens with the graph, and the column labels below
               // are a `.row` too — so the variable lives on the ancestor both
               // share, or the header's columns drift off the rows'.

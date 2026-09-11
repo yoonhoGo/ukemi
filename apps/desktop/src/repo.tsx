@@ -2,12 +2,16 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
+  focusManager,
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -165,6 +169,12 @@ function useRepoQuery<T>(
     // A read at a given opId can never change: that point in history is
     // immutable, so the cache entry is valid until it is evicted.
     staleTime: Infinity,
+    // Changing the revset — or the opId after a write — is a new key and so a
+    // cache miss, and a miss used to blank the window back to "Reading the
+    // repository…" every time. The previous answer is the closest thing to the
+    // one being fetched, so it stays on screen, dimmed, until the new one
+    // lands; going *back* to a revset already read is still instant.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -354,6 +364,56 @@ export function useJjMutation<TArgs, TResult = unknown>(
       void client.invalidateQueries({ queryKey: ["op-head", root] });
     },
   });
+}
+
+/** How often the window fetches on its own. */
+const AUTO_FETCH_MS = 10 * 60_000;
+
+/**
+ * `jj git fetch` when the repo opens, and every ten minutes it is in front of
+ * you after that.
+ *
+ * Deliberately not a `useJjMutation`: a fetch nobody asked for must not put the
+ * error strip over the window when the laptop is on a train or the remote wants
+ * a key, and it must not release the operation pin — inspecting the past is
+ * exactly when a background write yanking you back to the present is worst. It
+ * invalidates the head like any other write, which is what makes the new
+ * commits appear, and `keepPreviousData` keeps the graph on screen while they do.
+ *
+ * The heartbeat is a minute but the fetch is ten, so a window that spent an
+ * hour behind an editor fetches within a minute of coming back rather than
+ * waking a network call every ten minutes while nobody is looking.
+ *
+ * ponytail: fixed interval, no setting — add one to Settings if ten minutes
+ * turns out to be the wrong number for anyone.
+ */
+export function useAutoFetch(): void {
+  const { root, port, isPinned } = useRepo();
+  const client = useQueryClient();
+  const pinned = useRef(isPinned);
+  pinned.current = isPinned;
+
+  useEffect(() => {
+    let last = 0;
+    let stopped = false;
+    const tick = () => {
+      if (pinned.current || !focusManager.isFocused()) return;
+      if (Date.now() - last < AUTO_FETCH_MS) return;
+      last = Date.now();
+      void port
+        .fetch()
+        .then(() => {
+          if (!stopped) void client.invalidateQueries({ queryKey: ["op-head", root] });
+        })
+        .catch(() => {});
+    };
+    tick();
+    const timer = setInterval(tick, 60_000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [root, port, client]);
 }
 
 /**

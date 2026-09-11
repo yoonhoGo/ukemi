@@ -718,6 +718,35 @@ app will not do behind one button, which is also why the row for the current
 workspace has no × at all: forgetting the working copy this window is looking
 at would leave it pointing at a workspace the repo no longer has.
 
+**Fetching — on its own, on a timer, and never in the way.**
+The window fetches when a repo opens and every ten minutes it is in front of
+you. Two shapes were refused. Fetching on every window focus is what the head
+refetch already does, and it would put a network call on every ⌘Tab back from
+a terminal. Making it a `useJjMutation` like the toolbar's button would give an
+unasked-for write two powers it must not have: the error strip, which would sit
+over the window whenever the laptop is off the network or the remote wants a
+key, and releasing the operation pin, which would yank a user out of the past
+they are inspecting. So it swallows its errors, skips while pinned or while the
+window is behind something else, and invalidates only the op head — the same
+door every other write comes through. The heartbeat is a minute and the
+interval ten, so a window that spent an hour behind an editor fetches within a
+minute of coming back rather than waking the network while nobody is looking.
+The cost is an op-log entry per fetch, because `jj git fetch` records one
+whether or not anything arrived; if that noise grates, the interval is the knob
+before the timeline learns to fold them.
+
+**A revset change keeps the old graph on screen.**
+Reads are keyed on `(opId, revset)`, so a revset the window has not read before
+is a cache miss — and a miss used to blank the graph back to "Reading the
+repository…" every time, including after every write, when the opId changes.
+`placeholderData: keepPreviousData` on `useRepoQuery` leaves the previous
+answer up, at half opacity, until the new one lands. Not a spinner: the rows
+under the cursor are the thing being refined, and a spinner would throw away a
+screen the user can still read. Nothing about the caching changed — a revset
+already visited is still instant, and an immutable opId is still cached
+forever. A revset that fails to parse still clears the graph and shows the
+error, because an error is not a slower answer.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
