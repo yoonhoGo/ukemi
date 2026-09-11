@@ -747,6 +747,84 @@ already visited is still instant, and an immutable opId is still cached
 forever. A revset that fails to parse still clears the graph and shows the
 error, because an error is not a slower answer.
 
+**Undo got a counterpart, and it is not tracked on this side.**
+`jj redo` exists as of 0.43 and jj's own docs call it undo's natural
+counterpart, so ⌘Z without ⌘⇧Z was a one-way door in the app whose premise is
+the operation log. The button is never disabled on "is there anything to redo":
+only the op log knows, and mirroring that knowledge here would be a second
+record that can drift from the first. A redo with nothing to redo is jj's error
+to report, shown in the strip like any other.
+
+**`jj op diff` is shown verbatim, not parsed.**
+The timeline's ticks name a *kind* — "Rebase", "New change" — because that is
+all an operation's description carries, and the question the scrubber raises is
+which commits and bookmarks moved. `jj op diff` answers it, and takes no
+`--template`: turning its prose into rows would be a wire format jj never
+promised, breaking silently on the next release. So it is a `<pre>`, the way the
+error strip is jj's stderr. Folded shut by default and read only when open, so
+walking the axis stays one query per tick.
+
+**Word-level diff is common prefix and suffix, with no LCS in the middle.**
+Two separate edits on one line come back as one span covering both and
+everything between them — wider than the truth, never wrong about containing
+it. A token LCS would be exact, but it needs a length cap (a minified line is
+thousands of tokens) and a second code path for when the cap trips, which is
+three things to keep right for a case a code diff rarely has. When both sides
+share no edge at all the answer is *no* spans, not a fully painted line: the
+row's own tint already says "replaced", and repeating it in a second colour
+says nothing. `\w` is ASCII, so Hangul falls to the single-character arm — the
+right granularity for a script with no gaps between words, and free.
+
+**One revision template, two commit expressions.**
+`jj evolog` renders a `CommitEvolutionEntry`, not a `Commit`: its keywords live
+behind `commit.`, and the bare `change_id` that `jj log` takes is a parse error
+there. Rather than a second template — two things to keep in step, one of them
+guarded by the contract test and the other not — `revisionTemplate(commit)`
+takes the expression and `self.` spells out what `jj log` means implicitly. The
+two readings of a revision cannot disagree about what a revision is.
+
+**Evolog is the change's history; the timeline is the repository's.**
+They look like the same feature and answer different questions — "what did I run
+at 3pm" against "what did this change look like before I squashed into it" — and
+only the second survives the change being rebased into a different operation's
+shadow. Git has no equivalent: an amended commit's previous self is reachable
+only through the reflog, by SHA, and only until it is collected.
+
+**`restoreFiles` refuses an empty path list.**
+`jj restore -c <rev>` with no paths restores every path, so an empty list is not
+a no-op — it is the whole revision. The adapter throws before building the argv.
+Undo being one key away is not a reason to let a command do far more than its
+name promised.
+
+**Interdiff keeps jj's description pseudo-file.**
+`jj interdiff` counts a description change as part of the answer and emits it as
+a synthetic `JJ-COMMIT-DESCRIPTION` file, so the diff sheet's file list can hold
+a row that is not a file. Left as jj sends it: the question the button asks is
+"what changed since I pushed", and the message changing is part of that. Which
+remote to compare against is read from the bookmark list rather than assumed to
+be `origin` — and a bookmark with no remote row has never been pushed, so the
+absence is what hides the button, with no drift calculation and no button that
+opens an empty sheet.
+
+**CI is one word, and a skipped check is not a failure.**
+`statusCheckRollup` comes back as every check on the head, in two different
+shapes (`CheckRun` with `status` + `conclusion`, `StatusContext` with `state`).
+The panel row is 26px and the question is "can this merge", so it becomes one
+of four words. `SKIPPED` and `NEUTRAL` are deliberately not failures: a job that
+opted out of running is not a job that said no, and counting it red would paint
+most monorepo PRs red forever. A settled failure outranks any number of pending
+runs. The cost is that the rollup is asked for on all 200 PRs the list returns —
+`gh pr list --json` has no way to ask per row — which on a wide CI matrix is a
+few MB of JSON parsed once a minute at worst.
+
+**Remotes live in the sidebar's Repository section.**
+That section's kind is "the repository", and the app had nowhere at all to add a
+remote: onboarding takes a folder all the way to a jj repo and stopped, leaving
+push, fetch and the whole stack panel permanently out of reach for exactly the
+repositories this app created. The rows are read-only — removing a remote also
+forgets its bookmarks, which is a much larger button than ＋ and has not been
+asked for.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
