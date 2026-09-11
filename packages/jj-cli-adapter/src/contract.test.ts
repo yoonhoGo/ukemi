@@ -201,6 +201,33 @@ test("describe then undo round-trips, and each write reports its operation", asy
 
   await jj.undo();
   assert.equal((await jj.show(target.changeId))?.description, "feature work");
+
+  // `jj redo` is the counterpart the window binds to ⌘⇧Z. Undone again at
+  // the end, so the fixture leaves this test exactly as it found it.
+  await jj.redo();
+  assert.equal(
+    (await jj.show(target.changeId))?.description,
+    "renamed by contract test",
+  );
+  await jj.undo();
+  assert.equal((await jj.show(target.changeId))?.description, "feature work");
+});
+
+test("op diff names the change an operation touched", async () => {
+  const target = (await jj.log("all()")).find((r) => r.description === "feature work")!;
+  const { opId } = await jj.describe(target.changeId, "described for op diff");
+
+  // Not parsed anywhere — the timeline shows this text verbatim — so the
+  // contract is only that `--op` still selects an operation and that jj says
+  // which change moved. A silent empty string is the failure worth catching.
+  const text = await jj.operationDiff(opId);
+  assert.ok(text.trim().length > 0, "op diff must say something");
+  assert.ok(
+    text.includes(target.changeId.slice(0, 8)),
+    `op diff should name the change it touched:\n${text}`,
+  );
+
+  await jj.undo();
 });
 
 test("op restore rewinds the repo to an earlier operation", async () => {

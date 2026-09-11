@@ -105,6 +105,21 @@ export interface JjPort {
   /** Most recent operations first. */
   operations(limit: number, opts?: ReadOptions): Promise<Operation[]>;
 
+  /**
+   * What one operation changed, compared to its parent (`jj op diff`).
+   *
+   * Returns jj's own text rather than a parsed shape. `op diff` takes no
+   * `--template`, and the alternative — parsing its prose into rows — would be
+   * a wire format jj never promised, breaking silently on the next release.
+   * The timeline shows it the way the error strip shows stderr: verbatim,
+   * because it is already written for a person to read.
+   *
+   * Not a `ReadOptions` read. The operation is named outright, and pinning the
+   * repo somewhere else would only decide which side of that operation the
+   * repo happens to be loaded from.
+   */
+  operationDiff(opId: OperationId): Promise<string>;
+
   /** Git directory, colocation and remotes. Not pinned: this is about the repo, not a point in it. */
   gitInfo(): Promise<GitInfo>;
 

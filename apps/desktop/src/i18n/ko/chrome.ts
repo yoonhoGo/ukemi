@@ -83,6 +83,11 @@ export const chrome: Record<string, string> = {
   "Restore the repository to this operation": "저장소를 이 오퍼레이션으로 복원",
   "Park the playhead on a past operation first":
     "먼저 플레이헤드를 과거 오퍼레이션에 세우세요",
+  "What changed": "무엇이 바뀜는가",
+  "Hide what changed": "바뀐 것 접기",
+  "Show what this operation changed (jj op diff)":
+    "이 오퍼레이션이 바꿋 것을 보여줍니다 (jj op diff)",
+  "Reading the operation…": "오퍼레이션을 읽는 중…",
   "Operation timeline": "오퍼레이션 타임라인",
   "No operations yet.": "아직 오퍼레이션이 없습니다.",
   now: "지금",

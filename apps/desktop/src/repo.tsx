@@ -305,6 +305,24 @@ export function useOperations(limit = 100): UseQueryResult<Operation[]> {
   });
 }
 
+/**
+ * What one operation changed, as jj's own `op diff` prose.
+ *
+ * Off until an id is passed, which is what keeps the timeline's ordinary
+ * scrubbing from paying for a second jj call per tick — the panel asks, not
+ * the playhead. Keyed on the operation alone and never stale: an operation is
+ * a point in history, so what it did cannot change.
+ */
+export function useOperationDiff(opId: OperationId | undefined): UseQueryResult<string> {
+  const { root, port } = useRepo();
+  return useQuery({
+    queryKey: ["op-diff", root, opId],
+    queryFn: () => port.operationDiff(opId!),
+    enabled: opId !== undefined,
+    staleTime: Infinity,
+  });
+}
+
 export function useDiffSummary(rev: string | undefined): UseQueryResult<FileChange[]> {
   const { root, port, opId } = useRepo();
   return useQuery({

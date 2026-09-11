@@ -303,6 +303,14 @@ export class JjCliAdapter implements JjPort {
     });
   }
 
+  async operationDiff(opId: OperationId): Promise<string> {
+    // `--op` (not `--at-operation`): this asks what *that* operation did, so
+    // the repo stays loaded at head and jj compares the op with its parent.
+    // The graph is left on — it is how jj shows which changes moved together,
+    // and the panel renders the text in a monospace block that can hold it.
+    return this.run([...this.readBase(), "op", "diff", "--op", opId]);
+  }
+
   async gitInfo(): Promise<GitInfo> {
     const gitRoot = (await this.run([...this.readBase(), "git", "root"])).trim();
     const remotesOut = await this.run([

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Operation } from "@ukemi/domain";
-import { useJjMutation, useOperations, useRepo } from "../repo.tsx";
+import { messageFor, useJjMutation, useOperationDiff, useOperations, useRepo } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { clockTime, relativeTime } from "./time.ts";
 import { operationLabel } from "./operation-label.ts";
@@ -43,6 +43,19 @@ export function Timeline() {
     ? ordered.findIndex((operation) => operation.id === pinnedOpId)
     : ordered.length - 1;
 
+  /*
+   * What the operation under the playhead actually did.
+   *
+   * The ticks name a *kind* — "Rebase", "New change" — which is as much as an
+   * operation's own description carries. The question the scrubber raises and
+   * could not answer is which commits and which bookmarks moved, and jj
+   * answers it as `jj op diff`. Folded away by default and read only while
+   * open, so walking the axis stays one query per tick and not two.
+   */
+  const [showDiff, setShowDiff] = useState(false);
+  const active = ordered[activeIndex];
+  const diff = useOperationDiff(showDiff ? active?.id : undefined);
+
   const step = (delta: number) => {
     const next = ordered[Math.min(ordered.length - 1, Math.max(0, activeIndex + delta))];
     if (!next) return;
@@ -54,7 +67,7 @@ export function Timeline() {
   return (
     <div
       style={{
-        height: 92,
+        height: showDiff ? 300 : 92,
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
@@ -117,7 +130,49 @@ export function Timeline() {
         >
           {t("Restore here")} <span className="key">⌘⇧R</span>
         </button>
+        <button
+          type="button"
+          className="tb-btn"
+          style={btn}
+          aria-expanded={showDiff}
+          disabled={active === undefined}
+          title={t("Show what this operation changed (jj op diff)")}
+          onClick={() => setShowDiff((open) => !open)}
+        >
+          {showDiff ? t("Hide what changed") : t("What changed")}
+        </button>
       </div>
+
+      {showDiff && (
+        <div
+          className="u-scroll"
+          style={{
+            flexShrink: 0,
+            height: 200,
+            margin: "0 14px 8px",
+            padding: "8px 10px",
+            borderRadius: 7,
+            background: "var(--u-bg-sunken)",
+          }}
+        >
+          {/* jj's own prose, verbatim — `op diff` takes no template, and
+              parsing it into rows would invent a wire format jj never
+              promised. The error strip shows stderr the same way. */}
+          <pre
+            className="mono selectable"
+            style={{
+              margin: 0,
+              fontSize: 11.5,
+              whiteSpace: "pre",
+              ...(diff.error ? { color: "var(--u-conflict)" } : {}),
+            }}
+          >
+            {diff.error
+              ? messageFor(diff.error)
+              : (diff.data ?? t("Reading the operation…"))}
+          </pre>
+        </div>
+      )}
 
       <div
         ref={track}
