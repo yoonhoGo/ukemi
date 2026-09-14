@@ -888,8 +888,30 @@ which is the case that button was written for. `contract-p1.test.ts` pins both
 shapes so a future jj that starts giving merges a diff is caught rather than
 silently re-enabling a dead button.
 
+**Comparing two changes reuses the merge mark, and is an interdiff.**
+The sheet could already render "A against B" — `DiffSheet`'s `against` prop —
+but the only thing that opened it was the stack panel's "since push", with
+`from` fixed to `head@origin`. The missing half was a gesture, and ⌘-click was
+already it: a mark means "this row and that one", which is the entire input.
+One mark only, because interdiff has two sides.
+
+It is `interdiff`, not `diff --from/--to`, for the reason `port.ts` gives: two
+marked rows usually sit on different parents, and comparing contents would fold
+in everything between those parents. What a reader marking two rows wants is
+what the two changes *do* differently.
+
+That leaves the merge case untouched, and they are not the same question.
+`jj diff -r <merge>` is empty by design — jj diffs against the auto-merged
+parents, so a clean merge has nothing of its own, exactly as `git show` on a
+merge does. Seeing what a merge brought in needs `diff --from <parent> --to
+<merge>`, which is a contents diff and so a port method this codebase does not
+have.
+
 ## Still open
 
+- **What a merge brought in.** No way to see it from the window. It needs
+  `JjPort.diffRange` (`jj diff --from --to`) and a step on a merge revision;
+  the comparison step above deliberately does not cover it.
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
   inside the bundle; neither is reachable from inside the window. `NOTICE`
   claimed such a screen from v1 and the claim is now withdrawn. Shipping the

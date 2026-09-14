@@ -88,6 +88,9 @@ export const editing: Record<string, string> = {
   "Start new change on top": "위에 새 체인지 시작",
   "Merge with {count} marked": "표시한 {count}개와 머지",
   "⌘-click another revision to merge with it.": "다른 리비전을 ⌘-클릭하면 머지할 수 있습니다.",
+  "Compare with the marked change": "표시한 체인지와 비교",
+  "What the two changes do differently (jj interdiff), not what their files differ by — the marked one is rebased onto this one's parents first.":
+    "두 체인지가 하는 일의 차이입니다 (jj interdiff). 파일 내용의 차이가 아니라, 표시한 쪽을 이 체인지의 부모 위로 리베이스한 뒤 비교합니다.",
   "Split into two changes": "두 체인지로 분리",
   "Nothing to split": "분리할 게 없습니다",
   "Squash hunks into parent": "헝크를 부모에 스쿼시",

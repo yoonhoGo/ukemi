@@ -445,6 +445,19 @@ export function Inspector({
             {t("⌘-click another revision to merge with it.")}
           </div>
         )}
+        {/* A mark already means "this row and that one", which is the whole
+            input a comparison needs — so the gesture that sets up a merge sets
+            up this too, and only for one mark, because interdiff has two
+            sides. A read, so `readOnly` does not reach it. */}
+        {extraParents.length === 1 && (
+          <Step
+            label={t("Compare with the marked change")}
+            title={t(
+              "What the two changes do differently (jj interdiff), not what their files differ by — the marked one is rebased onto this one's parents first.",
+            )}
+            onRun={() => onOpenDiff("", extraParents[0]!)}
+          />
+        )}
         <Step
           label={t("Split into two changes")}
           shortcut="⌘⇧S"
