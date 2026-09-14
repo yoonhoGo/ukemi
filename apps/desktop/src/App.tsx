@@ -33,6 +33,7 @@ import { unpushedBookmarks } from "./ui/sidebar-state.ts";
 import { Shortcuts } from "./ui/Shortcuts.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
 import { Toolbar } from "./ui/Toolbar.tsx";
+import { UpdateBanner } from "./ui/UpdateCheck.tsx";
 import { useDragBookmark, useDragRebase, type DragState } from "./ui/drag-rebase.tsx";
 import { DragGhost, RebaseHud } from "./ui/RebaseHud.tsx";
 import { DEFAULT_REVSET, stackRevset } from "@ukemi/domain";
@@ -510,6 +511,8 @@ function Window({
         onOpenRepo={onOpenRepo}
         onShowShortcuts={() => setShowShortcuts(true)}
       />
+
+      <UpdateBanner />
 
       {isPinned && (
         <div

@@ -907,6 +907,36 @@ merge does. Seeing what a merge brought in needs `diff --from <parent> --to
 <merge>`, which is a contents diff and so a port method this codebase does not
 have.
 
+**Installing and updating is one shell script, not an in-app updater.**
+`install.sh` downloads the release DMG, copies the app to `/Applications`,
+clears the quarantine flag the download adds — the app is ad-hoc signed, not
+notarised — and writes a `ukemi` command. Running it again is the update.
+
+`tauri-plugin-updater` was the obvious alternative and costs more than it
+returns here: a signing keypair whose private half has to live in a GitHub
+secret, a `latest.json` and a second bundle target for the release workflow to
+publish, and two more Rust dependencies — all to replace a command the user
+already ran once. What was actually missing was being *told*, so Settings has a
+checkbox that asks GitHub for the latest tag at startup and a banner that hands
+back the install command.
+
+The check is off by default and it is the only request this window makes; the
+CSP names `https://api.github.com` and nothing else. An app whose themes cannot
+load a remote font (`themes/themes.ts`) should not phone home on its own.
+
+The banner copies a command instead of opening the release page because opening
+a URL means `tauri-plugin-opener`, a sixth runtime dependency, and a copyable
+command is the affordance the command log and the Rosetta table already use.
+
+**The `ukemi` command is `open -n`, not the binary in the bundle.**
+`initial_repo` in `main.rs` already took a path from argv, so the CLI is nine
+lines written by `install.sh` and no Rust at all. `open -n` rather than
+`Ukemi.app/Contents/MacOS/ukemi`: it detaches from the terminal, activates the
+window, and — being a new instance — actually delivers argv, which a plain
+`open` on an already-running app does not. One window is one repository, so a
+second repo wanting a second process is the right answer rather than a
+limitation to work around with a single-instance plugin.
+
 ## Still open
 
 - **What a merge brought in.** No way to see it from the window. It needs

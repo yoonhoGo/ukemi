@@ -11,6 +11,30 @@ commit (no staging), conflicts as data (work never stops), and workspaces
 
 Design: `notes/` · draft at `jj-desktop-gui-설계.md`
 
+## Install
+
+macOS on Apple silicon:
+
+    curl -fsSL https://raw.githubusercontent.com/yoonhoGo/ukemi/main/install.sh | sh
+
+That downloads the latest release DMG, puts `Ukemi.app` in `/Applications`,
+clears the quarantine flag (the build is ad-hoc signed, not notarised — see
+§ Versioning), and writes a `ukemi` command to `/usr/local/bin`, or to
+`~/.local/bin` when the first is not writable.
+
+    ukemi              # open the repository you are standing in
+    ukemi ~/work/repo  # open that one
+
+Each invocation is its own window on its own repository. `UKEMI_VERSION` pins a
+release and `UKEMI_APPS` moves the destination — `UKEMI_APPS=$HOME/Applications`
+needs no admin rights.
+
+Updating is the same command again. Settings → Updates has a checkbox that asks
+GitHub for the latest release when the window opens and shows a banner with the
+line to run; it is off until you turn it on, and it is the only request this
+window makes. `DECISIONS.md` says why that is a checkbox and not an in-app
+updater.
+
 ## Layout
 
     packages/domain           types, the JjPort interface, pure functions (graph layout, revsets)
@@ -120,7 +144,8 @@ right-click → Open as a way past that. Either works:
     xattr -dr com.apple.quarantine /Applications/Ukemi.app
 
 or open the app once, dismiss the warning, then System Settings → Privacy &
-Security → *Open Anyway*. Notarisation needs an Apple Developer ID; the day
+Security → *Open Anyway*. `install.sh` does the `xattr` for you, which is most
+of why it exists. Notarisation needs an Apple Developer ID; the day
 there is one, `APPLE_CERTIFICATE`/`APPLE_ID` secrets in the release workflow
 replace both of these steps.
 

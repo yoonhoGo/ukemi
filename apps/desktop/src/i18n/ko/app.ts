@@ -88,4 +88,13 @@ export const app: Record<string, string> = {
   Interface: "인터페이스",
   Code: "코드",
   "Theme default": "테마 기본값",
+  Updates: "업데이트",
+  "Check for a new version at startup": "실행할 때 새 버전 확인",
+  "Asks GitHub for the latest release when the window opens. It is the only request this window makes.":
+    "창을 열 때 GitHub에 최신 릴리스를 물어봅니다. 이 창이 보내는 유일한 요청입니다.",
+  "This is the latest release.": "최신 릴리스입니다.",
+
+  // UpdateCheck.tsx — the startup banner
+  "Ukemi {version} is out.": "Ukemi {version}이 나왔습니다.",
+  "Copy the install command": "설치 명령 복사",
 };

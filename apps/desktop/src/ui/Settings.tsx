@@ -3,6 +3,7 @@ import { t } from "../i18n/i18n.ts";
 import { LanguagePicker } from "./LanguagePicker.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
 import { FontPicker } from "./FontPicker.tsx";
+import { UpdatePicker } from "./UpdateCheck.tsx";
 import { useModal } from "./modal.ts";
 
 /**
@@ -73,6 +74,9 @@ export function Settings({ onClose }: { onClose(): void }) {
         {/* Full width below: two text fields want the room, and this one is
             about the letters rather than the colours. */}
         <FontPicker />
+        {/* Last, and the only row here that is about the app rather than the
+            window: it is the one choice that reaches the network. */}
+        <UpdatePicker />
       </div>
     </div>
   );
