@@ -58,7 +58,10 @@ const GROUPS = [
   },
   {
     title: "In the diff sheet",
-    items: [["↑ ↓", "Move between files"]],
+    items: [
+      ["↑ ↓", "Move between files"],
+      ["⌘F", "Find in this file"],
+    ],
   },
   {
     title: "In the hunk sheet",

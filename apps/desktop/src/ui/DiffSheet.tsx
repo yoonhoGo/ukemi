@@ -89,6 +89,20 @@ export function DiffSheet({
   const diff = against === undefined ? plain : compared;
   const files = useMemo(() => parseGitDiff(diff.data ?? ""), [diff.data]);
   const [current, setCurrent] = useState(path);
+  /*
+   * Find, in the file on screen. A long file's diff is the one thing this sheet
+   * shows that cannot be skimmed, and the reader already has the text — so this
+   * is `indexOf` over the parsed lines, not a second jj read.
+   *
+   * ponytail: the file on screen only. Searching the whole change would mean
+   * counting matches per file and a result list beside the file list; if that
+   * is wanted, `findHits` already takes one `FileDiff` and would be mapped over
+   * `files`.
+   */
+  const [finding, setFinding] = useState(false);
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
+  const find = useRef<HTMLInputElement>(null);
   // Done is the only control besides the file list, so it is where focus lands
   // and, with the list, the whole Tab ring.
   const done = useRef<HTMLButtonElement>(null);
@@ -105,18 +119,92 @@ export function DiffSheet({
     blame && canBlame ? file.path : undefined,
   );
 
+  /*
+   * Nothing is highlighted while the bar is down or blame is up: in both cases
+   * the query is not what is being read. Lowercased once here so the search and
+   * the width the highlight paints agree on the same needle.
+   */
+  const needle = finding && !blame ? query.toLowerCase() : "";
+  const hits = useMemo(() => findHits(file, needle), [file, needle]);
+  // `cursor` is left to run past the end so stepping is one modulo either way;
+  // this is the position it actually means.
+  const spot = hits.length === 0 ? -1 : cursor % hits.length;
+  const marks = useMemo(() => {
+    const byLine = new Map<DiffLine, Mark[]>();
+    hits.forEach((hit, index) => {
+      const mark = { start: hit.start, current: index === spot };
+      const list = byLine.get(hit.line);
+      if (list) list.push(mark);
+      else byLine.set(hit.line, [mark]);
+    });
+    return byLine;
+  }, [hits, spot]);
+
+  // Wraps both ways, so ⏎ past the last match comes back to the first.
+  const jump = (by: number) => {
+    if (hits.length === 0) return;
+    setCursor((((spot + by) % hits.length) + hits.length) % hits.length);
+  };
+
+  // A different file counts from its own first match: a position that meant
+  // something in the file before this one would point at nothing here.
+  useEffect(() => setCursor(0), [file?.path]);
+
+  // The input does not exist until the bar renders, so the first ⌘F focuses it
+  // from here rather than from the key handler.
+  useEffect(() => {
+    if (finding) find.current?.select();
+  }, [finding]);
+
+  // Both readings put the current match in the same `data-find-current`, so one
+  // query finds it whichever of them is on screen.
+  useEffect(() => {
+    panel.current
+      ?.querySelector("[data-find-current]")
+      ?.scrollIntoView({ block: "center", inline: "nearest" });
+  }, [panel, marks, split]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      /*
+       * ⌘F belongs to the toolbar's graph search, which is still listening
+       * behind the scrim. While this sheet is up the diff is the thing being
+       * read, so the sheet takes the key in capture and does not let it
+       * through — and closing the sheet unbinds this, handing ⌘F back.
+       */
+      if (event.key.toLowerCase() === "f" && event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        // Blame renders jj's annotation rather than the diff lines this
+        // searches, so ⌘F leaves it instead of opening a bar over a body that
+        // would ignore every match.
+        setBlame(false);
+        setFinding(true);
+        find.current?.select();
+        return;
+      }
+      /*
+       * Escape in two steps. The window's key map owns the second one — it
+       * closes the sheets in a priority order — so the first is this handler
+       * swallowing the key while the bar is up, which is also why it has to be
+       * in capture: the map listens on the window in bubble.
+       */
+      if (event.key === "Escape" && finding) {
+        event.stopPropagation();
+        setFinding(false);
+        panel.current?.focus();
+        return;
+      }
       if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      // ↑/↓ inside the find field are the caret's, not the file list's.
+      if (event.target === find.current) return;
       event.preventDefault();
       /*
-       * Only the two keys this sheet actually uses are stopped. The hunk sheet
+       * Only the keys this sheet actually uses are stopped. The hunk sheet
        * stops every key it does not use, which is what left its description
-       * field unable to take a space — there is no text input here for that to
-       * break, but the same handler would also swallow ⌘/ and ⌘G, and reading
-       * an unfamiliar diff is exactly when looking a command up is wanted.
-       * Escape is not here at all: the window's key map owns it and closes the
-       * sheets in a priority order.
+       * field unable to take a space — the find field above would lose its
+       * letters the same way, and the blanket handler would also swallow ⌘/
+       * and ⌘G, which is exactly what reading an unfamiliar diff wants.
        */
       event.stopPropagation();
       const index = files.findIndex((candidate) => candidate.path === file?.path);
@@ -128,7 +216,7 @@ export function DiffSheet({
     // out from under the sheet.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [files, file?.path]);
+  }, [files, file?.path, finding, panel]);
 
   const tally = file ? countLines(file) : undefined;
 
@@ -262,6 +350,62 @@ export function DiffSheet({
           </button>
         </div>
 
+        {/* Its own strip under the header rather than a control in it: the
+            header is about the file, and this is about the reading of it. */}
+        {finding && !blame && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              margin: "0 20px 10px",
+              padding: "0 10px",
+              height: 28,
+              borderRadius: 7,
+              background: "var(--u-bg-raised)",
+              border: "1px solid var(--u-line-strong)",
+            }}
+          >
+            <input
+              ref={find}
+              className="selectable"
+              value={query}
+              spellCheck={false}
+              placeholder={t("Find in this file")}
+              aria-label={t("Find in this file")}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                // A new query counts from the top; the old position pointed at
+                // a match that is not there any more.
+                setCursor(0);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") jump(event.shiftKey ? -1 : 1);
+                // The window's map is live behind this field, as it is behind
+                // every other one in this window.
+                event.stopPropagation();
+              }}
+              style={{
+                flexGrow: 1,
+                minWidth: 0,
+                background: "transparent",
+                outline: "none",
+                fontSize: 12,
+              }}
+            />
+            <span className="sec" style={{ flexShrink: 0, fontSize: 11.5 }}>
+              {query === ""
+                ? ""
+                : hits.length === 0
+                  ? t("No matches")
+                  : t("{index} of {total}", { index: spot + 1, total: hits.length })}
+            </span>
+            <span className="key">⏎</span>
+            <span className="key">⇧⏎</span>
+            <span className="key">Esc</span>
+          </div>
+        )}
+
         <div
           style={{
             display: "grid",
@@ -341,7 +485,9 @@ export function DiffSheet({
                 error={annotation.error}
               />
             ) : (
-              file && <Body file={file} split={split} />
+              file && (
+                <Body file={file} split={split} marks={marks} width={needle.length} />
+              )
             )}
           </div>
         </div>
@@ -382,23 +528,110 @@ function useWordSpans(file: FileDiff | undefined): Map<DiffLine, readonly WordSp
   }, [file]);
 }
 
+/** One match inside one line: where it starts, and whether it is the one the
+ *  reader is standing on. */
+type Mark = { start: number; current: boolean };
+
+/** Every match of an already-lowercased needle in a file's diff lines, in the
+ *  order they are rendered. An empty needle matches nothing rather than
+ *  everything. */
+function findHits(
+  file: FileDiff | undefined,
+  needle: string,
+): readonly { line: DiffLine; start: number }[] {
+  if (!file || needle === "") return [];
+  const hits: { line: DiffLine; start: number }[] = [];
+  for (const hunk of file.hunks) {
+    for (const line of hunk.lines) {
+      const haystack = line.text.toLowerCase();
+      for (
+        let at = haystack.indexOf(needle);
+        at !== -1;
+        at = haystack.indexOf(needle, at + needle.length)
+      ) {
+        hits.push({ line, start: at });
+      }
+    }
+  }
+  return hits;
+}
+
 /**
- * One diff line's text, with the part that actually changed marked.
+ * The line's word spans, cut again wherever a match starts or ends.
+ *
+ * ponytail: one array entry per character of the line. A diff line is short,
+ * and a character map turns two overlapping sets of ranges into a single walk
+ * — the interval merge it replaces is the part that would have been wrong. A
+ * file whose lines are megabytes would want the merge.
+ */
+function cut(
+  spans: readonly WordSpan[],
+  marks: readonly Mark[],
+  width: number,
+): { text: string; changed: boolean; hit: 0 | 1 | 2 }[] {
+  const length = spans.reduce((sum, span) => sum + span.text.length, 0);
+  const hit = new Array<0 | 1 | 2>(length).fill(0);
+  for (const mark of marks) {
+    for (let at = mark.start; at < Math.min(mark.start + width, length); at += 1) {
+      hit[at] = mark.current ? 2 : 1;
+    }
+  }
+  const pieces: { text: string; changed: boolean; hit: 0 | 1 | 2 }[] = [];
+  let base = 0;
+  for (const span of spans) {
+    let start = 0;
+    for (let at = 1; at <= span.text.length; at += 1) {
+      if (at < span.text.length && hit[base + at] === hit[base + start]) continue;
+      pieces.push({
+        text: span.text.slice(start, at),
+        changed: span.changed,
+        hit: hit[base + start] ?? 0,
+      });
+      start = at;
+    }
+    base += span.text.length;
+  }
+  return pieces;
+}
+
+/*
+ * A search hit sits *under* the word-level `<mark>`, which the theme paints as
+ * a translucent tint of the row's own colour — so a hit inside a rewritten word
+ * shows both rather than one covering the other. The current hit is the solid
+ * accent for the same reason the file list uses it: it is where you are.
+ */
+const FIND_HIT: React.CSSProperties = {
+  background: "var(--u-accent-soft)",
+  borderRadius: 2,
+};
+const FIND_CURRENT: React.CSSProperties = {
+  background: "var(--u-accent)",
+  color: "var(--u-accent-ink)",
+  borderRadius: 2,
+};
+
+/**
+ * One diff line's text, with the part that actually changed marked and the
+ * search hits in it picked out.
  *
  * The +/− marker is part of the text so the column stays aligned whether or
- * not a line got spans. Without spans this renders exactly what it always did:
- * a line with no partner, or one whose partner shares nothing with it, is a
- * whole-line claim and the row's tint is already making it.
+ * not a line got spans. With neither spans nor hits this renders exactly what
+ * it always did: a line with no partner, or one whose partner shares nothing
+ * with it, is a whole-line claim and the row's tint is already making it.
  */
 function LineText({
   line,
   spans,
+  marks,
+  width,
 }: {
   line: DiffLine;
   spans: readonly WordSpan[] | undefined;
+  marks: readonly Mark[] | undefined;
+  width: number;
 }) {
   const marker = line.kind === "add" ? "+" : line.kind === "del" ? "-" : " ";
-  if (!spans) {
+  if (!spans && !marks) {
     return (
       <>
         {marker}
@@ -406,16 +639,23 @@ function LineText({
       </>
     );
   }
+  const pieces = cut(spans ?? [{ text: line.text, changed: false }], marks ?? [], width);
   return (
     <>
       {marker}
-      {spans.map((span, index) =>
-        span.changed ? (
-          <mark key={index}>{span.text}</mark>
-        ) : (
-          <Fragment key={index}>{span.text}</Fragment>
-        ),
-      )}
+      {pieces.map((piece, index) => {
+        const text = piece.changed ? <mark>{piece.text}</mark> : piece.text;
+        if (piece.hit === 0) return <Fragment key={index}>{text}</Fragment>;
+        return (
+          <span
+            key={index}
+            {...(piece.hit === 2 ? { "data-find-current": "" } : {})}
+            style={piece.hit === 2 ? FIND_CURRENT : FIND_HIT}
+          >
+            {text}
+          </span>
+        );
+      })}
     </>
   );
 }
@@ -429,7 +669,17 @@ function LineText({
  * container above scrolls sideways for the long lines and the row backgrounds
  * still span the full width.
  */
-function Body({ file, split }: { file: FileDiff; split: boolean }) {
+function Body({
+  file,
+  split,
+  marks,
+  width,
+}: {
+  file: FileDiff;
+  split: boolean;
+  marks: Map<DiffLine, Mark[]>;
+  width: number;
+}) {
   const words = useWordSpans(file);
   if (file.isBinary) {
     return (
@@ -448,7 +698,7 @@ function Body({ file, split }: { file: FileDiff; split: boolean }) {
     );
   }
 
-  if (split) return <SplitBody file={file} words={words} />;
+  if (split) return <SplitBody file={file} words={words} marks={marks} width={width} />;
 
   return (
     <div
@@ -472,7 +722,12 @@ function Body({ file, split }: { file: FileDiff; split: boolean }) {
               <span className="ln">{line.oldLine ?? ""}</span>
               <span className="ln">{line.newLine ?? ""}</span>
               <span>
-                <LineText line={line} spans={words.get(line)} />
+                <LineText
+                  line={line}
+                  spans={words.get(line)}
+                  marks={marks.get(line)}
+                  width={width}
+                />
               </span>
             </div>
           ))}
@@ -599,9 +854,13 @@ const ROW: React.CSSProperties = {
 function SplitBody({
   file,
   words,
+  marks,
+  width,
 }: {
   file: FileDiff;
   words: Map<DiffLine, readonly WordSpan[]>;
+  marks: Map<DiffLine, Mark[]>;
+  width: number;
 }) {
   return (
     <div
@@ -624,8 +883,8 @@ function SplitBody({
           </div>
           {pairRows(hunk.lines).map((row, rowIndex) => (
             <Fragment key={rowIndex}>
-              <Half line={row.left} side="old" words={words} />
-              <Half line={row.right} side="new" words={words} />
+              <Half line={row.left} side="old" words={words} marks={marks} width={width} />
+              <Half line={row.right} side="new" words={words} marks={marks} width={width} />
             </Fragment>
           ))}
         </Fragment>
@@ -646,10 +905,14 @@ function Half({
   line,
   side,
   words,
+  marks,
+  width,
 }: {
   line: DiffLine | undefined;
   side: "old" | "new";
   words: Map<DiffLine, readonly WordSpan[]>;
+  marks: Map<DiffLine, Mark[]>;
+  width: number;
 }) {
   const kind = line === undefined || line.kind === "context" ? undefined : line.kind;
   return (
@@ -663,7 +926,16 @@ function Half({
     >
       <span className="ln">{(side === "old" ? line?.oldLine : line?.newLine) ?? ""}</span>
       <span>
-        {line === undefined ? "" : <LineText line={line} spans={words.get(line)} />}
+        {line === undefined ? (
+          ""
+        ) : (
+          <LineText
+            line={line}
+            spans={words.get(line)}
+            marks={marks.get(line)}
+            width={width}
+          />
+        )}
       </span>
     </div>
   );

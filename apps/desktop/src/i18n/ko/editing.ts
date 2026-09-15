@@ -141,6 +141,11 @@ export const editing: Record<string, string> = {
   "Collapse context": "다시 접기",
   "Back to jj's three lines of context": "jj 기본값인 앞뒤 3줄로 돌아갑니다",
 
+  // 디프 시트 — 열려 있는 파일 안에서 찾기
+  "Find in this file": "이 파일에서 찾기",
+  "No matches": "일치하는 곳이 없습니다",
+  "{index} of {total}": "{total} 중 {index}",
+
   // Conflicts — 충돌 패널
   "1 CONFLICTED FILE": "충돌 파일 1개",
   "{count} CONFLICTED FILES": "충돌 파일 {count}개",
