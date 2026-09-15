@@ -169,4 +169,7 @@ export const editing: Record<string, string> = {
   "Copy the file path": "파일 경로 복사",
   "Show in the file manager": "파일 관리자에서 보기",
   "Open in the default app": "기본 앱으로 열기",
+  "Add to .gitignore": ".gitignore에 추가",
+  "Added {path} to .gitignore. jj keeps the copy already in this change, and ⌘Z does not reach a file edit — deleting the line is the undo.":
+    ".gitignore에 {path} 줄을 넣었습니다. 이미 이 체인지에 들어온 파일은 jj가 그대로 둡니다. ⌘Z는 파일 편집에 닿지 않으니 그 줄을 지우는 것이 되돌리기입니다.",
 };

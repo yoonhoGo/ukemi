@@ -305,11 +305,18 @@ export async function popupBookmarkMenu(name: string, remove: () => void): Promi
  * synthesised keystroke has no room for one. Nothing here is a jj verb — the
  * file's verbs are the buttons beside the list — so the exception stays what
  * it was, a menu for the commands whose object is *this row*.
+ *
+ * `ignore` is the one item that writes, hence the separator above it and the
+ * label naming the file it writes to: `.gitignore` is not an operation, so
+ * ⌘Z cannot take it back and deleting the line is what does — the same trade
+ * `saveRevsetAlias` makes. It is left out entirely on a row where the line
+ * would be inert; `Inspector` decides which rows those are.
  */
 export async function popupFileMenu(actions: {
   copyPath(): void;
   reveal(): void;
   open(): void;
+  ignore?: (() => void) | undefined;
 }): Promise<void> {
   try {
     const menu = await Menu.new({
@@ -317,6 +324,9 @@ export async function popupFileMenu(actions: {
         { text: t("Copy the file path"), action: actions.copyPath },
         { text: t("Show in the file manager"), action: actions.reveal },
         { text: t("Open in the default app"), action: actions.open },
+        ...(actions.ignore
+          ? [SEPARATOR, { text: t("Add to .gitignore"), action: actions.ignore }]
+          : []),
       ],
     });
     await menu.popup();

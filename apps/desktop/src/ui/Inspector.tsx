@@ -10,7 +10,7 @@ import {
   useRepo,
 } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
-import { openInDefaultApp, revealInFileManager } from "../shell.ts";
+import { ignorePath, openInDefaultApp, revealInFileManager } from "../shell.ts";
 import { popupFileMenu } from "./menu.ts";
 import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
@@ -376,9 +376,28 @@ export function Inspector({
 
   // Which files the two whole-file verbs below act on. Cleared when the
   // selection moves, or the last revision's checks would carry over onto the
-  // paths of the next one.
+  // paths of the next one — and so is the ignore note below, which is about a
+  // path in *this* file list.
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  useEffect(() => setPicked(new Set()), [revision?.changeId]);
+
+  /*
+   * What the row menu's ignore item last did, said out loud under the list.
+   *
+   * Nothing else in the window can say it. A `.gitignore` edit creates no
+   * operation, and every read carries `--ignore-working-copy`, so no refetch
+   * here would show the new line either — the next jj *write* is what
+   * snapshots it. Worse, the file the user just ignored stays in this change:
+   * `.gitignore` only keeps jj from taking a file it has not taken yet. So the
+   * honest outcome of this item is a sentence, not a list that changes.
+   */
+  const [ignored, setIgnored] = useState<{ path: string; error?: string } | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    setPicked(new Set());
+    setIgnored(undefined);
+  }, [revision?.changeId]);
 
   /*
    * Which directories are folded shut — folded ones listed, the way the sidebar
@@ -800,6 +819,14 @@ export function Inspector({
           // jj prints every path from the workspace root, and the system wants
           // an absolute one. Both platforms Ukemi ships to spell a join `/`.
           const absolute = `${root}/${file.path}`;
+          // Ignoring is worth offering on exactly one kind of row. A pattern
+          // decides whether jj *takes* a file, never whether it keeps one it
+          // already has — so on a modified file, or on any file in a change
+          // that is already history, the line would sit in `.gitignore` doing
+          // nothing forever. A file that has just appeared in the working copy
+          // is the one case where the pattern still has a say, and everywhere
+          // else the item is absent rather than present and inert.
+          const canIgnore = !readOnly && revision.isWorkingCopy && file.status === "added";
           return (
             /* The row is already a button that opens the diff, so the check
                box cannot sit inside it — a button within a button is not
@@ -828,6 +855,18 @@ export function Inspector({
                   open: () => {
                     void openInDefaultApp(absolute);
                   },
+                  // `ignorePath` takes the path as the row shows it — relative
+                  // to the root — and rejects rather than degrading quietly,
+                  // so both outcomes land in the note under the list.
+                  ignore: canIgnore
+                    ? () => {
+                        void ignorePath(root, file.path).then(
+                          () => setIgnored({ path: file.path }),
+                          (error: unknown) =>
+                            setIgnored({ path: file.path, error: messageFor(error) }),
+                        );
+                      }
+                    : undefined,
                 });
               }}
             >
@@ -907,6 +946,27 @@ export function Inspector({
             </div>
           );
         })}
+
+        {/* The ignore item's outcome, in the two shapes the panel already uses
+            for one: jj's own words in the error colour when the write failed,
+            a plain secondary line when it did not. */}
+        {ignored?.error !== undefined && (
+          <div
+            role="alert"
+            className="mono selectable"
+            style={{ fontSize: 11, color: "var(--u-conflict)", whiteSpace: "pre-wrap" }}
+          >
+            {ignored.error}
+          </div>
+        )}
+        {ignored !== undefined && ignored.error === undefined && (
+          <div className="sec" style={{ fontSize: 12 }}>
+            {t(
+              "Added {path} to .gitignore. jj keeps the copy already in this change, and ⌘Z does not reach a file edit — deleting the line is the undo.",
+              { path: ignored.path },
+            )}
+          </div>
+        )}
 
         {/* Whole-file squash and split. The hunk sheet is the finer tool; this
             is the unit most edits are actually in, so it lives beside the list
