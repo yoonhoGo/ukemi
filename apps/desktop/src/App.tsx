@@ -371,7 +371,7 @@ function Window({
         startChange();
       } else if (key === "e" && event.shiftKey) {
         event.preventDefault();
-        void revealInFileManager(root);
+        void revealInFileManager(root, "");
       } else if (key === "t" && event.shiftKey) {
         event.preventDefault();
         void openTerminalAt(root);

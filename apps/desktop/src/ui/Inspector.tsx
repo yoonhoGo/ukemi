@@ -849,9 +849,6 @@ export function Inspector({
           const file = node.change;
           const status = STATUS_MARK[file.status];
           const checked = picked.has(file.path);
-          // jj prints every path from the workspace root, and the system wants
-          // an absolute one. Both platforms Ukemi ships to spell a join `/`.
-          const absolute = `${root}/${file.path}`;
           // Ignoring is worth offering on exactly one kind of row. A pattern
           // decides whether jj *takes* a file, never whether it keeps one it
           // already has — so on a modified file, or on any file in a change
@@ -882,11 +879,13 @@ export function Inspector({
                 event.preventDefault();
                 void popupFileMenu({
                   copyPath: () => copyPath(file.path),
+                  // jj prints every path from the workspace root, which is the
+                  // shape these take: Rust checks it against `root` and joins.
                   reveal: () => {
-                    void revealInFileManager(absolute);
+                    void revealInFileManager(root, file.path);
                   },
                   open: () => {
-                    void openInDefaultApp(absolute);
+                    void openInDefaultApp(root, file.path);
                   },
                   // `ignorePath` takes the path as the row shows it — relative
                   // to the root — and rejects rather than degrading quietly,

@@ -963,6 +963,31 @@ each for the same reason. Which one is on screen is the pill beside the path:
 "brought in over <parent>", deliberately not the interdiff's "since", because
 nothing changed *after* that parent — the other side arrived beside it.
 
+**Reveal, open and terminal are `open(1)` and `xdg-open`, not a plugin.**
+`tauri-plugin-opener` went in with those three verbs and came back out. The
+reason it was refused for the update banner above still holds — it is a sixth
+runtime dependency — and `main.rs` already had `run_captured`, so the three
+calls the plugin would make are three calls this codebase makes anyway. Nothing
+was bought.
+
+It also carried a bug, checked rather than assumed. The plugin's `open_path`
+matches its capability scope with `requireLiteralLeadingDot`, which is the
+default on unix, so the `{"path": "**"}` entry the capability file had to grant
+does not match any component beginning with a dot. Opening `.gitignore` or
+anything under `.github/` failed silently, and for a repository living under
+`~/.dotfiles` every file and the terminal item failed with it. A command this
+process builds has no scope to mismatch: `open_in_desktop` takes `root` and a
+path relative to it, the same shape `ignore_path` takes, runs it past
+`safe_relative` and joins it itself. The empty relative path is the repository
+root, which is what the File menu's two commands send.
+
+Reveal and terminal are macOS-only. `xdg-open` is a real answer for the default
+app on Linux and there is no equivalent for the other two: revealing a file is
+a different call per file manager, opening a terminal is worse, so the command
+refuses them there rather than guessing from a candidate list, and `shell.ts`
+swallows the refusal the way it swallows a missing Tauri. A menu item that does
+nothing is better than one that opens the wrong thing.
+
 ## Still open
 
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship

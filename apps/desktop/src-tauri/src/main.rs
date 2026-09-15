@@ -313,6 +313,69 @@ async fn ignore_path(root: String, path: String) -> Result<(), String> {
     fs::write(&file, content).map_err(|error| error.to_string())
 }
 
+/// What the desktop should do with a path.
+///
+/// Mirrors the three verbs `apps/desktop/src/shell.ts` exports; the strings are
+/// what the webview sends.
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum OpenHow {
+    Reveal,
+    Default,
+    Terminal,
+}
+
+/// Hand a path inside the repository to the desktop.
+///
+/// Takes `root` and a path relative to it, the same shape `ignore_path` takes
+/// and for the same reason: an absolute path from the webview is a destination
+/// this process cannot check, so Rust runs it past `safe_relative` and joins it
+/// itself. An empty relative path is the repository root — that is what the two
+/// File-menu commands pass, and `safe_relative` accepts it because a path with
+/// no components has nothing to escape through.
+///
+/// These are `open(1)` and `xdg-open` rather than `tauri-plugin-opener`, which
+/// would be a sixth runtime dependency for three `Command::new` calls that
+/// `run_captured` already makes — and whose path scope would have to be `**`,
+/// which on unix does not match a component starting with `.`, so `.gitignore`
+/// and a repository under `~/.dotfiles` would silently fail to open.
+///
+/// Only macOS gets all three. Linux has `xdg-open` for the default app and
+/// nothing portable for the other two: revealing a file is a different call per
+/// file manager and opening a terminal is worse, so those are refused there
+/// rather than guessed at with a candidate list. The caller degrades quietly,
+/// so a platform without an answer shows nothing rather than an error.
+#[tauri::command]
+async fn open_in_desktop(root: String, path: String, how: OpenHow) -> Result<(), String> {
+    let target = PathBuf::from(&root)
+        .join(safe_relative(&path)?)
+        .to_string_lossy()
+        .into_owned();
+    let (program, args) = if cfg!(target_os = "macos") {
+        match how {
+            OpenHow::Reveal => ("open", vec!["-R".to_owned(), target]),
+            OpenHow::Default => ("open", vec![target]),
+            // One hard-coded terminal, because naming the user's iTerm or
+            // Ghostty means a setting, and macOS is where this ships.
+            OpenHow::Terminal => ("open", vec!["-a".to_owned(), "Terminal".to_owned(), target]),
+        }
+    } else if cfg!(target_os = "linux") {
+        match how {
+            OpenHow::Default => ("xdg-open", vec![target]),
+            _ => return Err("not available on this platform".to_owned()),
+        }
+    } else {
+        return Err("not available on this platform".to_owned());
+    };
+
+    let result = run_captured(PathBuf::from(program), root, args).await?;
+    if result.code == 0 {
+        Ok(())
+    } else {
+        Err(format!("{program} failed: {}", result.stderr.trim()))
+    }
+}
+
 /// One `.gitignore` line naming exactly one path.
 ///
 /// The leading `/` anchors the pattern to the repository root, so ignoring
@@ -358,11 +421,6 @@ fn tempdir() -> std::io::Result<PathBuf> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        // Reveal in Finder, open with the default app, open a terminal here.
-        // The official plugin rather than three more `Command::new` calls: it
-        // already knows each platform's incantation, and the capability file
-        // is where the reach of those calls is written down.
-        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             jj_exec,
             gh_exec,
@@ -371,7 +429,8 @@ fn main() {
             initial_repo,
             prepare_hunk_plan,
             discard_hunk_plan,
-            ignore_path
+            ignore_path,
+            open_in_desktop
         ])
         .run(tauri::generate_context!())
         .expect("error while running ukemi");
@@ -379,7 +438,22 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{gitignore_line, ignore_path, tempdir};
+    use super::{gitignore_line, ignore_path, open_in_desktop, tempdir, OpenHow};
+
+    /// The two ends of `open_in_desktop`'s path rule. An escaping path is
+    /// refused before anything is spawned; the empty one is the repository
+    /// root, which is what the File menu's two commands send. Only the refusal
+    /// is asserted by calling — the other branch would open a window.
+    #[test]
+    fn opening_refuses_a_path_outside_the_repository() {
+        let refused = tauri::async_runtime::block_on(open_in_desktop(
+            "/tmp".to_owned(),
+            "../elsewhere".to_owned(),
+            OpenHow::Reveal,
+        ));
+        assert!(refused.is_err());
+        assert_eq!(super::safe_relative("").unwrap(), std::path::Path::new(""));
+    }
 
     /// The append rules, on a real file: a missing `.gitignore` is created, a
     /// last line without a newline gets one, and the same path twice is one
