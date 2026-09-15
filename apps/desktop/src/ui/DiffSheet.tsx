@@ -1,10 +1,17 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { AnnotationLine, DiffLine, FileDiff, Revision, WordSpan } from "@ukemi/domain";
-import { fileTree, pairRows, pairedWords, parseGitDiff } from "@ukemi/domain";
+import {
+  fileTree,
+  pairRows,
+  pairedWords,
+  parseGitDiff,
+  toggleFold,
+  treeRows,
+} from "@ukemi/domain";
 import { messageFor, useAnnotate, useDiffRange, useFileDiff, useInterdiff } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
-import { DirectoryRow, FROM_PARENT, INDENT, STATUS_MARK, treeRows } from "./Inspector.tsx";
+import { DirectoryRow, FROM_PARENT, INDENT, STATUS_MARK } from "./Inspector.tsx";
 import { useModal } from "./modal.ts";
 import { relativeTime } from "./time.ts";
 
@@ -117,6 +124,12 @@ export function DiffSheet({
    * ↑↓ walks `order` rather than `files`: the keys move between what is on
    * screen, so a file inside a folded directory is skipped, and the order is
    * the tree's, not the order jj happened to print the diff in.
+   *
+   * The folds are this sheet's own, not shared with the inspector's list.
+   * Sharing them would mean one more prop down from `App` to buy agreement
+   * between two lists that are neither the same size nor asked the same
+   * question — the inspector's is a 372px summary of one revision, this one is
+   * a 250px index of whichever comparison the sheet was opened for.
    */
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
   const rows = useMemo(() => treeRows(fileTree(files), folded), [files, folded]);
@@ -493,11 +506,7 @@ export function DiffSheet({
                     depth={depth}
                     folded={folded.has(node.path)}
                     onToggle={() =>
-                      setFolded((previous) => {
-                        const next = new Set(previous);
-                        if (!next.delete(node.path)) next.add(node.path);
-                        return next;
-                      })
+                      setFolded((previous) => toggleFold(previous, node.path))
                     }
                   />
                 );

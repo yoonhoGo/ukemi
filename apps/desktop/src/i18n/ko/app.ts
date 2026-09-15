@@ -20,6 +20,10 @@ export const app: Record<string, string> = {
   "Copy this command (⌘⌥C). Double-click for every command (⌘J).":
     "이 명령 복사 (⌘⌥C). 더블클릭하면 전체 명령 (⌘J).",
   copied: "복사함",
+  // 복사 확인 한 마디. 조각을 끼우지 않고 문장째 고릅니다.
+  "Copied the change ID": "체인지 ID를 복사했습니다",
+  "Copied the commit ID": "커밋 ID를 복사했습니다",
+  "Copied the last command": "마지막 명령을 복사했습니다",
 
   // main.tsx — opening a repository
   "A desktop window on Jujutsu": "Jujutsu를 여는 데스크톱 창",

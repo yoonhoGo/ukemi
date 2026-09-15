@@ -81,8 +81,8 @@ function Window({
   // Held beside the path rather than inside it: closing is still one setter,
   // and every existing caller of `onOpenDiff` keeps its one argument.
   const [diffAgainst, setDiffAgainst] = useState<string | undefined>(undefined);
-  // What was just copied, named rather than quoted: an ID is eight characters
-  // of noise to read back, and the strip under the graph has room for a word.
+  // What was just copied, as the sentence to show: an ID is eight characters of
+  // noise to read back, and the strip under the graph has room for a line.
   const [copied, setCopied] = useState<string | undefined>(undefined);
   // The bookmark name being typed, or `undefined` when the strip is closed.
   // An empty string is the open-but-blank state, which is why this is not a
@@ -231,20 +231,26 @@ function Window({
   /**
    * Copy, and say so for a moment.
    *
-   * One flash for every copy this window does, in the strip the last command's
-   * already lived in: the ID copies come from a menu item, and a menu item has
-   * no button of its own to light up.
+   * The principle, so a third way of confirming a copy does not appear: a copy
+   * started by a *button* says so on that button — the file row's "copied", the
+   * command panel's — because that is where the eye already is. A copy with no
+   * button of its own, which is every copy that came from a menu item or a bare
+   * chord, says so here, in the strip the last command already lives in.
+   *
+   * `said` is a whole sentence, not a name to slot into one: Korean inflects
+   * the object, so "Copied {what}" with a fragment in it reads as two pieces
+   * that never quite agree.
    */
-  const copy = useCallback((text: string, what: string) => {
+  const copy = useCallback((text: string, said: string) => {
     void navigator.clipboard.writeText(text).then(() => {
-      setCopied(what);
+      setCopied(said);
       setTimeout(() => setCopied(undefined), 1200);
     });
   }, []);
 
   const copyLastCommand = useCallback(() => {
     if (!lastCommand) return;
-    copy(lastCommand, t("the last command"));
+    copy(lastCommand, t("Copied the last command"));
   }, [lastCommand, copy]);
 
   /**
@@ -421,10 +427,10 @@ function Window({
         // otherwise swallow the commit ID's chord.
       } else if (key === "c" && event.shiftKey && event.altKey) {
         event.preventDefault();
-        if (selectedRevision) copy(selectedRevision.commitId, t("the commit ID"));
+        if (selectedRevision) copy(selectedRevision.commitId, t("Copied the commit ID"));
       } else if (key === "c" && event.shiftKey) {
         event.preventDefault();
-        if (selectedRevision) copy(selectedRevision.changeId, t("the change ID"));
+        if (selectedRevision) copy(selectedRevision.changeId, t("Copied the change ID"));
       } else if (key === "c" && event.altKey) {
         event.preventDefault();
         copyLastCommand();
@@ -774,7 +780,7 @@ function Window({
             {/* Every copy in this window flashes here, whatever started it —
                 the chord, the button beside this, or a menu item that has no
                 button of its own. */}
-            {copied && <span>{t("Copied {what}", { what: copied })}</span>}
+            {copied && <span>{copied}</span>}
             {/* Transparency: the app never hides which jj command it ran. */}
             {lastCommand && (
               <button

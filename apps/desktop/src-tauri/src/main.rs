@@ -273,12 +273,16 @@ async fn discard_hunk_plan(plan_dir: String) -> Result<(), String> {
 /// Append one path to the repository's `.gitignore`.
 ///
 /// Deliberately not a general file-write command. The webview names a path
-/// *inside* the repository, never the file being written: that is always
+/// *inside* the repository and never the file this writes: that is always
 /// `<root>/.gitignore`, one known name at the root, and the path it carries is
-/// checked by `safe_relative` first. Handing the web view a destination would
-/// buy one context-menu item at the price of arbitrary disk writes — the same
-/// trade `prepare_hunk_plan` refuses by minting its own directory. jj reads
-/// `.gitignore` as it stands, so this is also the only ignore file to write.
+/// checked by `safe_relative` first. `root` is the webview's too — the same
+/// trust `jj_exec` already places in it for the directory it runs jj in — so
+/// what this refuses is not the repository but the *file name* within it, and
+/// no path can climb out of the one it is given. Handing the web view a
+/// destination would buy one context-menu item at the price of arbitrary disk
+/// writes — the same trade `prepare_hunk_plan` refuses by minting its own
+/// directory. jj reads `.gitignore` as it stands, so this is also the only
+/// ignore file to write.
 ///
 /// Appending is idempotent, because the same line twice is the first bug a
 /// user would find. A file that does not end in a newline gets one before the

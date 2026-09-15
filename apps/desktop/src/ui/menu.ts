@@ -12,11 +12,12 @@
  * synthesises its own keystroke and lets `App`'s window keydown map decide,
  * which is the same path the keyboard already takes.
  *
- * One verb is missing on purpose: deleting a bookmark lives on the bookmark
- * pill's context menu only. It takes a bookmark as its object, not the
- * selected revision, and a menu item that fires a keystroke has no way to say
- * *which* pill — so the menu bar would need the second definition this file
- * exists to avoid.
+ * What is missing from the menu bar is missing for one reason: an item here
+ * fires a keystroke, and a keystroke has no room for an argument. Deleting a
+ * bookmark takes a bookmark rather than the selected revision, and the file
+ * row's own verbs each take a path — so those live on the context menus below,
+ * which carry handlers instead, and the menu bar is spared the second
+ * definition this file exists to avoid.
  *
  * Every submenu is a function rather than a constant, because the whole point
  * of building the menu in TypeScript is that it can be rebuilt in the other
@@ -252,7 +253,7 @@ function changeMenu(): SubmenuOptions & Required<Pick<SubmenuOptions, "items">> 
 }
 
 /**
- * The same six verbs, popped up on a graph row.
+ * The Change menu itself, popped up on a graph row.
  *
  * `changeMenu().items` rather than a second list: the row menu and the Change
  * menu are the same commands, and a copy of them here would be a third place
@@ -280,11 +281,11 @@ export async function popupRowMenu(): Promise<void> {
 /**
  * The bookmark pill's own menu, with one item on it.
  *
- * The only menu in this file that carries a handler instead of a chord, and
- * for exactly the reason `press` names: the command's argument is a bookmark
- * name, which a synthesised keystroke has no room for. It stays one verb so
- * the exception does not spread — the pill is still dragged to move a name,
- * and ⌘B is still what mints one.
+ * One of the two menus in this file that carry handlers instead of chords —
+ * `popupFileMenu` is the other — and for exactly the reason `press` names: the
+ * command's argument is a bookmark name, which a synthesised keystroke has no
+ * room for. It stays one verb so the exception does not spread — the pill is
+ * still dragged to move a name, and ⌘B is still what mints one.
  */
 export async function popupBookmarkMenu(name: string, remove: () => void): Promise<void> {
   try {

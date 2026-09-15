@@ -19,6 +19,8 @@ const GROUPS = [
       ["⌘G", "Look up a git command"],
       ["⌘J", "Commands this window ran"],
       ["⌘O", "Open another repository"],
+      ["⌘⇧E", "Show the repository in the file manager"],
+      ["⌘⇧T", "Open the repository in a terminal"],
     ],
   },
   {
@@ -34,6 +36,8 @@ const GROUPS = [
       ["⌘⇧K", "Squash hunks into the parent"],
       ["⌘⇧A", "Absorb into the ancestors that last touched each line"],
       ["⌘B", "Set a bookmark on the selection"],
+      ["⌘⇧C", "Copy the change ID"],
+      ["⌘⌥⇧C", "Copy the commit ID"],
       ["⌘↩", "Save the description / run the sheet"],
     ],
   },

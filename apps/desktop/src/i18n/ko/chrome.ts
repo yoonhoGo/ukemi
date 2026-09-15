@@ -196,6 +196,8 @@ export const chrome: Record<string, string> = {
   "Look up a git command": "git 명령 찾아보기",
   "Commands this window ran": "이 창이 실행한 명령",
   "Open another repository": "다른 저장소 열기",
+  "Show the repository in the file manager": "저장소를 파일 관리자에서 보기",
+  "Open the repository in a terminal": "저장소를 터미널에서 열기",
   "Change the history": "히스토리 고치기",
   "New change on top of the selection": "선택한 것 위에 새 체인지",
   "Mark an extra parent; ⌘N then makes a merge": "부모를 하나 더 표시; 그다음 ⌘N이 머지를 만듭니다",
@@ -208,6 +210,8 @@ export const chrome: Record<string, string> = {
   "Duplicate onto the working copy": "워킹 카피 위로 복제",
   "Revert onto the working copy": "워킹 카피 위에서 되돌리기",
   "Set a bookmark on the selection": "선택한 것에 북마크 붙이기",
+  "Copy the change ID": "체인지 ID 복사",
+  "Copy the commit ID": "커밋 ID 복사",
   "Save the description / run the sheet": "설명 저장 / 시트 실행",
   "Move history": "히스토리 옮기기",
   "Rebase a revision onto another": "리비전을 다른 리비전 위로 리베이스",
@@ -228,14 +232,4 @@ export const chrome: Record<string, string> = {
   "Check or uncheck everything": "전부 체크하거나 해제",
   Remotes: "리모트",
   "Copy the last jj command": "마지막 jj 명령 복사",
-
-  // ── 메뉴 바에만 있는 명령과, 무엇을 복사했는지 알리는 한 마디 ───────────
-  "Copy the change ID": "체인지 ID 복사",
-  "Copy the commit ID": "커밋 ID 복사",
-  "Show the repository in the file manager": "저장소를 파일 관리자에서 보기",
-  "Open the repository in a terminal": "저장소를 터미널에서 열기",
-  "Copied {what}": "{what} 복사함",
-  "the change ID": "체인지 ID",
-  "the commit ID": "커밋 ID",
-  "the last command": "마지막 명령",
 };

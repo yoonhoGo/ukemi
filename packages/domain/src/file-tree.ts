@@ -93,3 +93,47 @@ function directory(name: string, path: string, pending: Pending): FileTreeDirect
   );
   return { kind: "directory", name, path, children, fileCount };
 }
+
+/** One drawn row: a node and how far in it sits. */
+export interface FileTreeRow {
+  readonly node: FileTreeNode;
+  readonly depth: number;
+}
+
+/**
+ * The tree flattened into the rows to draw, with everything under a folded
+ * directory left out.
+ *
+ * Flat rather than nested `<details>` elements, which is what the sidebar uses
+ * and would hand over the fold state, the chevron and the disclosure
+ * semantics for free: the diff sheet's ↑↓ walks the files *as drawn*, so it
+ * needs one ordered list of what is currently on screen, and a nested render
+ * has no such list to hand it.
+ */
+export function treeRows(
+  nodes: readonly FileTreeNode[],
+  folded: ReadonlySet<string>,
+  depth = 0,
+): FileTreeRow[] {
+  return nodes.flatMap((node) =>
+    node.kind === "directory" && !folded.has(node.path)
+      ? [{ node, depth }, ...treeRows(node.children, folded, depth + 1)]
+      : [{ node, depth }],
+  );
+}
+
+/**
+ * Fold a directory shut, or open one that is.
+ *
+ * Folded directories are the ones listed, the way the sidebar lists its
+ * collapsed sections, so "everything open" is the empty set and a directory
+ * nobody has touched needs no entry.
+ */
+export function toggleFold(
+  folded: ReadonlySet<string>,
+  path: string,
+): ReadonlySet<string> {
+  const next = new Set(folded);
+  if (!next.delete(path)) next.add(path);
+  return next;
+}

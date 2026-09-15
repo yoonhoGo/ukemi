@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ChangeId, FileChange, FileTreeNode, Revision } from "@ukemi/domain";
-import { fileHistoryRevset, fileTree } from "@ukemi/domain";
+import type { ChangeId, FileChange, Revision } from "@ukemi/domain";
+import { fileHistoryRevset, fileTree, toggleFold, treeRows } from "@ukemi/domain";
 import {
   messageFor,
   useDiffSummary,
@@ -40,29 +40,6 @@ export const INDENT = 12;
  * what this writes; neither a change ID nor a bookmark can start with it.
  */
 export const FROM_PARENT = "from-parent:";
-
-/**
- * The tree flattened into the rows to draw, with everything under a folded
- * directory left out.
- *
- * Flat rather than nested elements: every row already sits in one column and an
- * indent is a left padding, so nesting would buy nothing — and the ↑↓ order the
- * diff sheet walks is this same list, filtered to its files, which is exactly
- * "the visible files, in the order they are drawn".
- *
- * Exported for the reason `STATUS_MARK` is: the diff sheet draws the same tree.
- */
-export function treeRows(
-  nodes: readonly FileTreeNode[],
-  folded: ReadonlySet<string>,
-  depth = 0,
-): { readonly node: FileTreeNode; readonly depth: number }[] {
-  return nodes.flatMap((node) =>
-    node.kind === "directory" && !folded.has(node.path)
-      ? [{ node, depth }, ...treeRows(node.children, folded, depth + 1)]
-      : [{ node, depth }],
-  );
-}
 
 /**
  * A directory row: the fold control, and nothing else.
@@ -410,9 +387,7 @@ export function Inspector({
   }, [revision?.changeId]);
 
   /*
-   * Which directories are folded shut — folded ones listed, the way the sidebar
-   * lists its collapsed sections, so "everything open" is the empty set and a
-   * directory nobody has touched needs no entry.
+   * Which directories are folded shut — see `toggleFold` for the shape.
    *
    * ponytail: this session only, and not cleared when the selection moves. The
    * sidebar's folds persist because a section is the same section next launch;
@@ -421,12 +396,6 @@ export function Inspector({
    * keeping. `sidebar-state.ts` is where it would go if it became one.
    */
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
-  const toggleFold = (path: string) =>
-    setFolded((previous) => {
-      const next = new Set(previous);
-      if (!next.delete(path)) next.add(path);
-      return next;
-    });
   const tree = useMemo(() => fileTree(files.data ?? []), [files.data]);
 
   // Which row said "copied" a moment ago, the way the command panel marks the
@@ -842,7 +811,7 @@ export function Inspector({
                 fileCount={node.fileCount}
                 depth={depth}
                 folded={folded.has(node.path)}
-                onToggle={() => toggleFold(node.path)}
+                onToggle={() => setFolded((previous) => toggleFold(previous, node.path))}
               />
             );
           }
@@ -866,12 +835,11 @@ export function Inspector({
               // A file and a directory beside each other can share a path, so
               // the kind is part of the key — see `fileTree`.
               key={`file:${node.path}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-                paddingLeft: depth * INDENT,
-              }}
+              // No indent on the row itself: the check box keeps one column
+              // down the left the way a list of check boxes does, and the
+              // indent goes on the button below — `contract.css` asks that a
+              // deeper row move its content, not narrow its highlight.
+              style={{ display: "flex", alignItems: "center", gap: 2 }}
               // The row's own menu replaces the web view's, the way the graph
               // row's does. It carries handlers rather than chords because its
               // object is this path — see `popupFileMenu`.
@@ -939,7 +907,7 @@ export function Inspector({
                 className="file"
                 onClick={() => onOpenDiff(file.path)}
                 title={file.path}
-                style={{ minWidth: 0 }}
+                style={{ minWidth: 0, paddingLeft: 6 + depth * INDENT }}
               >
                 <span
                   className="mono"
