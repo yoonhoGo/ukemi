@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import type { ChangeId, FileChange, Revision } from "@ukemi/domain";
-import { fileHistoryRevset } from "@ukemi/domain";
+import { useEffect, useMemo, useState } from "react";
+import type { ChangeId, FileChange, FileTreeNode, Revision } from "@ukemi/domain";
+import { fileHistoryRevset, fileTree } from "@ukemi/domain";
 import {
   messageFor,
   useDiffSummary,
@@ -27,6 +27,98 @@ export const STATUS_MARK: Record<FileChange["status"], { mark: string; color: st
   renamed: { mark: "R", color: "var(--u-modified)" },
   copied: { mark: "C", color: "var(--u-modified)" },
 };
+
+/** One level of indent per depth, in both lists, so the two read the same. */
+export const INDENT = 12;
+
+/**
+ * The tree flattened into the rows to draw, with everything under a folded
+ * directory left out.
+ *
+ * Flat rather than nested elements: every row already sits in one column and an
+ * indent is a left padding, so nesting would buy nothing — and the ↑↓ order the
+ * diff sheet walks is this same list, filtered to its files, which is exactly
+ * "the visible files, in the order they are drawn".
+ *
+ * Exported for the reason `STATUS_MARK` is: the diff sheet draws the same tree.
+ */
+export function treeRows(
+  nodes: readonly FileTreeNode[],
+  folded: ReadonlySet<string>,
+  depth = 0,
+): { readonly node: FileTreeNode; readonly depth: number }[] {
+  return nodes.flatMap((node) =>
+    node.kind === "directory" && !folded.has(node.path)
+      ? [{ node, depth }, ...treeRows(node.children, folded, depth + 1)]
+      : [{ node, depth }],
+  );
+}
+
+/**
+ * A directory row: the fold control, and nothing else.
+ *
+ * No check box. The two whole-file verbs take paths, a directory is not one,
+ * and a half-checked directory would have to mean something — the check stays
+ * on the files, where jj's own `--paths` are.
+ */
+export function DirectoryRow({
+  name,
+  path,
+  fileCount,
+  depth,
+  folded,
+  onToggle,
+}: {
+  name: string;
+  path: string;
+  fileCount: number;
+  depth: number;
+  folded: boolean;
+  onToggle(): void;
+}) {
+  return (
+    <button
+      type="button"
+      className="file"
+      aria-expanded={!folded}
+      // The visible row is a name and a bare number; said in full for a reader
+      // that has only the label to go on.
+      aria-label={t("{name}, {count} files", { name, count: fileCount })}
+      title={path}
+      onClick={onToggle}
+      style={{ paddingLeft: 6 + depth * INDENT }}
+    >
+      <span
+        className="chev"
+        aria-hidden
+        style={{
+          display: "inline-flex",
+          width: 10,
+          flexShrink: 0,
+          transform: folded ? "rotate(-90deg)" : undefined,
+        }}
+      >
+        <ChevronIcon size={12} />
+      </span>
+      {/* The name, not the path: a collapsed chain already reads as `a/b/c`,
+          and a name is short enough that the tail survives the ellipsis. */}
+      <span
+        style={{
+          flexGrow: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {name}
+      </span>
+      <span className="sec" style={{ flexShrink: 0, fontSize: 11 }}>
+        {fileCount}
+      </span>
+    </button>
+  );
+}
 
 /**
  * The description editor.
@@ -287,6 +379,26 @@ export function Inspector({
   // paths of the next one.
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => setPicked(new Set()), [revision?.changeId]);
+
+  /*
+   * Which directories are folded shut — folded ones listed, the way the sidebar
+   * lists its collapsed sections, so "everything open" is the empty set and a
+   * directory nobody has touched needs no entry.
+   *
+   * ponytail: this session only, and not cleared when the selection moves. The
+   * sidebar's folds persist because a section is the same section next launch;
+   * a directory path is only as good as the change it came from, and a list
+   * that grows one entry per directory ever folded is not a habit worth
+   * keeping. `sidebar-state.ts` is where it would go if it became one.
+   */
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const toggleFold = (path: string) =>
+    setFolded((previous) => {
+      const next = new Set(previous);
+      if (!next.delete(path)) next.add(path);
+      return next;
+    });
+  const tree = useMemo(() => fileTree(files.data ?? []), [files.data]);
 
   // Which row said "copied" a moment ago, the way the command panel marks the
   // line it copied: the confirmation belongs on the row that was clicked, not
@@ -664,7 +776,25 @@ export function Inspector({
             {t("No file changes.")}
           </div>
         )}
-        {files.data?.map((file) => {
+        {/* A tree, not a flat list: past twenty files the flat one hides which
+            part of the repo a change is in. `fileTree` folds a chain with one
+            child into a single `a/b/c` row, so a shallow change reads as it
+            always did. */}
+        {treeRows(tree, folded).map(({ node, depth }) => {
+          if (node.kind === "directory") {
+            return (
+              <DirectoryRow
+                key={`directory:${node.path}`}
+                name={node.name}
+                path={node.path}
+                fileCount={node.fileCount}
+                depth={depth}
+                folded={folded.has(node.path)}
+                onToggle={() => toggleFold(node.path)}
+              />
+            );
+          }
+          const file = node.change;
           const status = STATUS_MARK[file.status];
           const checked = picked.has(file.path);
           // jj prints every path from the workspace root, and the system wants
@@ -676,8 +806,15 @@ export function Inspector({
                something the browser honours. It becomes a sibling, and the row
                keeps its one job. */
             <div
-              key={file.path}
-              style={{ display: "flex", alignItems: "center", gap: 2 }}
+              // A file and a directory beside each other can share a path, so
+              // the kind is part of the key — see `fileTree`.
+              key={`file:${node.path}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                paddingLeft: depth * INDENT,
+              }}
               // The row's own menu replaces the web view's, the way the graph
               // row's does. It carries handlers rather than chords because its
               // object is this path — see `popupFileMenu`.
@@ -739,17 +876,18 @@ export function Inspector({
                 >
                   {status.mark}
                 </span>
+                {/* The name alone; the directories above it are rows of their
+                    own now, so the front-truncation the full path needed is
+                    gone with it. The `title` still carries the whole path. */}
                 <span
                   style={{
                     flexGrow: 1,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    direction: "rtl",
-                    textAlign: "left",
                   }}
                 >
-                  {file.path}
+                  {node.name}
                 </span>
               </button>
               {copiedPath === file.path && <span className="key">{t("copied")}</span>}

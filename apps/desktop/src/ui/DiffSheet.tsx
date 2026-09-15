@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { AnnotationLine, DiffLine, FileDiff, Revision, WordSpan } from "@ukemi/domain";
-import { pairRows, pairedWords, parseGitDiff } from "@ukemi/domain";
+import { fileTree, pairRows, pairedWords, parseGitDiff } from "@ukemi/domain";
 import { messageFor, useAnnotate, useFileDiff, useInterdiff } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
-import { STATUS_MARK } from "./Inspector.tsx";
+import { DirectoryRow, INDENT, STATUS_MARK, treeRows } from "./Inspector.tsx";
 import { useModal } from "./modal.ts";
 import { relativeTime } from "./time.ts";
 
@@ -89,6 +89,21 @@ export function DiffSheet({
   const diff = against === undefined ? plain : compared;
   const files = useMemo(() => parseGitDiff(diff.data ?? ""), [diff.data]);
   const [current, setCurrent] = useState(path);
+  /*
+   * The same tree the inspector's list draws, from the same `fileTree` — a
+   * `FileDiff` is a `FileChange` with hunks on it, so the parsed diff goes
+   * straight in.
+   *
+   * ↑↓ walks `order` rather than `files`: the keys move between what is on
+   * screen, so a file inside a folded directory is skipped, and the order is
+   * the tree's, not the order jj happened to print the diff in.
+   */
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const rows = useMemo(() => treeRows(fileTree(files), folded), [files, folded]);
+  const order = useMemo(
+    () => rows.flatMap(({ node }) => (node.kind === "file" ? [node.path] : [])),
+    [rows],
+  );
   /*
    * Find, in the file on screen. A long file's diff is the one thing this sheet
    * shows that cannot be skimmed, and the reader already has the text — so this
@@ -207,16 +222,19 @@ export function DiffSheet({
        * and ⌘G, which is exactly what reading an unfamiliar diff wants.
        */
       event.stopPropagation();
-      const index = files.findIndex((candidate) => candidate.path === file?.path);
+      // A current file that is not in `order` — its directory was folded shut
+      // under it — indexes at -1, and either key then lands on the first
+      // visible file rather than nowhere.
+      const index = order.indexOf(file?.path ?? "");
       const step = event.key === "ArrowDown" ? 1 : -1;
-      const next = files[Math.min(files.length - 1, Math.max(0, index + step))];
-      if (next) setCurrent(next.path);
+      const next = order[Math.min(order.length - 1, Math.max(0, index + step))];
+      if (next !== undefined) setCurrent(next);
     };
     // Capture, so the window's own ↑/↓ does not also walk the graph selection
     // out from under the sheet.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [files, file?.path, finding, panel]);
+  }, [order, file?.path, finding, panel]);
 
   const tally = file ? countLines(file) : undefined;
 
@@ -435,16 +453,38 @@ export function DiffSheet({
             {!diff.isPending && files.length === 0 && (
               <div className="sec">{t("No file changes.")}</div>
             )}
-            {files.map((candidate) => {
-              const status = STATUS_MARK[candidate.status];
+            {rows.map(({ node, depth }) => {
+              if (node.kind === "directory") {
+                return (
+                  <DirectoryRow
+                    key={`directory:${node.path}`}
+                    name={node.name}
+                    path={node.path}
+                    fileCount={node.fileCount}
+                    depth={depth}
+                    folded={folded.has(node.path)}
+                    onToggle={() =>
+                      setFolded((previous) => {
+                        const next = new Set(previous);
+                        if (!next.delete(node.path)) next.add(node.path);
+                        return next;
+                      })
+                    }
+                  />
+                );
+              }
+              const status = STATUS_MARK[node.change.status];
               return (
                 <button
                   type="button"
                   className="file"
-                  key={candidate.path}
-                  aria-selected={candidate.path === file?.path}
-                  onClick={() => setCurrent(candidate.path)}
-                  title={candidate.path}
+                  // A file and a directory beside each other can share a path,
+                  // so the kind is part of the key — see `fileTree`.
+                  key={`file:${node.path}`}
+                  aria-selected={node.path === file?.path}
+                  onClick={() => setCurrent(node.path)}
+                  title={node.path}
+                  style={{ paddingLeft: 6 + depth * INDENT }}
                 >
                   <span
                     className="mono"
@@ -452,6 +492,7 @@ export function DiffSheet({
                   >
                     {status.mark}
                   </span>
+                  {/* The name alone; its directories are rows above it now. */}
                   <span
                     style={{
                       flexGrow: 1,
@@ -459,11 +500,9 @@ export function DiffSheet({
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      direction: "rtl",
-                      textAlign: "left",
                     }}
                   >
-                    {candidate.path}
+                    {node.name}
                   </span>
                 </button>
               );

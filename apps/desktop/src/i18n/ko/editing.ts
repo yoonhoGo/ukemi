@@ -107,6 +107,7 @@ export const editing: Record<string, string> = {
   "{count} FILES CHANGED": "변경된 파일 {count}개",
   "FILES CHANGED": "변경된 파일",
   "No file changes.": "바뀐 파일이 없습니다.",
+  "{name}, {count} files": "{name}, 파일 {count}개",
   "Check files to squash or split them whole": "파일을 통째로 스쿼시하거나 분리하려면 체크하세요",
   "Squash {count} files into the parent": "파일 {count}개를 부모에 스쿼시",
   "The parent is immutable.": "부모는 바꿀 수 없습니다.",
