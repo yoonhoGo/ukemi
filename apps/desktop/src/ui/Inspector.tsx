@@ -32,6 +32,16 @@ export const STATUS_MARK: Record<FileChange["status"], { mark: string; color: st
 export const INDENT = 12;
 
 /**
+ * How the merge step below names the parent it reads *from*.
+ *
+ * The window holds one `against` string beside the open path (`App.tsx`), and
+ * both comparisons hand it a revision — what differs is the question, so the
+ * question has to travel with it. Exported so the sheet parses back exactly
+ * what this writes; neither a change ID nor a bookmark can start with it.
+ */
+export const FROM_PARENT = "from-parent:";
+
+/**
  * The tree flattened into the rows to draw, with everything under a folded
  * directory left out.
  *
@@ -604,6 +614,29 @@ export function Inspector({
             onRun={() => onOpenDiff("", extraParents[0]!)}
           />
         )}
+        {/* A merge is the one revision whose own diff says nothing. `jj diff
+            -r` on it compares the merge against its parents merged together,
+            and a clean merge *is* that tree — so it prints an empty patch,
+            and the file list above is empty with it. What the merge brought in
+            is a contents diff from one parent to it, which is `diffRange`, not
+            the interdiff the step above opens.
+
+            One step per parent rather than a guess at which side the reader is
+            standing on: the two directions are two different answers, and an
+            octopus merge simply gets a row each. A read, so `readOnly` does
+            not reach it. */}
+        {revision.parents.length > 1 &&
+          revision.parents.map((parent) => (
+            <Step
+              key={parent}
+              label={t("What came in over {parent}", { parent: parent.slice(0, 8) })}
+              title={t(
+                "Everything this merge has that {parent} did not — the other side's contribution (jj diff --from --to). The merge's own diff is empty, because jj compares it against its parents merged together.",
+                { parent: parent.slice(0, 8) },
+              )}
+              onRun={() => onOpenDiff("", `${FROM_PARENT}${parent}`)}
+            />
+          ))}
         <Step
           label={t("Split into two changes")}
           shortcut="⌘⇧S"

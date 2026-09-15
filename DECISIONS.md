@@ -937,11 +937,34 @@ window, and — being a new instance — actually delivers argv, which a plain
 second repo wanting a second process is the right answer rather than a
 limitation to work around with a single-instance plugin.
 
+**What a merge brought in is a step per parent, and a contents diff.**
+A merge is the one revision whose own diff says nothing. `jj diff -r <merge>`
+compares the merge against its parents merged together, and a clean merge *is*
+that tree — so it prints an empty patch, and the inspector's file list is empty
+with it. Checked against jj rather than assumed: on a two-parent merge
+`diff -r` returns zero bytes while `diff --from <parent> --to <merge>` spells
+out the other side's files, and on a three-parent merge `--from` one parent
+returns everything the other two contributed.
+
+So the reading is `diffRange`, and it stays a separate port method from
+`interdiff`. `interdiff` rebases `from` onto `to`'s parents before diffing,
+which is what two marked rows on different parents want and the opposite of
+what this wants: the parent already stands where the merge does, and rebasing
+that away discards the very thing being asked for. Telling the two apart by the
+shape of the arguments was rejected — a parent is a plausible ⌘-mark, and
+guessing wrong there answers a question the reader did not ask with a diff that
+looks perfectly valid. The merge step tags its argument and the sheet parses
+the tag.
+
+The direction is not chosen for the reader. Two parents are two different
+answers — what the feature brought, and what trunk brought — so there is one
+step per parent, each labelled with its own, and an octopus merge gets a row
+each for the same reason. Which one is on screen is the pill beside the path:
+"brought in over <parent>", deliberately not the interdiff's "since", because
+nothing changed *after* that parent — the other side arrived beside it.
+
 ## Still open
 
-- **What a merge brought in.** No way to see it from the window. It needs
-  `JjPort.diffRange` (`jj diff --from --to`) and a step on a merge revision;
-  the comparison step above deliberately does not cover it.
 - **A screen that shows the licences.** Both the jj and SUIT licence texts ship
   inside the bundle; neither is reachable from inside the window. `NOTICE`
   claimed such a screen from v1 and the claim is now withdrawn. Shipping the

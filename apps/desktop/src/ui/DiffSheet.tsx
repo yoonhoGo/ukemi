@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { AnnotationLine, DiffLine, FileDiff, Revision, WordSpan } from "@ukemi/domain";
 import { fileTree, pairRows, pairedWords, parseGitDiff } from "@ukemi/domain";
-import { messageFor, useAnnotate, useFileDiff, useInterdiff } from "../repo.tsx";
+import { messageFor, useAnnotate, useDiffRange, useFileDiff, useInterdiff } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
 import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
-import { DirectoryRow, INDENT, STATUS_MARK, treeRows } from "./Inspector.tsx";
+import { DirectoryRow, FROM_PARENT, INDENT, STATUS_MARK, treeRows } from "./Inspector.tsx";
 import { useModal } from "./modal.ts";
 import { relativeTime } from "./time.ts";
 
@@ -37,14 +37,19 @@ export function DiffSheet({
   revision: Revision;
   path: string;
   /**
-   * A revset to compare this revision's *patch* against — the pushed side of a
-   * bookmark, in the only case that sends one. Absent is the ordinary reading:
-   * what this revision does to its parent.
+   * The other side of a comparison, in the two shapes that ask for one. Absent
+   * is the ordinary reading: what this revision does to its parent.
    *
-   * jj counts the description as part of an interdiff and emits it as a
-   * synthetic `JJ-COMMIT-DESCRIPTION` file, so the file list can hold a row
-   * that is not a file. Left as jj sends it: "the message changed too" is part
-   * of the answer to "what changed since I pushed".
+   * A bare revset compares this revision's *patch* against that one's — the
+   * pushed side of a bookmark, or a ⌘-marked row. jj counts the description as
+   * part of an interdiff and emits it as a synthetic `JJ-COMMIT-DESCRIPTION`
+   * file, so the file list can hold a row that is not a file. Left as jj sends
+   * it: "the message changed too" is part of the answer to "what changed since
+   * I pushed".
+   *
+   * Tagged with `FROM_PARENT`, it is a parent of a merge and the question is
+   * the opposite one — what this revision's tree has that the parent's did not.
+   * See the merge step in `Inspector.tsx` for why a merge needs it.
    */
   against?: string | undefined;
   onClose(): void;
@@ -80,13 +85,28 @@ export function DiffSheet({
    * ones, and the parser is the one already trusted to rewrite commits.
    */
   /*
-   * Two reads, one of them always off. Hooks cannot be called conditionally, and
-   * both are `enabled`-gated on an argument being present, so the disabled one
-   * costs nothing and neither branch needs its own component.
+   * Three reads, two of them always off. Hooks cannot be called conditionally,
+   * and each is `enabled`-gated on an argument being present, so the disabled
+   * ones cost nothing and no branch needs its own component.
+   *
+   * The two comparisons take the same pair of revisions and answer different
+   * questions — see `interdiff` and `diffRange` in `port.ts` — so which one is
+   * meant travels in the string rather than being inferred from it. A parent is
+   * a plausible mark, and reading the wrong command out of that would show a
+   * confident wrong answer.
    */
+  const fromParent = against?.startsWith(FROM_PARENT)
+    ? against.slice(FROM_PARENT.length)
+    : undefined;
+  const marked = fromParent === undefined ? against : undefined;
   const plain = useFileDiff(against === undefined ? revision.changeId : undefined, undefined, context);
-  const compared = useInterdiff(against, against === undefined ? undefined : revision.changeId, context);
-  const diff = against === undefined ? plain : compared;
+  const compared = useInterdiff(marked, marked === undefined ? undefined : revision.changeId, context);
+  const brought = useDiffRange(
+    fromParent,
+    fromParent === undefined ? undefined : revision.changeId,
+    context,
+  );
+  const diff = fromParent !== undefined ? brought : marked !== undefined ? compared : plain;
   const files = useMemo(() => parseGitDiff(diff.data ?? ""), [diff.data]);
   const [current, setCurrent] = useState(path);
   /*
@@ -305,9 +325,18 @@ export function DiffSheet({
               them: `jj diff --summary` prints no counts, so the adapter leaves
               them absent. The parsed lines are the only place the numbers
               exist, and they are already in hand. */}
-          {against !== undefined && (
+          {marked !== undefined && (
             <span className="pill" style={{ flexShrink: 0 }}>
-              {t("since {ref}", { ref: against })}
+              {t("since {ref}", { ref: marked })}
+            </span>
+          )}
+          {/* Deliberately not "since": nothing changed *after* that parent, the
+              other side of the merge arrived beside it. The parent is shortened
+              the way every other change ID in this window is; the full one is
+              what went to jj. */}
+          {fromParent !== undefined && (
+            <span className="pill" style={{ flexShrink: 0 }}>
+              {t("brought in over {ref}", { ref: fromParent.slice(0, 8) })}
             </span>
           )}
           {tally && (
@@ -539,9 +568,11 @@ export function DiffSheet({
             {blame && canBlame
               ? `jj file annotate -r ${revision.changeId.slice(0, 8)} ${file.path}`
               : `${
-                  against === undefined
-                    ? `jj diff -r ${revision.changeId.slice(0, 8)}`
-                    : `jj interdiff --from ${against} --to ${revision.changeId.slice(0, 8)}`
+                  fromParent !== undefined
+                    ? `jj diff --from ${fromParent.slice(0, 8)} --to ${revision.changeId.slice(0, 8)}`
+                    : marked !== undefined
+                      ? `jj interdiff --from ${marked} --to ${revision.changeId.slice(0, 8)}`
+                      : `jj diff -r ${revision.changeId.slice(0, 8)}`
                 } --git${context === undefined ? "" : ` --context ${context}`}`}
           </span>
         </div>

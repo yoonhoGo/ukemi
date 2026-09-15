@@ -389,6 +389,27 @@ export function useInterdiff(
 }
 
 /**
+ * How two revisions' contents differ (`jj diff --from --to`).
+ *
+ * The other question — see `diffRange` in `port.ts`. Gated and keyed exactly as
+ * `useInterdiff` is, so the diff sheet can start every reading it offers and
+ * pay only for the one on screen.
+ */
+export function useDiffRange(
+  from: string | undefined,
+  to: string | undefined,
+  context?: number,
+): UseQueryResult<string> {
+  const { root, port, opId } = useRepo();
+  return useQuery({
+    queryKey: ["repo", root, opId, "diff-range", from, to, context],
+    queryFn: () => port.diffRange({ from: from!, to: to! }, { atOp: opId, context }),
+    enabled: opId !== undefined && from !== undefined && to !== undefined,
+    staleTime: Infinity,
+  });
+}
+
+/**
  * Add a Git remote.
  *
  * Its own mutation rather than `useJjMutation` because the remote list is not

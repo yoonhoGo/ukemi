@@ -32,8 +32,15 @@ export const editing: Record<string, string> = {
   "Reading the change's history…": "체인지 이력을 읽는 중…",
   "This change has only ever been itself.": "이 체인지는 늘 지금 모습이었습니다.",
 
+  // Inspector — 머지가 무엇을 가져왔는지 (jj diff --from --to)
+  "What came in over {parent}": "{parent} 위로 들어온 것",
+  "Everything this merge has that {parent} did not — the other side's contribution (jj diff --from --to). The merge's own diff is empty, because jj compares it against its parents merged together.":
+    "{parent}에는 없고 이 머지에는 있는 전부, 곧 반대편이 가져온 몫입니다 (jj diff --from --to). 머지 자신의 디프는 비어 있습니다. jj가 머지를 부모들을 합친 것과 비교하기 때문입니다.",
+
   // DiffSheet — 패치끼리 비교 (jj interdiff)
   "since {ref}": "{ref} 이후",
+  // DiffSheet — 머지의 반대편이 가져온 것 (jj diff --from --to)
+  "brought in over {ref}": "{ref} 위로 들어온 것",
 
   // HunkSheet — 헝크 편집 시트
   "Split {change} into two changes": "{change}를 두 체인지로 분리",
