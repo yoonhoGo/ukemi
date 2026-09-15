@@ -904,8 +904,7 @@ That leaves the merge case untouched, and they are not the same question.
 `jj diff -r <merge>` is empty by design — jj diffs against the auto-merged
 parents, so a clean merge has nothing of its own, exactly as `git show` on a
 merge does. Seeing what a merge brought in needs `diff --from <parent> --to
-<merge>`, which is a contents diff and so a port method this codebase does not
-have.
+<merge>`, which is a contents diff — `diffRange`, the entry below.
 
 **Installing and updating is one shell script, not an in-app updater.**
 `install.sh` downloads the release DMG, copies the app to `/Applications`,
@@ -924,9 +923,12 @@ The check is off by default and it is the only request this window makes; the
 CSP names `https://api.github.com` and nothing else. An app whose themes cannot
 load a remote font (`themes/themes.ts`) should not phone home on its own.
 
-The banner copies a command instead of opening the release page because opening
-a URL means `tauri-plugin-opener`, a sixth runtime dependency, and a copyable
-command is the affordance the command log and the Rosetta table already use.
+The banner copies a command instead of opening the release page: what the user
+needs is a line to run, not a page to read, and a copyable command is the
+affordance the command log and the Rosetta table already use. Opening a URL also
+meant a new dependency when this was decided; it no longer does — see the
+`open(1)` entry below — which is why the affordance is the half of the reason
+that survives.
 
 **The `ukemi` command is `open -n`, not the binary in the bundle.**
 `initial_repo` in `main.rs` already took a path from argv, so the CLI is nine
@@ -987,6 +989,64 @@ a different call per file manager, opening a terminal is worse, so the command
 refuses them there rather than guessing from a candidate list, and `shell.ts`
 swallows the refusal the way it swallows a missing Tauri. A menu item that does
 nothing is better than one that opens the wrong thing.
+
+**Find in the diff sheet searches the file on screen, and nothing wider.**
+A long file's diff is the one thing this sheet shows that cannot be skimmed, and
+the reader already has the text — so find is `indexOf` over the parsed lines,
+not a second jj read. Searching the whole change is the next size up and is not
+built: it wants a match count per file and a result list beside the file list,
+and `findHits` already takes one `FileDiff`, so it would be mapped over `files`
+if anything asks. This is a different layer from the toolbar's ⌘F, which writes
+a revset into the ⌘L field: that one decides which changes are on screen, this
+one walks the text of one already open. The sheet takes ⌘F in capture while it
+is up and the toolbar gets it back when the sheet closes.
+
+**A directory row folds and does nothing else, and the folds are not saved.**
+No check box on it. The two whole-file verbs take paths, a directory is not one,
+and a half-checked directory would then have to mean something — so the check
+stays on the files, where jj's own filesets are, and an indeterminate state
+never has to be defined. The folds are this session's and are not written down:
+the sidebar's folds persist because a section is the same section next launch,
+while a directory path is only as good as the change it came from, and a list
+that grows an entry per directory ever folded is not a habit worth keeping.
+`sidebar-state.ts` is where it would go if it became one.
+
+**`.gitignore` is offered on a new working-copy file only, and written as one
+anchored line.**
+Run against jj 0.43: a pattern decides whether jj *takes* a file, never whether
+it keeps one it already has, so putting a tracked path in `.gitignore` does not
+drop it. On a modified file — or on any file in a change that is already
+history — the line would sit there doing nothing forever, so the menu item is
+absent on those rows rather than present and inert. The trade that comes with
+it is that editing `.gitignore` is a file write and not an operation, so ⌘Z
+does not reach it and the success line says so. That is the second instance of
+the problem "Saved revsets are jj's `revset-aliases`" already records — a write
+that is not an operation is outside the one door ⌘Z comes through — and it is
+answered the same way, by leaving the line there to be deleted.
+
+The write names one known file, `<root>/.gitignore` at the repository root, and
+never a destination the web view supplies — handing it one would buy a
+context-menu item at the price of arbitrary disk writes, the trade
+`prepare_hunk_plan` refuses by minting its own directory. So no
+`.git/info/exclude` and no `.gitignore` in the file's own directory: jj reads
+the one at the root as it stands. The line is anchored with a leading `/`, so
+ignoring `src/tmp` does not also ignore `docs/src/tmp`, and `*`, `?`, `[` and a
+trailing space are escaped, so `a[1].txt` names that one file instead of being
+read as a glob. Existing lines are not matched or edited — recognising that a
+hand-written `foo` or `**/foo` already covers the path means implementing
+gitignore's globs, which is jj's job.
+
+**A merge comparison says which question it asks, in the string it already
+travels in.**
+The window holds one `against` string beside the open diff path, and both
+comparisons hand it a revision — what differs is the question, not the argument,
+so the question rides along as the `FROM_PARENT` prefix rather than as a second
+piece of `App` state beside the path. The constant is exported so the sheet
+parses back exactly what the merge step writes, and the tag is safe because of
+its shape: neither a change ID nor a bookmark can begin with `from-parent:`.
+Inferring the intent instead — that `against` is one of `revision.parents` — is
+the alternative the entry above refuses, and it is silently wrong for the
+gesture that marks a merge's own parent and compares against it.
 
 ## Still open
 
