@@ -251,8 +251,40 @@ test("interdiff compares patches, not contents, across different parents", async
   // `inter-base.txt` is the difference between the two *parents*, which is
   // what `jj diff --from --to` would have dragged in and interdiff must not.
   assert.doesNotMatch(changed, /inter-base\.txt/);
+  // The same pair asked the other question: `diffRange` compares the trees, so
+  // the parents' difference is in the answer rather than rebased out of it.
+  assert.match(await jj.diffRange({ from: a.changeId, to: b.changeId }), /inter-base\.txt/);
 
   raw("abandon", "-r", `${a.changeId} | ${b.changeId} | ${base.changeId}`);
+});
+
+test("diffRange is the only way to see what a merge brought in", async () => {
+  raw("new", "trunk", "-m", "left side");
+  writeFileSync(join(repo, "left.txt"), "left\n");
+  raw("status");
+  const left = (await jj.log("@"))[0]!;
+
+  raw("new", "trunk", "-m", "right side");
+  writeFileSync(join(repo, "right.txt"), "right\n");
+  raw("status");
+  const right = (await jj.log("@"))[0]!;
+
+  raw("new", left.changeId, right.changeId, "-m", "the merge");
+  raw("status");
+  const merge = (await jj.log("@"))[0]!;
+
+  // Why the method exists: jj diffs a merge against its parents merged
+  // together, which is exactly what a clean merge already is, so the window's
+  // ordinary diff read has nothing to show for it.
+  assert.equal((await jj.diff(merge.changeId)).trim(), "");
+
+  // Asked from one parent, the other side's contribution is spelled out.
+  const brought = await jj.diffRange({ from: left.changeId, to: merge.changeId });
+  assert.match(brought, /right\.txt/);
+  assert.match(brought, /^\+right$/m);
+  assert.doesNotMatch(brought, /left\.txt/);
+
+  raw("abandon", "-r", `${merge.changeId} | ${left.changeId} | ${right.changeId}`);
 });
 
 test("reads are pinned by --at-operation and ignore later writes", async () => {

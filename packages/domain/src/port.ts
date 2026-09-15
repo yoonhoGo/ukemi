@@ -123,6 +123,29 @@ export interface JjPort {
     opts?: DiffOptions,
   ): Promise<string>;
 
+  /**
+   * How two revisions' contents differ (`jj diff --from --to`).
+   *
+   * The other half of the question `interdiff` answers. `interdiff` rebases
+   * `from` onto `to`'s parents so that only what the two changes *do* is left;
+   * this compares the two trees where they actually stand, so everything their
+   * ancestries differ by is in the output. That is the point here, not a flaw:
+   * "what is different between these two" is a different question from "what
+   * do these two do differently", and each is the wrong answer to the other.
+   *
+   * It is also the only way to see what a merge brought in. `diff -r` on a
+   * merge compares it against its parents merged together — which is what a
+   * clean merge already is, so it prints nothing at all. Ask from one parent to
+   * the merge instead and the other side's contribution is spelled out.
+   *
+   * Git format, like `diff` and `interdiff`, because the same parser and the
+   * same sheet read it.
+   */
+  diffRange(
+    args: { readonly from: string; readonly to: string },
+    opts?: DiffOptions,
+  ): Promise<string>;
+
   bookmarks(opts?: ReadOptions): Promise<Bookmark[]>;
 
   tags(opts?: ReadOptions): Promise<Tag[]>;

@@ -251,6 +251,23 @@ export class JjCliAdapter implements JjPort {
     return this.run(argv);
   }
 
+  async diffRange(
+    args: { readonly from: string; readonly to: string },
+    opts?: DiffOptions,
+  ): Promise<string> {
+    const argv = [
+      ...this.readBase(opts),
+      "diff",
+      "--from",
+      args.from,
+      "--to",
+      args.to,
+      "--git",
+    ];
+    if (opts?.context !== undefined) argv.push("--context", String(opts.context));
+    return this.run(argv);
+  }
+
   async bookmarks(opts?: ReadOptions): Promise<Bookmark[]> {
     const out = await this.run([
       ...this.readBase(opts),
