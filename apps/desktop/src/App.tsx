@@ -281,7 +281,13 @@ function Window({
         // and the rest still work while a diff is up, so the thing on top
         // closes first — and before the pin, which is the window's state
         // rather than something covering it.
-        else if (diffPath) {
+        // `!== undefined`, not truthiness: an empty path is what every
+        // comparison passes — the marked-change step, the stack's "since I
+        // pushed" and the merge steps all open the sheet with no file named
+        // and let it fall back to the first one. Read as truthy, those sheets
+        // could not be closed with Escape, and the key fell through to the pin
+        // underneath them instead.
+        else if (diffPath !== undefined) {
           setDiffPath(undefined);
           setDiffAgainst(undefined);
         }
