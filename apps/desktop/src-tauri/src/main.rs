@@ -166,21 +166,22 @@ enum PlanFile {
     Revert { path: String },
 }
 
-/// Reject a path that could escape the plan directory.
+/// Reject a path that could escape the repository.
 ///
-/// The plan comes from the webview, so the paths in it are untrusted input at a
+/// Every path here arrives from the webview, so it is untrusted input at a
 /// trust boundary: without this, a `../` entry would let a plan write anywhere
-/// the app can reach. Repository paths are always relative and never traverse
-/// upward, so anything else is refused rather than sanitised.
+/// the app can reach, and an ignore rule name a file outside the repo.
+/// Repository paths are always relative and never traverse upward, so anything
+/// else is refused rather than sanitised.
 fn safe_relative(path: &str) -> Result<PathBuf, String> {
     let candidate = Path::new(path);
     if candidate.is_absolute() {
-        return Err(format!("plan path must be relative: {path}"));
+        return Err(format!("path must be relative to the repository: {path}"));
     }
     for component in candidate.components() {
         match component {
             Component::Normal(_) => {}
-            _ => return Err(format!("unsafe plan path: {path}")),
+            _ => return Err(format!("unsafe path: {path}")),
         }
     }
     Ok(candidate.to_path_buf())
@@ -269,6 +270,69 @@ async fn discard_hunk_plan(plan_dir: String) -> Result<(), String> {
     fs::remove_dir_all(&dir).map_err(|error| error.to_string())
 }
 
+/// Append one path to the repository's `.gitignore`.
+///
+/// Deliberately not a general file-write command. The webview names a path
+/// *inside* the repository, never the file being written: that is always
+/// `<root>/.gitignore`, one known name at the root, and the path it carries is
+/// checked by `safe_relative` first. Handing the web view a destination would
+/// buy one context-menu item at the price of arbitrary disk writes — the same
+/// trade `prepare_hunk_plan` refuses by minting its own directory. jj reads
+/// `.gitignore` as it stands, so this is also the only ignore file to write.
+///
+/// Appending is idempotent, because the same line twice is the first bug a
+/// user would find. A file that does not end in a newline gets one before the
+/// line, rather than a mangled last entry.
+///
+/// ponytail: a line matches only when it is written exactly the way this
+/// writes it. A hand-written `foo` or `**/foo` that already covers the path is
+/// not recognised, and a second line lands saying the same thing. Recognising
+/// those means matching gitignore's globs, which is jj's job, not this file's.
+#[tauri::command]
+async fn ignore_path(root: String, path: String) -> Result<(), String> {
+    safe_relative(&path)?;
+    let line = gitignore_line(&path);
+    let file = PathBuf::from(&root).join(".gitignore");
+
+    let mut content = match fs::read_to_string(&file) {
+        Ok(existing) => existing,
+        // No ignore file yet is the ordinary case on a fresh repo. Any other
+        // read failure is real, and must not be papered over by writing a new
+        // file on top of one we could not read.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.to_string()),
+    };
+    if content.lines().any(|existing| existing == line) {
+        return Ok(());
+    }
+    if !content.is_empty() && !content.ends_with('\n') {
+        content.push('\n');
+    }
+    content.push_str(&line);
+    content.push('\n');
+    fs::write(&file, content).map_err(|error| error.to_string())
+}
+
+/// One `.gitignore` line naming exactly one path.
+///
+/// The leading `/` anchors the pattern to the repository root, so ignoring
+/// `src/tmp` does not also ignore `docs/src/tmp`. `*`, `?` and `[` are glob
+/// syntax and git strips a trailing space, so a file whose name contains one
+/// is escaped: the line has to name that one file and not its neighbours.
+fn gitignore_line(path: &str) -> String {
+    let mut line = String::from("/");
+    for character in path.chars() {
+        if matches!(character, '\\' | '*' | '?' | '[') {
+            line.push('\\');
+        }
+        line.push(character);
+    }
+    if line.ends_with(' ') {
+        line.insert(line.len() - 1, '\\');
+    }
+    line
+}
+
 /// A fresh directory under the system temp root, named so `discard_hunk_plan`
 /// can recognise it as ours.
 fn tempdir() -> std::io::Result<PathBuf> {
@@ -294,6 +358,11 @@ fn tempdir() -> std::io::Result<PathBuf> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Reveal in Finder, open with the default app, open a terminal here.
+        // The official plugin rather than three more `Command::new` calls: it
+        // already knows each platform's incantation, and the capability file
+        // is where the reach of those calls is written down.
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             jj_exec,
             gh_exec,
@@ -301,8 +370,56 @@ fn main() {
             git_probe,
             initial_repo,
             prepare_hunk_plan,
-            discard_hunk_plan
+            discard_hunk_plan,
+            ignore_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running ukemi");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{gitignore_line, ignore_path, tempdir};
+
+    /// The append rules, on a real file: a missing `.gitignore` is created, a
+    /// last line without a newline gets one, and the same path twice is one
+    /// line. That last one is the bug a user would find first.
+    #[test]
+    fn ignoring_a_path_appends_once() {
+        let root = tempdir().unwrap();
+        let file = root.join(".gitignore");
+        let ignore = |path: &str| {
+            tauri::async_runtime::block_on(ignore_path(
+                root.to_string_lossy().into_owned(),
+                path.to_owned(),
+            ))
+        };
+
+        ignore("target").unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "/target\n");
+
+        std::fs::write(&file, "/target\n*.log").unwrap();
+        ignore("build").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&file).unwrap(),
+            "/target\n*.log\n/build\n"
+        );
+
+        ignore("build").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&file).unwrap(),
+            "/target\n*.log\n/build\n"
+        );
+
+        assert!(ignore("../elsewhere").is_err());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn ignore_lines_are_anchored_and_escaped() {
+        assert_eq!(gitignore_line("target"), "/target");
+        assert_eq!(gitignore_line("src/tmp"), "/src/tmp");
+        assert_eq!(gitignore_line("src/a[1]*.txt"), "/src/a\\[1]\\*.txt");
+        assert_eq!(gitignore_line("notes "), "/notes\\ ");
+    }
 }

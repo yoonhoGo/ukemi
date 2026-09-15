@@ -11,19 +11,20 @@
     "vite:build": "vite build"
   },
   "dependencies": {
-    "@ukemi/domain": "*",
+    "@tanstack/react-query": "^5.62.7",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-dialog": "^2.2.0",
+    "@tauri-apps/plugin-opener": "^2.5.5",
+    "@ukemi/domain": "*",
+    "@ukemi/jj-cli-adapter": "*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@tanstack/react-query": "^5.62.7",
-    "@ukemi/jj-cli-adapter": "*"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.5",
     "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2"
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5"
   }
 }
