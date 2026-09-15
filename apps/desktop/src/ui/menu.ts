@@ -123,6 +123,22 @@ function fileMenu(): SubmenuOptions {
     text: t("File"),
     items: [
       item({ label: "Open another repository", key: "o", accelerator: "CmdOrCtrl+O" }),
+      // The repository as a folder rather than as history. The README tells
+      // people to keep a terminal open beside the window and never opened one;
+      // these two are that hole, and they belong to the repository rather than
+      // to any revision — so File, not Change.
+      item({
+        label: "Show the repository in the file manager",
+        key: "e",
+        shift: true,
+        accelerator: "CmdOrCtrl+Shift+E",
+      }),
+      item({
+        label: "Open the repository in a terminal",
+        key: "t",
+        shift: true,
+        accelerator: "CmdOrCtrl+Shift+T",
+      }),
       SEPARATOR,
       item({ label: "Fetch", key: "f", shift: true, accelerator: "CmdOrCtrl+Shift+F" }),
       item({ label: "Push", key: "p", shift: true, accelerator: "CmdOrCtrl+Shift+P" }),
@@ -212,6 +228,25 @@ function changeMenu(): SubmenuOptions & Required<Pick<SubmenuOptions, "items">> 
       // the same selection every item above acts on. Moving a name is still
       // the drag; this is the only way to mint one.
       item({ label: "Set a bookmark on the selection", key: "b", accelerator: "CmdOrCtrl+B" }),
+      SEPARATOR,
+      // Neither one rewrites anything, but both name the same selection every
+      // verb above acts on — and this is the list the graph's right-click
+      // reuses, which is where every other client keeps "copy the hash". The
+      // two IDs are a pair: a change ID survives a rewrite, a commit ID is the
+      // one version of it, and jj takes either.
+      item({
+        label: "Copy the change ID",
+        key: "c",
+        shift: true,
+        accelerator: "CmdOrCtrl+Shift+C",
+      }),
+      item({
+        label: "Copy the commit ID",
+        key: "c",
+        shift: true,
+        alt: true,
+        accelerator: "CmdOrCtrl+Alt+Shift+C",
+      }),
     ],
   };
 }
@@ -255,6 +290,34 @@ export async function popupBookmarkMenu(name: string, remove: () => void): Promi
   try {
     const menu = await Menu.new({
       items: [{ text: t("Delete the bookmark {name}", { name }), action: remove }],
+    });
+    await menu.popup();
+  } catch {
+    // No Tauri, no native menu — the same quiet degrade as `popupRowMenu`.
+  }
+}
+
+/**
+ * A file row's own menu, in the inspector's list.
+ *
+ * The second menu here that carries handlers instead of chords, for exactly
+ * the reason `popupBookmarkMenu` gives: the argument is a path, and a
+ * synthesised keystroke has no room for one. Nothing here is a jj verb — the
+ * file's verbs are the buttons beside the list — so the exception stays what
+ * it was, a menu for the commands whose object is *this row*.
+ */
+export async function popupFileMenu(actions: {
+  copyPath(): void;
+  reveal(): void;
+  open(): void;
+}): Promise<void> {
+  try {
+    const menu = await Menu.new({
+      items: [
+        { text: t("Copy the file path"), action: actions.copyPath },
+        { text: t("Show in the file manager"), action: actions.reveal },
+        { text: t("Open in the default app"), action: actions.open },
+      ],
     });
     await menu.popup();
   } catch {

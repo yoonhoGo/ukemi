@@ -10,6 +10,8 @@ import {
   useRepo,
 } from "../repo.tsx";
 import { t } from "../i18n/i18n.ts";
+import { openInDefaultApp, revealInFileManager } from "../shell.ts";
+import { popupFileMenu } from "./menu.ts";
 import { authorColor, authorInitials, colorForChange, nodeColor } from "./change-color.ts";
 import { relativeTime } from "./time.ts";
 import type { HunkSheetMode } from "./HunkSheet.tsx";
@@ -254,7 +256,7 @@ export function Inspector({
   /** `against` opens the sheet comparing this revision's patch with that one's. */
   onOpenDiff(path: string, against?: string): void;
 }) {
-  const { isPinned, setRevset } = useRepo();
+  const { isPinned, root, setRevset } = useRepo();
   const files = useDiffSummary(revision?.changeId);
   const log = useLog();
 
@@ -285,6 +287,19 @@ export function Inspector({
   // paths of the next one.
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => setPicked(new Set()), [revision?.changeId]);
+
+  // Which row said "copied" a moment ago, the way the command panel marks the
+  // line it copied: the confirmation belongs on the row that was clicked, not
+  // somewhere else on the screen.
+  const [copiedPath, setCopiedPath] = useState<string | undefined>(undefined);
+  // The path as the row shows it — relative to the workspace root, which is
+  // what jj's own commands take and what a terminal beside the window is in.
+  const copyPath = (path: string) => {
+    void navigator.clipboard.writeText(path).then(() => {
+      setCopiedPath(path);
+      setTimeout(() => setCopiedPath(undefined), 1200);
+    });
+  };
 
   if (!revision) {
     return (
@@ -652,12 +667,33 @@ export function Inspector({
         {files.data?.map((file) => {
           const status = STATUS_MARK[file.status];
           const checked = picked.has(file.path);
+          // jj prints every path from the workspace root, and the system wants
+          // an absolute one. Both platforms Ukemi ships to spell a join `/`.
+          const absolute = `${root}/${file.path}`;
           return (
             /* The row is already a button that opens the diff, so the check
                box cannot sit inside it — a button within a button is not
                something the browser honours. It becomes a sibling, and the row
                keeps its one job. */
-            <div key={file.path} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <div
+              key={file.path}
+              style={{ display: "flex", alignItems: "center", gap: 2 }}
+              // The row's own menu replaces the web view's, the way the graph
+              // row's does. It carries handlers rather than chords because its
+              // object is this path — see `popupFileMenu`.
+              onContextMenu={(event) => {
+                event.preventDefault();
+                void popupFileMenu({
+                  copyPath: () => copyPath(file.path),
+                  reveal: () => {
+                    void revealInFileManager(absolute);
+                  },
+                  open: () => {
+                    void openInDefaultApp(absolute);
+                  },
+                });
+              }}
+            >
               <button
                 type="button"
                 role="checkbox"
@@ -716,6 +752,7 @@ export function Inspector({
                   {file.path}
                 </span>
               </button>
+              {copiedPath === file.path && <span className="key">{t("copied")}</span>}
               {/* The file's history is a revset (`files("path")`), so the
                   graph itself is the history view — no second list to build,
                   and ⌘1 is the way back. */}

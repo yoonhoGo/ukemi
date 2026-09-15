@@ -158,4 +158,9 @@ export const editing: Record<string, string> = {
   "Edit by hunk": "헝크 단위로 편집",
   "1 conflict": "충돌 1개",
   "{count} conflicts": "충돌 {count}개",
+
+  // Inspector — 파일 행을 오른쪽 클릭했을 때의 메뉴
+  "Copy the file path": "파일 경로 복사",
+  "Show in the file manager": "파일 관리자에서 보기",
+  "Open in the default app": "기본 앱으로 열기",
 };

@@ -228,4 +228,14 @@ export const chrome: Record<string, string> = {
   "Check or uncheck everything": "전부 체크하거나 해제",
   Remotes: "리모트",
   "Copy the last jj command": "마지막 jj 명령 복사",
+
+  // ── 메뉴 바에만 있는 명령과, 무엇을 복사했는지 알리는 한 마디 ───────────
+  "Copy the change ID": "체인지 ID 복사",
+  "Copy the commit ID": "커밋 ID 복사",
+  "Show the repository in the file manager": "저장소를 파일 관리자에서 보기",
+  "Open the repository in a terminal": "저장소를 터미널에서 열기",
+  "Copied {what}": "{what} 복사함",
+  "the change ID": "체인지 ID",
+  "the commit ID": "커밋 ID",
+  "the last command": "마지막 명령",
 };

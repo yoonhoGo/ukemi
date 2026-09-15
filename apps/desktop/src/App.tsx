@@ -15,6 +15,7 @@ import {
   useRebasePreview,
   useRepo,
 } from "./repo.tsx";
+import { openTerminalAt, revealInFileManager } from "./shell.ts";
 import { Board } from "./ui/Board.tsx";
 import { CoachBubble, ProgressPanel } from "./ui/Coach.tsx";
 import { CommandPanel } from "./ui/CommandPanel.tsx";
@@ -80,7 +81,9 @@ function Window({
   // Held beside the path rather than inside it: closing is still one setter,
   // and every existing caller of `onOpenDiff` keeps its one argument.
   const [diffAgainst, setDiffAgainst] = useState<string | undefined>(undefined);
-  const [copied, setCopied] = useState(false);
+  // What was just copied, named rather than quoted: an ID is eight characters
+  // of noise to read back, and the strip under the graph has room for a word.
+  const [copied, setCopied] = useState<string | undefined>(undefined);
   // The bookmark name being typed, or `undefined` when the strip is closed.
   // An empty string is the open-but-blank state, which is why this is not a
   // boolean paired with the draft.
@@ -225,13 +228,24 @@ function Window({
     ? shellLine(lastWrite)
     : operations.data?.find((operation) => operation.args)?.args;
 
+  /**
+   * Copy, and say so for a moment.
+   *
+   * One flash for every copy this window does, in the strip the last command's
+   * already lived in: the ID copies come from a menu item, and a menu item has
+   * no button of its own to light up.
+   */
+  const copy = useCallback((text: string, what: string) => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(what);
+      setTimeout(() => setCopied(undefined), 1200);
+    });
+  }, []);
+
   const copyLastCommand = useCallback(() => {
     if (!lastCommand) return;
-    void navigator.clipboard.writeText(lastCommand).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    });
-  }, [lastCommand]);
+    copy(lastCommand, t("the last command"));
+  }, [lastCommand, copy]);
 
   /**
    * Put the typed name on the selected revision.
@@ -355,6 +369,12 @@ function Window({
       } else if (key === "n") {
         event.preventDefault();
         startChange();
+      } else if (key === "e" && event.shiftKey) {
+        event.preventDefault();
+        void revealInFileManager(root);
+      } else if (key === "t" && event.shiftKey) {
+        event.preventDefault();
+        void openTerminalAt(root);
       } else if (key === "e") {
         event.preventDefault();
         if (!isPinned && effectiveSelection) edit.mutate(effectiveSelection);
@@ -391,6 +411,14 @@ function Window({
         // rather than a toggle: the menu item's accelerator reaches this branch
         // while the field has focus, and it must not wipe what is typed there.
         if (!isPinned && effectiveSelection) setNaming((open) => open ?? "");
+        // Both IDs before ⌘⌥C's branch, which does not look at Shift and would
+        // otherwise swallow the commit ID's chord.
+      } else if (key === "c" && event.shiftKey && event.altKey) {
+        event.preventDefault();
+        if (selectedRevision) copy(selectedRevision.commitId, t("the commit ID"));
+      } else if (key === "c" && event.shiftKey) {
+        event.preventDefault();
+        if (selectedRevision) copy(selectedRevision.changeId, t("the change ID"));
       } else if (key === "c" && event.altKey) {
         event.preventDefault();
         copyLastCommand();
@@ -429,6 +457,7 @@ function Window({
     fetch,
     push,
     absorb,
+    copy,
     copyLastCommand,
     setRevset,
     selectedRevision,
@@ -736,6 +765,10 @@ function Window({
               <span className="key">⌥</span> {t("drag = rebase")}
             </span>
             <span style={{ flexGrow: 1 }} />
+            {/* Every copy in this window flashes here, whatever started it —
+                the chord, the button beside this, or a menu item that has no
+                button of its own. */}
+            {copied && <span>{t("Copied {what}", { what: copied })}</span>}
             {/* Transparency: the app never hides which jj command it ran. */}
             {lastCommand && (
               <button
@@ -761,7 +794,7 @@ function Window({
                 >
                   {lastCommand}
                 </span>
-                <span className="key">{copied ? t("copied") : "⌘⌥C"}</span>
+                <span className="key">⌘⌥C</span>
               </button>
             )}
           </div>
